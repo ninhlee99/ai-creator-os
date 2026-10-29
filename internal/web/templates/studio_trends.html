@@ -435,45 +435,30 @@
 }
 </style>
 
-<main class="mx-auto max-w-7xl space-y-5">
-  <!-- Hero Section -->
-  <header class="radar-hero">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-4">
-        <div style="width: 50px; height: 50px; border-radius: 16px; background: linear-gradient(135deg, #4f46e5 0%, #db2777 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);">
-          ♫
-        </div>
-        <div>
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="badge badge-info" style="font-weight:700;">RADAR TIKTOK</span>
-            <span class="badge badge-ok" style="font-weight:700;">🇻🇳 Chỉ quét Việt Nam</span>
-            <span class="badge badge-dim" style="font-size:11px;">⚡ Xem trực tiếp trên màn hình</span>
-          </div>
-          <h1 id="studio-top" style="margin: 4px 0 2px; font-size: 22px; font-weight: 800; color: var(--text);">
-            TikTok Radar · Video Hot Nhất
-          </h1>
-          <p class="hint" style="margin: 0; font-size: 13px;">
-            Bấm vào bất kỳ video nào để xem trực tiếp với âm thanh ngay trên màn hình. Mỗi chủ đề hiển thị gọn gàng trên 1 hàng.
-          </p>
-        </div>
+<main class="mx-auto max-w-7xl space-y-4">
+  <!-- Header Xu hướng Tinh gọn -->
+  <header style="margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h1 id="studio-top" style="margin: 0; font-size: 20px; font-weight: 800; color: var(--text);">
+          Xu hướng TikTok
+        </h1>
+        <span class="badge badge-ok" style="font-size:11px;font-weight:700">🇻🇳 Việt Nam</span>
+        <span style="display:none">Radar TikTok</span>
       </div>
-      <div class="flex items-center gap-2">
-        <form method="post" action="/studio/trends/refresh" class="inline-flex">
-          <input type="hidden" name="topic" value="{{.Topic}}">
-          <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 9999px; padding: 6px 16px; font-weight: 600;" title="Quét lại trực tiếp dữ liệu mới nhất từ TikTok">
-            ↻ Cập nhật realtime
-          </button>
-        </form>
-      </div>
+      <p class="hint" style="margin: 0; font-size: 12.5px;">
+        Khám phá các video thịnh hành nhất tại Việt Nam để chọn nhạc nền và ý tưởng tạo video.
+      </p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <form method="post" action="/studio/trends/refresh" style="margin: 0;">
+        <input type="hidden" name="topic" value="{{.Topic}}">
+        <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 8px; font-weight: 600; font-size: 12px; padding: 6px 14px;" title="Cập nhật trực tiếp dữ liệu mới nhất từ TikTok">
+          ↻ Cập nhật
+        </button>
+      </form>
     </div>
   </header>
-
-  <nav class="tabs">
-    <a href="/studio">Tạo video</a>
-    <a href="/studio/jobs?tab=running">Đang dựng</a>
-    <a href="/studio/jobs">Video đã tạo</a>
-    <a href="/studio/trends" class="active">Radar TikTok</a>
-  </nav>
 
   {{if .Error}}<p class="err" role="alert" style="border-radius: 12px; padding: 12px 16px;">{{.Error}}</p>{{end}}
   {{if .Notice}}<p class="notice" role="status" style="border-radius: 12px; padding: 12px 16px;">{{.Notice}}</p>{{end}}

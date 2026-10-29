@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -76,12 +77,10 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 		s.fail(w, fmt.Errorf("kho sản phẩm chưa khởi tạo"), "create product video")
 		return
 	}
-	if err := r.ParseForm(); err != nil {
-		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Không đọc được dữ liệu form."))
-		return
-	}
+	_ = r.ParseMultipartForm(50 << 20)
+	_ = r.ParseForm()
 
-	productID, _ := strconv.ParseInt(r.PostFormValue("product_id"), 10, 64)
+	productID, _ := strconv.ParseInt(r.FormValue("product_id"), 10, 64)
 	if productID <= 0 {
 		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Mã sản phẩm không hợp lệ."))
 		return
@@ -98,15 +97,55 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	workflowID := strings.TrimSpace(r.FormValue("workflow_id"))
+	if workflowID == "" {
+		workflowID = "preset_affiliate_daily"
+	}
+	account := strings.TrimSpace(r.FormValue("account"))
+	accountID, _ := strconv.ParseInt(r.FormValue("account_id"), 10, 64)
+	modelID, _ := strconv.ParseInt(r.FormValue("model_id"), 10, 64)
+
+	// Save multi-photo character uploads if any
+	var uploadedPhotos []string
+	if r.MultipartForm != nil && r.MultipartForm.File != nil {
+		for _, fh := range r.MultipartForm.File["character_photos"] {
+			if fh == nil {
+				continue
+			}
+			f, err := fh.Open()
+			if err != nil {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(fh.Filename))
+			if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+				ext = ".jpg"
+			}
+			dstName := fmt.Sprintf("char_prod_%d_%d%s", prod.ID, time.Now().UnixNano(), ext)
+			dstPath := filepath.Join(s.Studio.UploadDir(), dstName)
+			out, err := os.Create(dstPath)
+			if err == nil {
+				_, _ = io.Copy(out, f)
+				_ = out.Close()
+				uploadedPhotos = append(uploadedPhotos, dstPath)
+			}
+			_ = f.Close()
+		}
+	}
+
 	jobTitle := "Video affiliate: " + prod.Title
 	params := map[string]any{
-		"product_id":   prod.ID,
-		"product_name": prod.Title,
-		"product_url":  prod.ProductURL,
-		"price":        prod.Price,
-		"category":     prod.Category,
-		"theme":        prod.Theme,
-		"images":       prod.ImageURLs,
+		"product_id":       prod.ID,
+		"product_name":     prod.Title,
+		"product_url":      prod.ProductURL,
+		"price":            prod.Price,
+		"category":         prod.Category,
+		"theme":            prod.Theme,
+		"images":           prod.ImageURLs,
+		"workflow_id":      workflowID,
+		"account":          account,
+		"account_id":       accountID,
+		"model_id":         modelID,
+		"character_photos": uploadedPhotos,
 	}
 
 	jobID, err := s.Studio.CreateExternalJob("affiliate", jobTitle, params,

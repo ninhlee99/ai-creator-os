@@ -3,12 +3,14 @@ package web
 // Affiliate product catalog: discovery, manual add, shelf, and scheduling.
 
 import (
-	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"log"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
 // themeOption is one entry of the theme dropdown.
@@ -106,6 +108,29 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		))
 		return
 	}
+	var availableWorkflows []WorkflowOption
+	if s.Studio != nil {
+		if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
+			if list, err := fs.ListGraphs(); err == nil {
+				for _, sum := range list {
+					availableWorkflows = append(availableWorkflows, WorkflowOption{
+						ID:          sum.ID,
+						Title:       sum.Name,
+						Category:    sum.Category,
+						Description: sum.Description,
+						IsPreset:    sum.IsPreset,
+					})
+				}
+			}
+		}
+	}
+	var accountOptions []*network.Account
+	if s.Mgr != nil {
+		if accs, err := s.Mgr.ListWithAutopilot(); err == nil {
+			accountOptions = accs
+		}
+	}
+
 	results = s.attachProductSalesChange(results)
 	results = s.attachTikTokRadarEvidence(r.Context(), results)
 	s.renderProductResults(w, r, s.ctx(
@@ -117,6 +142,9 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"MinPct", minPct,
 		"Results", results,
 		"Shelf", s.shelfViews(),
+		"AvailableModels", s.listModelPhotoCards(),
+		"AccountOptions", accountOptions,
+		"AvailableWorkflows", availableWorkflows,
 		"Notice", r.URL.Query().Get("ok"),
 		"Error", r.URL.Query().Get("err"),
 	))
