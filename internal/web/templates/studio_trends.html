@@ -638,7 +638,7 @@ function openRadarPlayer(videoId, title, music, videoUrl, author, views, likes, 
 
   iframe.src = 'https://www.tiktok.com/player/v1/' + videoId + '?controls=1&autoplay=1&description=1&music_info=1';
 
-  soundBtn.href = '/studio?source_music_title=' + encodeURIComponent(safeMusic) + '&source_music_video_url=' + encodeURIComponent(videoUrl);
+  soundBtn.href = '/workflow/create?workflow_id=preset_affiliate_daily&source_music_title=' + encodeURIComponent(safeMusic) + '&source_music_video_url=' + encodeURIComponent(videoUrl);
   viralBtn.href = '/workflow/create?source_video_url=' + encodeURIComponent(videoUrl) + '&source_music_title=' + encodeURIComponent(safeMusic) + '&topic=' + encodeURIComponent(safeTitle);
   ttBtn.href = videoUrl;
 
@@ -851,7 +851,7 @@ document.addEventListener('keydown', function(e) {
           <button type="button" class="btn btn-secondary btn-sm" onclick="openRadarPlayerFromCard(this)" style="font-size:11px;font-weight:600;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:4px;">
             <span>▶</span> Xem trước
           </button>
-          <a href="/studio?source_music_title={{urlquery .Music}}&source_music_video_url={{urlquery .VideoURL}}" class="btn btn-secondary btn-sm" style="font-size:11px;font-weight:600;padding:6px;border-radius:6px;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;" title="Ghép sound vào video Affiliate">
+          <a href="/workflow/create?workflow_id=preset_affiliate_daily&source_music_title={{urlquery .Music}}&source_music_video_url={{urlquery .VideoURL}}" class="btn btn-secondary btn-sm" style="font-size:11px;font-weight:600;padding:6px;border-radius:6px;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;" title="Dùng sound cho video Affiliate">
             <span>♫</span> Dùng sound
           </a>
         </div>

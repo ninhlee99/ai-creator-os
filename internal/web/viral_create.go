@@ -34,19 +34,13 @@ func ValidateAndEnforceViralChannel(topic, genre, requestedAccount string, accou
 
 // handleViralCreate tiếp nhận form khởi tạo video viral mới.
 func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
-	analysisOnly := r.URL.Query().Get("action") == "analyze"
-	if analysisOnly {
-		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(5 * time.Minute))
-	}
 	if s.Studio == nil {
-		writeViralCreateError(w, r, analysisOnly, http.StatusServiceUnavailable, "Studio AI chưa sẵn sàng")
+		writeViralCreateError(w, r, "Studio AI chưa sẵn sàng")
 		return
 	}
-	if !analysisOnly {
-		if ready, message := s.Studio.ViralCharacterEditorStatus(r.Context()); !ready {
-			writeViralCreateError(w, r, false, http.StatusServiceUnavailable, message)
-			return
-		}
+	if ready, message := s.Studio.ViralCharacterEditorStatus(r.Context()); !ready {
+		writeViralCreateError(w, r, message)
+		return
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, (512<<20)+(1<<20))
@@ -55,16 +49,16 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		defer r.MultipartForm.RemoveAll()
 	}
 	if parseErr != nil {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không đọc được form video tham chiếu. Hãy chọn video từ TikTok Radar rồi thử lại.")
+		writeViralCreateError(w, r, "Không đọc được form video tham chiếu. Hãy chọn video từ TikTok Radar rồi thử lại.")
 		return
 	}
-	if !analysisOnly && r.PostFormValue("confirm_flow_credits") != "1" {
-		writeViralCreateError(w, r, false, http.StatusBadRequest, "Xác nhận video có thể dùng Muse AI credits trước khi tạo job.")
+	if r.PostFormValue("confirm_flow_credits") != "1" {
+		writeViralCreateError(w, r, "Xác nhận video có thể dùng Muse AI credits trước khi tạo job.")
 		return
 	}
 	topic := strings.TrimSpace(r.PostFormValue("topic"))
 	if topic == "" {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Vui lòng nhập chủ đề video")
+		writeViralCreateError(w, r, "Vui lòng nhập chủ đề video")
 		return
 	}
 
@@ -84,7 +78,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	// Character / Model face lookup or direct upload (supports multiple photos)
 	upDir := s.Studio.UploadDir()
 	if err := os.MkdirAll(upDir, 0o755); err != nil {
-		writeViralCreateError(w, r, analysisOnly, http.StatusInternalServerError, "Không tạo được thư mục tải lên: "+err.Error())
+		writeViralCreateError(w, r, "Không tạo được thư mục tải lên: "+err.Error())
 		return
 	}
 
@@ -94,7 +88,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	keepSourceVideoForJob := false
 	defer func() {
 		for _, path := range previewCleanup {
-			if !analysisOnly && keepSourceVideoForJob && path == sampleVideoPath {
+			if keepSourceVideoForJob && path == sampleVideoPath {
 				continue
 			}
 			_ = os.Remove(path)
@@ -103,7 +97,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	for _, key := range []string{"character_photos", "character_photo", "model_photos", "model_photo"} {
 		photos, uploadErr := saveUploads(r, key, upDir, 10)
 		if uploadErr != nil {
-			writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Ảnh nhân vật lỗi: "+uploadErr.Error())
+			writeViralCreateError(w, r, "Ảnh nhân vật lỗi: "+uploadErr.Error())
 			return
 		}
 		if len(photos) > 0 {
@@ -133,17 +127,17 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If user uploaded new photos and selected an account, persist into the account's model library
-	if len(uploadedPhotos) > 0 && accountID > 0 && s.Studio != nil && !analysisOnly {
+	if len(uploadedPhotos) > 0 && accountID > 0 && s.Studio != nil {
 		ms, err := s.Studio.ModelLibrary()
 		if err != nil {
-			writeViralCreateError(w, r, false, http.StatusInternalServerError, "Không đọc được thư viện nhân vật: "+err.Error())
+			writeViralCreateError(w, r, "Không đọc được thư viện nhân vật: "+err.Error())
 			return
 		}
 		var stored []string
 		for _, pth := range uploadedPhotos {
 			photo, addErr := ms.Add(accountID, pth)
 			if addErr != nil {
-				writeViralCreateError(w, r, false, http.StatusInternalServerError, "Không lưu được ảnh vào đúng kênh: "+addErr.Error())
+				writeViralCreateError(w, r, "Không lưu được ảnh vào đúng kênh: "+addErr.Error())
 				return
 			}
 			stored = append(stored, photo.Path)
@@ -170,7 +164,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 			if len(ids) > 0 {
 				photos := s.findModelPhotosByIDsForAccount(accountID, ids)
 				if len(photos) != len(ids) {
-					writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Ảnh đã chọn không thuộc thư viện của kênh đích.")
+					writeViralCreateError(w, r, "Ảnh đã chọn không thuộc thư viện của kênh đích.")
 					return
 				}
 				uploadedPhotos = append(uploadedPhotos, photos...)
@@ -195,12 +189,12 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		tiktokLink = strings.TrimSpace(r.PostFormValue("video_url"))
 	}
 	if s.Studio == nil {
-		writeViralCreateError(w, r, analysisOnly, http.StatusServiceUnavailable, "Studio chưa sẵn sàng để xác minh video Radar TikTok")
+		writeViralCreateError(w, r, "Studio chưa sẵn sàng để xác minh video Radar TikTok")
 		return
 	}
 	sourceVideo, err := s.Studio.ResolveTikTokRadarDanceVideo(r.Context(), tiktokLink)
 	if err != nil {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Chọn video từ Radar TikTok trước khi tiếp tục: "+err.Error())
+		writeViralCreateError(w, r, "Chọn video từ Radar TikTok trước khi tiếp tục: "+err.Error())
 		return
 	}
 	tiktokLink = sourceVideo.VideoURL
@@ -215,18 +209,18 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 			message = string([]rune(message)[:500]) + "…"
 		}
 		log.Printf("web: viral Radar download failed: %s", message)
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không tải được video từ Radar: "+message)
+		writeViralCreateError(w, r, "Không tải được video từ Radar: "+message)
 		return
 	}
 	if err := studio.ValidateTikTokSourceFile(dlDst); err != nil {
 		_ = os.Remove(dlDst)
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video Radar tải về không hợp lệ: "+err.Error())
+		writeViralCreateError(w, r, "Video Radar tải về không hợp lệ: "+err.Error())
 		return
 	}
 	sampleVideoPath = dlDst
 	previewCleanup = append(previewCleanup, sampleVideoPath)
 	if !studio.ProbeHasAudio(r.Context(), sampleVideoPath) {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video Radar không có track âm thanh; chọn video khác.")
+		writeViralCreateError(w, r, "Video Radar không có track âm thanh; chọn video khác.")
 		return
 	}
 
@@ -235,19 +229,19 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		aiMode = studio.ViralModeFullCharacterEdit
 	}
 	if aiMode != studio.ViralModeFullCharacterEdit {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Chỉ hỗ trợ thay toàn bộ nhân vật trực tiếp trên video nguồn.")
+		writeViralCreateError(w, r, "Chỉ hỗ trợ thay toàn bộ nhân vật trực tiếp trên video nguồn.")
 		return
 	}
 	if sampleVideoPath == "" {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Cần video nguồn để giữ nguyên cảnh, chuyển động và camera.")
+		writeViralCreateError(w, r, "Cần video nguồn để giữ nguyên cảnh, chuyển động và camera.")
 		return
 	}
 	if accountID <= 0 {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Chọn kênh đích trước khi tạo video.")
+		writeViralCreateError(w, r, "Chọn kênh đích trước khi tạo video.")
 		return
 	}
 	if len(uploadedPhotos) == 0 || !fileExists(uploadedPhotos[0]) {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video viral production cần ảnh nhân vật của kênh.")
+		writeViralCreateError(w, r, "Video viral production cần ảnh nhân vật của kênh.")
 		return
 	}
 	var modelPhoto string
@@ -284,22 +278,6 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		OutputResolution:        strings.TrimSpace(r.PostFormValue("output_resolution")),
 		FlowCreditsAcknowledged: r.PostFormValue("confirm_flow_credits") == "1",
 	}
-	if analysisOnly {
-		ctx, cancel := context.WithTimeout(r.Context(), 4*time.Minute)
-		defer cancel()
-		storyboard, err := s.Studio.GenerateViralScript(ctx, p)
-		if err != nil {
-			log.Printf("web: viral analyze error: %v", err)
-			writeViralCreateError(w, r, true, http.StatusUnprocessableEntity, err.Error())
-			return
-		}
-		log.Printf("web: viral analyze success for topic %q (%d scenes)", p.Topic, len(storyboard.Scenes))
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		if err := json.NewEncoder(w).Encode(storyboard); err != nil {
-			log.Printf("web: encode viral storyboard: %v", err)
-		}
-		return
-	}
 
 	jobID, err := s.Studio.EnqueueViral(r.Context(), p)
 	if jobID != "" {
@@ -307,7 +285,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Printf("web: viral create error: %v", err)
-		writeViralCreateError(w, r, false, http.StatusInternalServerError, "Lỗi tạo job: "+err.Error())
+		writeViralCreateError(w, r, "Lỗi tạo job: "+err.Error())
 		return
 	}
 
@@ -323,13 +301,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/studio/jobs?msg="+url.QueryEscape(msg)+"&job_id="+url.QueryEscape(jobID)+"#job-"+url.QueryEscape(jobID), http.StatusSeeOther)
 }
 
-func writeViralCreateError(w http.ResponseWriter, r *http.Request, analysisOnly bool, status int, message string) {
-	if analysisOnly {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(status)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
-		return
-	}
+func writeViralCreateError(w http.ResponseWriter, r *http.Request, message string) {
 	target := "/workflow/create"
 	if strings.HasPrefix(r.URL.Path, "/viral") {
 		target = "/viral"
