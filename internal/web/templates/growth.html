@@ -1,218 +1,652 @@
 {{define "title"}}Tăng trưởng TikTok{{end}}
 {{define "content"}}
-<div class="webai-header" style="margin-bottom:20px">
-  <div class="webai-header-left"><h1>Tăng trưởng TikTok</h1></div>
-  <div class="webai-header-actions">
-    <a href="/accounts" class="btn btn-secondary">Kênh Creator</a>
-    <a href="/workflow/create" class="btn btn-secondary">Tạo video AI</a>
+
+<style>
+.growth-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.growth-kpi-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  transition: transform 0.2s, border-color 0.2s;
+}
+.growth-kpi-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+}
+.growth-kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.growth-kpi-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+.growth-kpi-num {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+}
+.growth-kpi-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.growth-section-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
+.growth-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.growth-section-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 750;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+</style>
+
+<div class="webai-header" style="margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+  <div class="webai-header-left">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span class="badge badge-live" style="font-size:11px;padding:3px 8px;font-weight:700">📈 TikTok Growth</span>
+      <span style="font-size:12px;color:var(--muted)">Tự động tối ưu hoá kênh &amp; phễu video</span>
+    </div>
+    <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.02em">Tăng trưởng TikTok</h1>
+  </div>
+  <div class="webai-header-actions" style="display:flex;gap:10px;align-items:center">
+    <a href="/accounts" class="btn btn-secondary btn-sm" style="font-weight:600;padding:8px 14px;border-radius:8px">👥 Kênh Creator</a>
+    <a href="/" class="btn btn-primary btn-sm" style="font-weight:700;padding:8px 16px;border-radius:8px;box-shadow:0 4px 12px rgba(37,99,235,0.25)">⚡ Tạo video</a>
   </div>
 </div>
 
-<nav class="tabs" style="margin-bottom:20px">
-  <a href="/growth"{{if ne .Tab "ops"}} class="active"{{end}}>Tổng quan</a>
-  <a href="/growth?tab=ops"{{if eq .Tab "ops"}} class="active"{{end}}>Vận hành</a>
+<nav class="tabs" style="margin-bottom:22px">
+  <a href="/growth"{{if ne .Tab "ops"}} class="active"{{end}} style="font-weight:600">📊 Tổng quan</a>
+  <a href="/growth?tab=ops"{{if eq .Tab "ops"}} class="active"{{end}} style="font-weight:600">⚙️ Vận hành &amp; Lịch trình</a>
 </nav>
 
-{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+{{if .Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:12px 16px;border-radius:10px;color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-bottom:20px;font-weight:600">⚠ {{.Error}}</p>{{end}}
+
 {{if eq .Tab "ops"}}
-<section class="form-card" style="margin:12px 0">
-  <h2 style="margin-top:0">Lịch xử lý kế hoạch tăng trưởng</h2>
-  <p>
-    {{if .ProdEnabled}}<span class="badge badge-ok">lịch đang bật</span>{{else}}<span class="badge badge-no">lịch đang tắt</span>{{end}}
-    {{if .ProdDryRun}}<span class="badge badge-warn">CHẠY THỬ</span>{{end}}
-    {{if .Kill}}<span class="badge badge-err">đã dừng khẩn cấp</span>{{end}}
-    {{if gt .StudioPending 0}}<span class="badge badge-warn">Hàng đợi Studio: {{.StudioPending}}</span>{{end}}
-  </p>
-  <form method="post" action="/growth/production" style="display:inline">
-    {{if .ProdEnabled}}<input type="hidden" name="enabled" value="0"><button class="btn btn-secondary" type="submit">Tắt lịch</button>
-    {{else}}<input type="hidden" name="enabled" value="1"><button class="btn" type="submit">Bật lịch</button>{{end}}
-  </form>
-  <form method="post" action="/growth/production/run" style="display:inline">
-    <button class="btn btn-secondary" type="submit">Chạy một vòng</button>
-  </form>
-  <form method="post" action="/growth/sync" style="display:inline">
-    <button class="btn btn-secondary" type="submit" hx-post="/growth/sync" hx-target="#growth-sync-result" hx-swap="outerHTML" hx-indicator="#growth-sync-loading">Đồng bộ dữ liệu</button>
-  </form>
-  <span id="growth-sync-loading" class="htmx-indicator text-sm text-slate-500" role="status">Đang đồng bộ TikTok…</span>
-</section>
+<!-- =========================================================================
+     TAB 2: VẬN HÀNH & LỊCH TRÌNH TỰ ĐỘNG
+     ========================================================================= -->
+<div class="growth-section-card">
+  <div class="growth-section-header">
+    <div>
+      <h2 class="growth-section-title">⏱️ Lịch Xử Lý Kế Hoạch Tăng Trưởng</h2>
+      <p class="hint" style="margin:4px 0 0 0;font-size:12.5px">Điều khiển tác vụ tự động sản xuất video theo lịch trình và đồng bộ metrics kênh.</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      {{if .ProdEnabled}}<span class="badge badge-ok" style="font-size:11px;padding:4px 10px;font-weight:700">✓ Lịch đang bật</span>
+      {{else}}<span class="badge badge-no" style="font-size:11px;padding:4px 10px;font-weight:700">Tắt lịch</span>{{end}}
+      {{if .ProdDryRun}}<span class="badge badge-warn" style="font-size:11px;padding:4px 10px;font-weight:700">Chạy thử</span>{{end}}
+      {{if .Kill}}<span class="badge badge-err" style="font-size:11px;padding:4px 10px;font-weight:700">Đã dừng khẩn cấp</span>{{end}}
+      {{if gt .StudioPending 0}}<span class="badge badge-warn" style="font-size:11px;padding:4px 10px;font-weight:700">Studio đợi: {{.StudioPending}}</span>{{end}}
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+    <form method="post" action="/growth/production" style="display:inline">
+      {{if .ProdEnabled}}
+      <input type="hidden" name="enabled" value="0">
+      <button class="btn btn-secondary btn-sm" type="submit" style="font-weight:600">⏸️ Tắt lịch tự động</button>
+      {{else}}
+      <input type="hidden" name="enabled" value="1">
+      <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700">▶️ Bật lịch tự động</button>
+      {{end}}
+    </form>
+    <form method="post" action="/growth/production/run" style="display:inline">
+      <button class="btn btn-secondary btn-sm" type="submit" style="font-weight:600">⚡ Chạy một vòng ngay</button>
+    </form>
+    <form method="post" action="/growth/sync" style="display:inline">
+      <button class="btn btn-secondary btn-sm" type="submit" hx-post="/growth/sync" hx-target="#growth-sync-result" hx-swap="outerHTML" hx-indicator="#growth-sync-loading" style="font-weight:600">🔄 Đồng bộ dữ liệu TikTok</button>
+    </form>
+    <span id="growth-sync-loading" class="htmx-indicator text-sm text-slate-500" role="status" style="font-size:12px;color:var(--muted)">Đang kết nối TikTok…</span>
+  </div>
+</div>
+
 {{template "growth-sync-result" .}}
 
-<details class="advanced" style="margin:12px 0">
-  <summary>Ngưỡng cải tiến video</summary>
-  <form method="post" action="/growth/thresholds" style="margin-top:12px">
-    <div class="table-wrap"><table>
-      <tr><td>Số video tối thiểu trước khi dừng format</td><td><input type="number" name="kill_min_videos" min="1" value="{{.Thresholds.KillMinVideos}}"></td></tr>
-      <tr><td>Số ngày tối thiểu trước khi dừng format</td><td><input type="number" name="kill_min_days" min="1" value="{{.Thresholds.KillMinDays}}"></td></tr>
-      <tr><td>Ngưỡng retention (0–1)</td><td><input type="number" name="kill_completion_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillCompletionFloor}}"></td></tr>
-      <tr><td>Ngưỡng share/save trên lượt xem (0–1)</td><td><input type="number" name="kill_proxy_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillProxyFloor}}"></td></tr>
-      <tr><td>Hệ số làm tiếp format thắng</td><td><input type="number" name="double_down_factor" step="0.5" min="0" value="{{.Thresholds.DoubleDownFactor}}"></td></tr>
-      <tr><td>Hệ số breakout</td><td><input type="number" name="breakout_factor" step="1" min="0" value="{{.Thresholds.BreakoutFactor}}"></td></tr>
-      <tr><td>Ngày chững trước khi đánh dấu</td><td><input type="number" name="stalled_days" min="1" value="{{.Thresholds.StalledDays}}"></td></tr>
-    </table></div>
-    <button class="btn btn-primary btn-sm" type="submit">Lưu ngưỡng</button>
-  </form>
-  <form method="post" action="/growth/thresholds" style="display:inline;margin-top:8px">
-    <input type="hidden" name="reset" value="1"><button class="btn btn-secondary btn-sm" type="submit">Về mặc định</button>
-  </form>
-</details>
+<!-- NGƯỠNG CẢI TIẾN VIDEO -->
+<div class="growth-section-card">
+  <details class="advanced" style="margin:0">
+    <summary style="font-size:15px;font-weight:750;color:var(--text);cursor:pointer;padding:4px 0">
+      ⚙️ Cấu hình Ngưỡng Tối Ưu Hoá &amp; Dừng Format Kém Hiệu Quả
+    </summary>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <p class="hint" style="margin-bottom:14px;font-size:12px;line-height:1.5">
+        Các tham số điều phối thuật toán ra quyết định: dừng các định dạng video dưới chuẩn (Kill Floor) và tăng gấp đôi số lượng cho các định dạng viral bứt phá (Double Down).
+      </p>
+      <form method="post" action="/growth/thresholds">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-bottom:16px">
+          <div class="field" style="margin:0">
+            <label style="font-size:12px;font-weight:600">Số video tối thiểu trước khi dừng format</label>
+            <input type="number" name="kill_min_videos" min="1" value="{{.Thresholds.KillMinVideos}}" style="width:100%;font-size:13px;height:34px">
+          </div>
+          <div class="field" style="margin:0">
+            <label style="font-size:12px;font-weight:600">Số ngày tối thiểu trước khi dừng format</label>
+            <input type="number" name="kill_min_days" min="1" value="{{.Thresholds.KillMinDays}}" style="width:100%;font-size:13px;height:34px">
+          </div>
+          <div class="field" style="margin:0">
+            <label style="font-size:12px;font-weight:600">Ngưỡng tỷ lệ xem hết (Completion Floor 0–1)</label>
+            <input type="number" name="kill_completion_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillCompletionFloor}}" style="width:100%;font-size:13px;height:34px">
+          </div>
+          <div class="field" style="margin:0">
+            <label style="font-size:12px;font-weight:600">Ngưỡng share/save trên lượt xem (0–1)</label>
+            <input type="number" name="kill_proxy_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillProxyFloor}}" style="width:100%;font-size:13px;height:34px">
+          </div>
+          <div class="field" style="margin:0">
+            <label style="font-size:12px;font-weight:600">Hệ số đẩy mạnh định dạng thắng (Double Down)</label>
+            <input type="number" name="double_down_factor" step="0.5" min="0" value="{{.Thresholds.DoubleDownFactor}}" style="width:100%;font-size:13px;height:34px">
+          </div>
+          <div class="field" style="margin:0">
+            <label style="font-size:12px;font-weight:600">Hệ số bứt phá (Breakout Factor)</label>
+            <input type="number" name="breakout_factor" step="1" min="0" value="{{.Thresholds.BreakoutFactor}}" style="width:100%;font-size:13px;height:34px">
+          </div>
+          <div class="field" style="margin:0">
+            <label style="font-size:12px;font-weight:600">Số ngày chững trước khi đánh dấu</label>
+            <input type="number" name="stalled_days" min="1" value="{{.Thresholds.StalledDays}}" style="width:100%;font-size:13px;height:34px">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700">Lưu cấu hình ngưỡng</button>
+          <form method="post" action="/growth/thresholds" style="display:inline">
+            <input type="hidden" name="reset" value="1">
+            <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--muted)">↺ Về mặc định</button>
+          </form>
+        </div>
+      </form>
+    </div>
+  </details>
+</div>
+
+<!-- LỊCH SỬ THAY ĐỔI CẤU HÌNH -->
+<div class="growth-section-card">
+  <div class="growth-section-header">
+    <div>
+      <h2 class="growth-section-title">📜 Lịch Sử Vi Chỉnh Cài Đặt (Tuning)</h2>
+      <p class="hint" style="margin:4px 0 0 0;font-size:12.5px">Mỗi điều chỉnh được hệ thống giới hạn tối đa 15% mỗi lần dựa trên bằng chứng dữ liệu.</p>
+    </div>
+  </div>
+
+  {{if .TuningHistory}}
+  <div class="table-wrap mobile-table-scroll" role="region" aria-label="Lịch sử vi chỉnh cài đặt" tabindex="0">
+    <table class="growth-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead>
+        <tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Tham số</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Điều chỉnh</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Lý do</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Thời gian</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .TuningHistory}}
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:10px 12px"><code>{{.ParamKey}}</code></td>
+        <td style="padding:10px 12px">
+          {{if .Applied}}{{.OldValue}} → <strong>{{.NewValue}}</strong> ({{printf "%+.1f%%" .ChangePct}})
+          {{else}}{{.OldValue}} → {{.NewValue}}<br><span class="hint">Bản ghi legacy; chưa xác minh đã áp dụng</span>{{end}}
+          {{if .EvidenceJSON}}<details style="margin-top:4px"><summary style="font-size:11px;color:var(--muted);cursor:pointer">Bằng chứng</summary><pre style="font-size:10.5px;background:var(--bg3);padding:6px;border-radius:4px;overflow-x:auto">{{.EvidenceJSON}}</pre></details>{{end}}
+        </td>
+        <td style="padding:10px 12px">{{.Reason}}</td>
+        <td style="padding:10px 12px"><span class="hint">{{.AppliedAt}}</span></td>
+        <td style="padding:10px 12px;text-align:right">
+          {{if not .Applied}}<span class="badge badge-warn" style="font-size:11px">Legacy</span>
+          {{else if .RolledBack}}<span class="badge badge-info" style="font-size:11px">Đã hoàn tác {{.RolledBackAt}}</span>
+          {{else}}<form method="post" action="/growth/tuning/rollback" style="display:inline"><input type="hidden" name="account_id" value="{{.AccountID}}"><input type="hidden" name="history_id" value="{{.ID}}"><button class="btn btn-secondary btn-sm" type="submit" style="font-size:11px">Hoàn tác</button></form>{{end}}
+        </td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;background:var(--bg3);border-radius:10px">
+    Chưa có thay đổi cấu hình nào được xác nhận là đã áp dụng.
+  </div>
+  {{end}}
+</div>
+
+<!-- KẾ HOẠCH & VIDEO SẮP TỚI -->
+<div class="growth-section-card">
+  <div class="growth-section-header">
+    <div>
+      <h2 class="growth-section-title">📅 Kế Hoạch &amp; Video Đang Chuẩn Bị</h2>
+      <p class="hint" style="margin:4px 0 0 0;font-size:12.5px">Lịch trình sản xuất tự động cho từng kênh theo tuần.</p>
+    </div>
+  </div>
+
+  {{if .Upcoming}}
+  <div class="table-wrap mobile-table-scroll mobile-growth-upcoming-cards" role="region" aria-label="Kế hoạch và video sắp tới" tabindex="0">
+    <table class="growth-upcoming-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead>
+        <tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Ngày</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Kênh</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Định dạng</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Chủ đề</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Trạng thái</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Video / Ghi chú</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Upcoming}}
+      <tr style="border-bottom:1px solid var(--border)">
+        <td data-label="Ngày" style="padding:10px 12px"><strong>{{.PlannedFor}}</strong></td>
+        <td data-label="Kênh" style="padding:10px 12px"><span class="badge badge-dim">@{{.Username}}</span></td>
+        <td data-label="Định dạng" style="padding:10px 12px">9:16 · 60s{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
+        <td data-label="Chủ đề" style="padding:10px 12px">
+          <strong>{{.Topic}}</strong>
+          {{if .DedupAction}}<br><span class="badge badge-warn" style="font-size:10px;margin-top:2px">đổi góc chống trùng</span>{{end}}
+        </td>
+        <td data-label="Trạng thái" style="padding:10px 12px">
+          <span class="badge badge-{{statusClass .Status}}" style="font-size:11px">{{statusLabel .Status}}</span>
+          {{if .OutputFile}}<br><a href="/media/{{.OutputFile}}" download style="font-size:11px;font-weight:600;display:inline-block;margin-top:4px">⬇ Tải MP4</a>{{end}}
+          {{if .StudioJobID}}<br><a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}" style="font-size:11px;color:var(--muted)">Studio #{{.StudioJobID}}</a>{{end}}
+        </td>
+        <td data-label="Video / ghi chú" style="padding:10px 12px">
+          <div style="font-size:12px;color:var(--muted);max-width:320px;line-height:1.4">
+            {{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}
+          </div>
+        </td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;background:var(--bg3);border-radius:10px">
+    Chưa có kế hoạch video nào sắp tới. Bật lịch tự động hoặc tạo video để lên lịch mới.
+  </div>
+  {{end}}
+</div>
 
 {{else}}
+<!-- =========================================================================
+     TAB 1: TỔNG QUAN TĂNG TRƯỞNG & PHÂN TÍCH HIỆU SUẤT
+     ========================================================================= -->
+
 {{if not .Accounts}}
-<div class="empty-state"><strong>Chưa có tài khoản TikTok</strong><a class="btn" href="/accounts/new">+ Thêm kênh</a></div>
+<div class="growth-section-card" style="text-align:center;padding:48px 20px">
+  <div style="font-size:42px;margin-bottom:12px">📱</div>
+  <h2 style="margin:0 0 8px 0;font-size:18px;font-weight:800">Chưa có tài khoản TikTok nào</h2>
+  <p style="margin:0 auto 20px auto;max-width:440px;color:var(--muted);font-size:13.5px;line-height:1.5">
+    Kết nối kênh TikTok hoặc thêm tài khoản để theo dõi số liệu tăng trưởng người theo dõi và kích hoạt tính năng tự động hoá sản xuất video.
+  </p>
+  <a class="btn btn-primary" href="/accounts/new" style="font-weight:700;padding:10px 22px;border-radius:10px">+ Thêm kênh mới</a>
+</div>
 {{else}}
-<div class="cards">
-  <div class="card"><div class="num">{{if .TikTokMetricsAvailable}}{{.TotalTikTokFollowers}}{{else}}—{{end}}</div><div class="label">Tổng Người theo dõi</div></div>
-  <div class="card"><div class="num">{{if .Views30dKnown}}{{printf "%.0f" .TotalViews30d}}{{else}}—{{end}}</div><div class="label">Lượt xem 30 ngày</div></div>
+
+<!-- 4 THẺ KPI CHÍNH -->
+<div class="growth-kpi-grid">
+  
+  <!-- KPI 1: TỔNG FOLLOWERS -->
+  <div class="growth-kpi-card">
+    <div class="growth-kpi-header">
+      <span class="growth-kpi-label">Người theo dõi</span>
+      <span style="font-size:20px">👥</span>
+    </div>
+    <div class="growth-kpi-num">
+      {{if .TikTokMetricsAvailable}}{{.TotalTikTokFollowers}}{{else}}—{{end}}
+    </div>
+    <div class="growth-kpi-sub">
+      {{if .TikTokMetricsAvailable}}
+        <span class="badge badge-ok" style="font-size:10.5px;padding:2px 6px">✓ Đã đồng bộ</span>
+      {{else}}
+        <span class="badge badge-dim" style="font-size:10.5px;padding:2px 6px">Đang chờ kết nối</span>
+      {{end}}
+      <span>Số liệu kênh thật</span>
+    </div>
+  </div>
+
+  <!-- KPI 2: LƯỢT XEM 30 NGÀY -->
+  <div class="growth-kpi-card">
+    <div class="growth-kpi-header">
+      <span class="growth-kpi-label">Lượt xem 30 ngày</span>
+      <span style="font-size:20px">👁️</span>
+    </div>
+    <div class="growth-kpi-num">
+      {{if .Views30dKnown}}{{printf "%.0f" .TotalViews30d}}{{else}}—{{end}}
+    </div>
+    <div class="growth-kpi-sub">
+      <span>Tổng lượt xem toàn bộ video</span>
+    </div>
+  </div>
+
+  <!-- KPI 3: TỔNG KÊNH LIÊN KẾT -->
+  <div class="growth-kpi-card">
+    <div class="growth-kpi-header">
+      <span class="growth-kpi-label">Kênh kết nối</span>
+      <span style="font-size:20px">🎬</span>
+    </div>
+    <div class="growth-kpi-num">
+      {{len .Accounts}}
+    </div>
+    <div class="growth-kpi-sub">
+      <span>Đang quản lý trong hệ thống</span>
+    </div>
+  </div>
+
+  <!-- KPI 4: TRẠNG THÁI HỆ THỐNG TĂNG TRƯỞNG -->
+  <div class="growth-kpi-card">
+    <div class="growth-kpi-header">
+      <span class="growth-kpi-label">Quy trình tự động</span>
+      <span style="font-size:20px">⚡</span>
+    </div>
+    <div class="growth-kpi-num" style="font-size:20px;font-weight:750">
+      {{if .ProdEnabled}}<span style="color:#10b981">Đang hoạt động</span>{{else}}<span style="color:var(--muted)">Đang dừng</span>{{end}}
+    </div>
+    <div class="growth-kpi-sub">
+      <a href="/growth?tab=ops" style="font-weight:600;font-size:11.5px">Quản lý lịch trình ↗</a>
+    </div>
+  </div>
+
 </div>
 
-<h2>Tiến độ phát triển Kênh</h2>
-<div class="table-wrap mobile-table-scroll mobile-growth-cards" role="region" aria-label="Tiến độ các kênh TikTok" tabindex="0"><table class="growth-accounts-table">
-<thead><tr><th scope="col">Tài khoản</th><th scope="col">Giai đoạn</th><th scope="col">Mốc tiếp theo</th><th scope="col">Tiến độ</th><th scope="col">Người theo dõi</th><th scope="col">Video công khai</th><th scope="col">Thao tác</th></tr></thead>
-<tbody>
-{{range .Rows}}
-<tr>
-  <td data-label="Tài khoản"><a href="/accounts/{{.Account.ID}}">{{.Account.Username}}</a></td>
-  <td data-label="Giai đoạn"><span class="badge badge-{{statusClass .Stage}}">{{statusLabel .Stage}}</span></td>
-  <td data-label="Mốc tiếp theo">{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mốc hiện có{{else}}Đang cập nhật{{end}}</td>
-  <td data-label="Tiến độ">{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}}</span>{{else}}—{{end}}</td>
-  <td data-label="Người theo dõi">{{if .FollowersKnown}}{{.Followers}}{{if .FollowerTrend}}<br><span class="hint">Δ {{.FollowerTrend}}</span>{{end}}{{if .FollowerAdvice}}<br><span class="hint">{{.FollowerAdvice}}</span>{{end}}{{else}}—{{end}}</td>
-  <td data-label="Video công khai">{{if .VideosKnown}}{{.VideoCount}}{{else}}—{{end}}</td>
-  <td data-label="Thao tác"><a class="btn btn-secondary btn-sm" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở kênh</a></td>
-</tr>
-{{end}}
-</tbody>
-</table></div>
+<!-- SECTION: TIẾN ĐỘ PHÁT TRIỂN KÊNH -->
+<div class="growth-section-card">
+  <div class="growth-section-header">
+    <div>
+      <h2 class="growth-section-title">🚀 Tiến Độ Phát Triển Kênh</h2>
+      <p class="hint" style="margin:4px 0 0 0;font-size:12.5px">Trạng thái giai đoạn kênh (Khởi động, Tăng tốc, Mở rộng) và cột mốc kế tiếp.</p>
+    </div>
+  </div>
 
-<h2>Hiệu quả video đã xuất bản</h2>
-{{if .StudioVideoMetrics}}
-<div class="table-wrap mobile-table-scroll mobile-growth-job-cards" role="region" aria-label="Hiệu quả video theo job Studio" tabindex="0"><table class="growth-job-table">
-<thead><tr><th scope="col">Kênh</th><th scope="col">Loại video</th><th scope="col">Video / tác vụ</th><th scope="col">Lượt xem</th><th scope="col">Thích</th><th scope="col">Bình luận</th><th scope="col">Chia sẻ</th><th scope="col">Tỷ lệ tương tác</th><th scope="col">Đơn hàng / lượt xem</th><th scope="col">Nhận định</th><th scope="col">Cập nhật</th></tr></thead>
-<tbody>
-{{range .StudioVideoMetrics}}
-<tr>
-  <td data-label="Kênh">{{.Username}}</td>
-  <td data-label="Loại video">{{.KindLabel}}</td>
-  <td data-label="Video / tác vụ"><a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.Title}} ↗</a><br><span class="hint">Video {{.VideoID}} · <a href="/studio/jobs?id={{urlquery .JobID}}#job-{{.JobID}}">Tác vụ Studio</a></span><br>{{if .TikTokAccountVerified}}<span class="badge badge-ok">Đã xác minh thuộc kênh</span>{{else}}<span class="hint">Chưa xác minh trong dữ liệu video của kênh</span>{{end}}</td>
-  <td data-label="Lượt xem">{{.Views}}</td><td data-label="Thích">{{.Likes}}</td><td data-label="Bình luận">{{.Comments}}</td><td data-label="Chia sẻ">{{.Shares}}</td>
-  <td data-label="Tỷ lệ tương tác">
-    {{if .EngagementRate}}{{.EngagementRate}}{{if .EngagementBase}}<br><span class="hint">mốc so sánh {{.EngagementBase}}</span>{{end}}{{else}}—{{end}}
-  </td>
-  <td data-label="Đơn hàng / lượt xem">
-    {{if eq .KindLabel "Affiliate TikTok"}}
-      {{if .AttributionID}}
-        {{if .TikTokAccountVerified}}
-          {{if .OrdersKnown}}
-            <strong>{{.Orders.TotalCount}} đơn</strong>{{if .OrderPerView}} · {{.OrderPerView}} / lượt xem{{end}}<br>
-            <span class="hint">Chờ {{.Orders.PendingCount}} · duyệt {{.Orders.ApprovedCount}} · từ chối {{.Orders.RejectedCount}}</span><br>
-            <span class="hint">Hoa hồng đã duyệt: {{printf "%.0f" .Orders.ApprovedCommission}}₫ · đồng bộ {{.OrdersSyncedAt}}</span>
-          {{else}}Chưa có snapshot đơn Affiliate{{end}}
-        {{else}}Chưa ghép đơn trước khi TikTok xác minh video thuộc kênh{{end}}
-      {{else}}Job chưa có mã tracking riêng{{end}}
-    {{else}}—{{end}}
-  </td>
-  <td data-label="Nhận định">{{.Recommendation}}{{if .SalesAdvice}}<br><span class="hint">Đơn: {{.SalesAdvice}}</span>{{end}}</td>
-  <td data-label="Cập nhật">{{.TakenAt}}{{if and .HasMetrics (not .MetricsFresh)}}<br><span class="hint">Dữ liệu cũ · đồng bộ lại</span>{{end}}</td>
-</tr>
-{{end}}
-</tbody>
-</table></div>
-{{else}}
-<p class="empty">Chưa liên kết video Studio nào. Mở job Affiliate hoặc TikTok Viral đã hoàn tất, rồi dán link video TikTok đã đăng.</p>
-{{end}}
+  <div class="table-wrap mobile-table-scroll mobile-growth-cards" role="region" aria-label="Tiến độ các kênh TikTok" tabindex="0">
+    <table class="growth-accounts-table" style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+          <th scope="col" style="padding:12px 14px;text-align:left;font-weight:600">Tài khoản</th>
+          <th scope="col" style="padding:12px 14px;text-align:left;font-weight:600">Giai đoạn</th>
+          <th scope="col" style="padding:12px 14px;text-align:left;font-weight:600">Mốc tiếp theo</th>
+          <th scope="col" style="padding:12px 14px;text-align:left;font-weight:600">Tiến độ</th>
+          <th scope="col" style="padding:12px 14px;text-align:left;font-weight:600">Người theo dõi</th>
+          <th scope="col" style="padding:12px 14px;text-align:left;font-weight:600">Video công khai</th>
+          <th scope="col" style="padding:12px 14px;text-align:right;font-weight:600">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Rows}}
+      <tr style="border-bottom:1px solid var(--border)">
+        <td data-label="Tài khoản" style="padding:12px 14px">
+          <a href="/accounts/{{.Account.ID}}" style="font-weight:750;font-size:14px;color:var(--text);display:inline-flex;align-items:center;gap:6px">
+            <span style="font-size:16px">🎵</span>
+            <span>@{{.Account.Username}}</span>
+          </a>
+        </td>
+        <td data-label="Giai đoạn" style="padding:12px 14px">
+          <span class="badge badge-{{statusClass .Stage}}" style="font-size:11px;font-weight:700">{{statusLabel .Stage}}</span>
+        </td>
+        <td data-label="Mốc tiếp theo" style="padding:12px 14px">
+          <span style="font-weight:600;font-size:12.5px">{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mốc hiện có{{else}}Đang cập nhật{{end}}</span>
+        </td>
+        <td data-label="Tiến độ" style="padding:12px 14px;min-width:140px">
+          {{if .HasNext}}
+          <div style="background:var(--bg3);height:6px;border-radius:4px;overflow:hidden;margin-bottom:4px">
+            <div style="width:{{printf "%.0f" .NextPct}}%;height:100%;background:linear-gradient(90deg, #2563eb, #10b981);border-radius:4px;transition:width 0.3s"></div>
+          </div>
+          <span class="hint" style="font-size:11px">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}} ({{printf "%.0f" .NextPct}}%)</span>
+          {{else}}—{{end}}
+        </td>
+        <td data-label="Người theo dõi" style="padding:12px 14px">
+          {{if .FollowersKnown}}
+            <strong style="font-size:14px">{{.Followers}}</strong>
+            {{if .FollowerTrend}}<br><span class="badge badge-ok" style="font-size:10px;margin-top:3px">Δ {{.FollowerTrend}}</span>{{end}}
+            {{if .FollowerAdvice}}<br><span class="hint" style="font-size:11px">{{.FollowerAdvice}}</span>{{end}}
+          {{else}}—{{end}}
+        </td>
+        <td data-label="Video công khai" style="padding:12px 14px">
+          {{if .VideosKnown}}<strong>{{.VideoCount}}</strong>{{else}}—{{end}}
+        </td>
+        <td data-label="Thao tác" style="padding:12px 14px;text-align:right">
+          <a class="btn btn-secondary btn-sm" href="/accounts/{{.Account.ID}}?tab=autopilot" style="font-weight:600;border-radius:8px">Mở kênh</a>
+        </td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
 
-<h2>Video TikTok có counters</h2>
+<!-- SECTION: HIỆU QUẢ VIDEO ĐÃ XUẤT BẢN -->
+<div class="growth-section-card">
+  <div class="growth-section-header">
+    <div>
+      <h2 class="growth-section-title">🎬 Hiệu Quả Video Đã Xuất Bản &amp; Doanh Thu</h2>
+      <p class="hint" style="margin:4px 0 0 0;font-size:12.5px">Số liệu tương tác thực tế và đơn hàng affiliate thu được từ từng video.</p>
+    </div>
+  </div>
+
+  {{if .StudioVideoMetrics}}
+  <div class="table-wrap mobile-table-scroll mobile-growth-job-cards" role="region" aria-label="Hiệu quả video theo job Studio" tabindex="0">
+    <table class="growth-job-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead>
+        <tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Kênh</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Loại video</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Video / Tác vụ</th>
+          <th scope="col" style="padding:10px 12px;text-align:right;font-weight:600">Lượt xem</th>
+          <th scope="col" style="padding:10px 12px;text-align:right;font-weight:600">Tương tác (❤️/💬/↗️)</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Tỷ lệ tương tác</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Đơn hàng / Hoa hồng</th>
+          <th scope="col" style="padding:10px 12px;text-align:left;font-weight:600">Nhận định</th>
+          <th scope="col" style="padding:10px 12px;text-align:right;font-weight:600">Cập nhật</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .StudioVideoMetrics}}
+      <tr style="border-bottom:1px solid var(--border)">
+        <td data-label="Kênh" style="padding:10px 12px"><span class="badge badge-dim">@{{.Username}}</span></td>
+        <td data-label="Loại video" style="padding:10px 12px"><span class="badge badge-info" style="font-size:11px">{{.KindLabel}}</span></td>
+        <td data-label="Video / tác vụ" style="padding:10px 12px">
+          <a href="{{.URL}}" target="_blank" rel="noopener noreferrer" style="font-weight:750;color:var(--text);display:inline-flex;align-items:center;gap:4px">
+            {{.Title}} ↗
+          </a>
+          <br>
+          <span class="hint" style="font-size:11px">Video {{.VideoID}} · <a href="/studio/jobs?id={{urlquery .JobID}}#job-{{.JobID}}">Tác vụ Studio</a></span>
+          {{if .TikTokAccountVerified}}<br><span class="badge badge-ok" style="font-size:9.5px">✓ Đã xác minh thuộc kênh</span>{{end}}
+        </td>
+        <td data-label="Lượt xem" style="padding:10px 12px;text-align:right;font-weight:700;font-size:13.5px">{{.Views}}</td>
+        <td data-label="Tương tác" style="padding:10px 12px;text-align:right">
+          <div style="font-size:11.5px;color:var(--text)">❤️ {{.Likes}} · 💬 {{.Comments}} · ↗️ {{.Shares}}</div>
+        </td>
+        <td data-label="Tỷ lệ tương tác" style="padding:10px 12px">
+          {{if .EngagementRate}}<strong>{{.EngagementRate}}</strong>{{if .EngagementBase}}<br><span class="hint" style="font-size:10.5px">mốc {{.EngagementBase}}</span>{{end}}{{else}}—{{end}}
+        </td>
+        <td data-label="Đơn hàng / lượt xem" style="padding:10px 12px">
+          {{if eq .KindLabel "Affiliate TikTok"}}
+            {{if .AttributionID}}
+              {{if .TikTokAccountVerified}}
+                {{if .OrdersKnown}}
+                  <strong style="color:var(--accent,#2563eb)">{{.Orders.TotalCount}} đơn</strong>{{if .OrderPerView}} · <span class="hint">{{.OrderPerView}}/view</span>{{end}}<br>
+                  <span class="hint" style="font-size:10.5px">Duyệt {{.Orders.ApprovedCount}} · Chờ {{.Orders.PendingCount}}</span><br>
+                  <span style="font-size:11px;font-weight:700;color:#10b981">Hoa hồng: {{printf "%.0f" .Orders.ApprovedCommission}}₫</span>
+                {{else}}<span class="hint">Chưa có snapshot đơn</span>{{end}}
+              {{else}}<span class="hint">Chờ xác minh video thuộc kênh</span>{{end}}
+            {{else}}<span class="hint">Chưa có mã tracking riêng</span>{{end}}
+          {{else}}—{{end}}
+        </td>
+        <td data-label="Nhận định" style="padding:10px 12px">
+          <div style="font-size:12px;max-width:220px;line-height:1.4">
+            {{.Recommendation}}
+            {{if .SalesAdvice}}<br><span class="hint" style="font-size:11px;color:#10b981">Đơn: {{.SalesAdvice}}</span>{{end}}
+          </div>
+        </td>
+        <td data-label="Cập nhật" style="padding:10px 12px;text-align:right">
+          <span class="hint" style="font-size:11px">{{.TakenAt}}</span>
+          {{if and .HasMetrics (not .MetricsFresh)}}<br><span class="badge badge-warn" style="font-size:9.5px">Cần đồng bộ lại</span>{{end}}
+        </td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div style="text-align:center;padding:28px 16px;background:var(--bg3);border-radius:10px;color:var(--muted);font-size:13px">
+    Chưa liên kết video Studio nào. Mở job Affiliate hoặc TikTok Viral đã hoàn tất, rồi dán link video TikTok đã đăng để hệ thống kéo chỉ số.
+  </div>
+  {{end}}
+</div>
+
+<!-- SECTION: VIDEO TIKTOK CÓ SỐ LIỆU COUNTERS -->
 {{if .VideoMetrics}}
-<div class="table-wrap mobile-table-scroll" role="region" aria-label="Số liệu video TikTok" tabindex="0"><table class="growth-video-table">
-<tr><th>Kênh</th><th>Video</th><th>Ngày đăng</th><th>Lượt xem</th><th>Thích</th><th>Bình luận</th><th>Chia sẻ</th><th>Cập nhật</th></tr>
-{{range .VideoMetrics}}
-<tr>
-  <td>{{.Username}}</td>
-  <td>{{if .URL}}<a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.Title}} ↗</a>{{else}}{{.Title}}{{end}}</td>
-  <td>{{.PublishedAt}}</td><td>{{.Views}}</td><td>{{.Likes}}</td><td>{{.Comments}}</td><td>{{.Shares}}</td><td>{{.TakenAt}}</td>
-</tr>
-{{end}}
-</table></div>
-{{else}}
-<p class="empty">Chưa có số liệu video. Kết nối lại TikTok và cấp quyền `user.info.stats` + `video.list`, rồi đồng bộ.</p>
+<div class="growth-section-card">
+  <div class="growth-section-header">
+    <div>
+      <h2 class="growth-section-title">📊 Video TikTok Đã Đồng Bộ Số Liệu</h2>
+      <p class="hint" style="margin:4px 0 0 0;font-size:12.5px">Chỉ số lượt xem, like, comment được đọc trực tiếp từ TikTok Display API.</p>
+    </div>
+  </div>
+
+  <div class="table-wrap mobile-table-scroll" role="region" aria-label="Số liệu video TikTok" tabindex="0">
+    <table class="growth-video-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead>
+        <tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Kênh</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Video</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Ngày đăng</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600">Lượt xem</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600">Thích</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600">Bình luận</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600">Chia sẻ</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600">Cập nhật</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .VideoMetrics}}
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:10px 12px"><span class="badge badge-dim">@{{.Username}}</span></td>
+        <td style="padding:10px 12px">
+          {{if .URL}}<a href="{{.URL}}" target="_blank" rel="noopener noreferrer" style="font-weight:600">{{.Title}} ↗</a>{{else}}{{.Title}}{{end}}
+        </td>
+        <td style="padding:10px 12px"><span class="hint">{{.PublishedAt}}</span></td>
+        <td style="padding:10px 12px;text-align:right;font-weight:700">{{.Views}}</td>
+        <td style="padding:10px 12px;text-align:right">{{.Likes}}</td>
+        <td style="padding:10px 12px;text-align:right">{{.Comments}}</td>
+        <td style="padding:10px 12px;text-align:right">{{.Shares}}</td>
+        <td style="padding:10px 12px;text-align:right"><span class="hint">{{.TakenAt}}</span></td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
 {{end}}
 
-<h2>Cảnh báo & sức khỏe kênh</h2>
+<!-- SECTION: CẢNH BÁO & SỨC KHỎE KÊNH -->
 {{if .Alerts}}
-<div class="table-wrap mobile-table-scroll" role="region" aria-label="Cảnh báo kênh TikTok" tabindex="0"><table class="growth-alerts-table"><tr><th>Kênh</th><th>Nội dung</th><th>Đã xử lý</th></tr>
-{{range .Alerts}}<tr><td>{{.Username}}</td><td><span class="badge badge-{{if eq .Severity "critical"}}err{{else if eq .Severity "warn"}}warn{{else}}info{{end}}">{{.Kind}}</span> {{.Message}}</td><td>{{.ActionTaken}}</td></tr>{{end}}
-</table></div>
-{{else}}<p class="empty">Chưa có cảnh báo tăng trưởng.</p>{{end}}
-
-<h2>Trạng thái dữ liệu và chẩn đoán</h2>
-<p class="hint">Chẩn đoán cần nguồn, kỳ đo và baseline cùng kênh. Khi thiếu một trong các dữ liệu này, trạng thái là “Chưa đủ dữ liệu”; hệ thống không suy đoán nguyên nhân hoặc tự đổi cấu hình.</p>
-{{if .Diagnostics}}
-<div class="table-wrap mobile-table-scroll" role="region" aria-label="Chẩn đoán phễu video" tabindex="0">
-<table class="growth-table">
-<thead><tr><th>Loại flow</th><th>Trạng thái</th><th>Bằng chứng / khoảng trống</th><th>Bước tiếp theo</th><th>Thời điểm</th></tr></thead>
-<tbody>
-{{range .Diagnostics}}
-<tr>
-  <td><span class="badge badge-{{if eq .FlowType "affiliate"}}ok{{else}}info{{end}}">{{if eq .FlowType "affiliate"}}TikTok Affiliate{{else}}TikTok Viral{{end}}</span></td>
-  <td><strong>{{if eq .FunnelStage "unknown"}}Chưa đủ dữ liệu{{else}}{{.FunnelStage}}{{end}}</strong></td>
-  <td>{{.Diagnosis}}</td>
-  <td><em>{{.SuggestedAction}}</em></td>
-  <td><span class="hint">{{.CreatedAt}}</span></td>
-</tr>
-{{end}}
-</tbody>
-</table>
+<div class="growth-section-card" style="border-left:4px solid #ef4444">
+  <div class="growth-section-header">
+    <h2 class="growth-section-title" style="color:#ef4444">⚠️ Cảnh Báo &amp; Sức Khỏe Kênh</h2>
+  </div>
+  <div class="table-wrap mobile-table-scroll" role="region" aria-label="Cảnh báo kênh TikTok" tabindex="0">
+    <table class="growth-alerts-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead>
+        <tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Kênh</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Nội dung cảnh báo</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Biện pháp xử lý</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Alerts}}
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:10px 12px"><span class="badge badge-dim">@{{.Username}}</span></td>
+        <td style="padding:10px 12px">
+          <span class="badge badge-{{if eq .Severity "critical"}}err{{else if eq .Severity "warn"}}warn{{else}}info{{end}}" style="font-size:10.5px">{{.Kind}}</span>
+          <span style="margin-left:6px;font-weight:600">{{.Message}}</span>
+        </td>
+        <td style="padding:10px 12px"><span class="hint">{{.ActionTaken}}</span></td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
 </div>
-{{else}}<p class="empty">Chưa có bản ghi chẩn đoán. Hệ thống sẽ tự phân tích sau khi video được đăng và thu thập số liệu.</p>{{end}}
-
-{{end}}
 {{end}}
 
-{{if eq .Tab "ops"}}
-<h2>Lịch sử thay đổi cấu hình</h2>
-<p class="hint">Điều chỉnh được giới hạn theo từng tài khoản, tối đa 15% mỗi lần; mỗi thay đổi lưu nguồn, khoảng đo, cỡ mẫu, baseline và confidence. Hoàn tác chỉ chạy khi giá trị hiện tại vẫn khớp bản ghi.</p>
-{{if .TuningHistory}}
-<div class="table-wrap mobile-table-scroll" role="region" aria-label="Lịch sử vi chỉnh cài đặt" tabindex="0">
-<table class="growth-table">
-<thead><tr><th>Tham số</th><th>Điều chỉnh</th><th>Lý do</th><th>Thời gian</th><th>Thao tác</th></tr></thead>
-<tbody>
-{{range .TuningHistory}}
-<tr>
-  <td><code>{{.ParamKey}}</code></td>
-  <td>{{if .Applied}}{{.OldValue}} → <strong>{{.NewValue}}</strong> ({{printf "%+.1f%%" .ChangePct}}){{else}}{{.OldValue}} → {{.NewValue}}<br><span class="hint">Bản ghi legacy; chưa xác minh đã áp dụng</span>{{end}}{{if .EvidenceJSON}}<details><summary>Bằng chứng</summary><pre>{{.EvidenceJSON}}</pre></details>{{end}}</td>
-  <td>{{.Reason}}</td>
-  <td><span class="hint">{{.AppliedAt}}</span></td>
-  <td>{{if not .Applied}}<span class="badge badge-warn">Legacy · chưa xác minh</span>{{else if .RolledBack}}<span class="badge badge-info">Đã hoàn tác {{.RolledBackAt}}</span>{{else}}<form method="post" action="/growth/tuning/rollback"><input type="hidden" name="account_id" value="{{.AccountID}}"><input type="hidden" name="history_id" value="{{.ID}}"><button class="btn btn-sm" type="submit">Hoàn tác</button></form>{{end}}</td>
-</tr>
-{{end}}
-</tbody>
-</table>
+<!-- SECTION: TRẠNG THÁI DỮ LIỆU & CHẨN ĐOÁN PHỄU -->
+<div class="growth-section-card">
+  <div class="growth-section-header">
+    <div>
+      <h2 class="growth-section-title">🩺 Trạng Thái Dữ Liệu &amp; Chẩn Đoán Phễu Video</h2>
+      <p class="hint" style="margin:4px 0 0 0;font-size:12.5px">Hệ thống phân tích chuyển đổi qua từng tầng phễu: từ lượt hiển thị, xem hết đến lượt click và đơn hàng.</p>
+    </div>
+  </div>
+
+  {{if .Diagnostics}}
+  <div class="table-wrap mobile-table-scroll" role="region" aria-label="Chẩn đoán phễu video" tabindex="0">
+    <table class="growth-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead>
+        <tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Loại Flow</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Trạng thái tầng phễu</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Bằng chứng &amp; Khoảng trống</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600">Đề xuất bước tiếp theo</th>
+          <th style="padding:10px 12px;text-align:right;font-weight:600">Thời điểm</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{range .Diagnostics}}
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:10px 12px"><span class="badge badge-{{if eq .FlowType "affiliate"}}ok{{else}}info{{end}}" style="font-size:11px">{{if eq .FlowType "affiliate"}}TikTok Affiliate{{else}}TikTok Viral{{end}}</span></td>
+        <td style="padding:10px 12px"><strong>{{if eq .FunnelStage "unknown"}}Chưa đủ dữ liệu{{else}}{{.FunnelStage}}{{end}}</strong></td>
+        <td style="padding:10px 12px"><div style="max-width:320px;line-height:1.4">{{.Diagnosis}}</div></td>
+        <td style="padding:10px 12px"><em style="color:var(--accent,#2563eb)">{{.SuggestedAction}}</em></td>
+        <td style="padding:10px 12px;text-align:right"><span class="hint">{{.CreatedAt}}</span></td>
+      </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div style="text-align:center;padding:24px;background:var(--bg3);border-radius:10px;color:var(--muted);font-size:13px">
+    Chưa có bản ghi chẩn đoán. Hệ thống sẽ tự phân tích sau khi video được đăng và thu thập số liệu.
+  </div>
+  {{end}}
 </div>
-{{else}}<p class="empty">Chưa có thay đổi cấu hình nào được xác nhận là đã áp dụng.</p>{{end}}
 
-<h2>Kế hoạch &amp; video sắp tới</h2>
-{{if .Upcoming}}
-<div class="table-wrap mobile-table-scroll mobile-growth-upcoming-cards" role="region" aria-label="Kế hoạch và video sắp tới" tabindex="0"><table class="growth-upcoming-table">
-<thead><tr><th scope="col">Ngày</th><th scope="col">Kênh</th><th scope="col">Định dạng</th><th scope="col">Chủ đề</th><th scope="col">Trạng thái</th><th scope="col">Video / ghi chú</th></tr></thead>
-<tbody>
-{{range .Upcoming}}
-<tr>
-  <td data-label="Ngày"><strong>{{.PlannedFor}}</strong></td>
-  <td data-label="Kênh">{{.Username}}</td>
-  <td data-label="Định dạng">9:16 · 60s{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
-  <td data-label="Chủ đề"><strong>{{.Topic}}</strong>{{if .DedupAction}}<br><span class="badge badge-warn">đổi góc chống trùng</span>{{end}}</td>
-  <td data-label="Trạng thái"><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>{{if .OutputFile}}<br><a href="/media/{{.OutputFile}}" download>Tải MP4</a>{{end}}{{if .StudioJobID}}<br><a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}">Mở Studio job</a>{{end}}</td>
-  <td data-label="Video / ghi chú"><div class="growth-upcoming-note-desktop">{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</div><details class="growth-upcoming-note-mobile"><summary>{{if .PubNote}}Xem ghi chú{{else}}Xem hook{{end}}</summary><p>{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</p></details></td>
-</tr>
 {{end}}
-</tbody>
-</table></div>
-{{else}}<div class="empty-state compact"><h3>Chưa có kế hoạch TikTok</h3></div>{{end}}
 {{end}}
 {{end}}
 
 {{define "growth-sync-result"}}
 <div id="growth-sync-result" aria-live="polite">
-  {{if .SyncError}}<p class="err" role="alert">{{.SyncError}}</p>
-  {{else if .SyncNotes}}<div class="notice"><strong>Kết quả đồng bộ:</strong><ul class="clean">{{range .SyncNotes}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+  {{if .SyncError}}<p class="err" role="alert" style="background:rgba(239,68,68,0.1);padding:12px 16px;border-radius:10px;color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-top:12px;font-weight:600">⚠ {{.SyncError}}</p>
+  {{else if .SyncNotes}}<div class="notice" style="background:rgba(16,185,129,0.1);padding:14px 18px;border-radius:10px;border:1px solid rgba(16,185,129,0.25);margin-top:14px"><strong>Kết quả đồng bộ TikTok:</strong><ul class="clean" style="margin-top:6px;line-height:1.5">{{range .SyncNotes}}<li>✓ {{.}}</li>{{end}}</ul></div>{{end}}
 </div>
 {{end}}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io"
@@ -105,17 +106,83 @@ func ExtractFromAffiliateLink(ctx context.Context, rawURL string) (*ExtractedPro
 	return ParseProductHTML(rawURL, finalURL, htmlContent), nil
 }
 
+// extractOGInfo trích xuất title và image từ tham số og_info trên URL (TikTok redirect link).
+func extractOGInfo(rawURL, finalURL string) (string, string) {
+	for _, target := range []string{finalURL, rawURL} {
+		if target == "" {
+			continue
+		}
+		if u, err := url.Parse(target); err == nil {
+			if ogRaw := u.Query().Get("og_info"); ogRaw != "" {
+				var info struct {
+					Title string `json:"title"`
+					Image string `json:"image"`
+				}
+				if json.Unmarshal([]byte(ogRaw), &info) == nil {
+					title := ""
+					if info.Title != "" {
+						t := strings.ReplaceAll(info.Title, "+", " ")
+						title = cleanProductTitle(t)
+					}
+					image := strings.TrimSpace(info.Image)
+					if title != "" || image != "" {
+						return title, image
+					}
+				}
+			}
+		}
+	}
+	return "", ""
+}
+
+func isInvalidProductTitle(t string) bool {
+	lower := strings.ToLower(strings.TrimSpace(t))
+	return lower == "" ||
+		strings.Contains(lower, "security check") ||
+		strings.Contains(lower, "robot or human") ||
+		strings.Contains(lower, "captcha") ||
+		strings.Contains(lower, "access denied") ||
+		strings.Contains(lower, "just a moment")
+}
+
 // ParseProductHTML extracts product metadata from HTML content and URLs.
 func ParseProductHTML(rawURL, finalURL, htmlContent string) *ExtractedProduct {
+	ogTitle, ogImg := extractOGInfo(rawURL, finalURL)
+
 	title := extractTitle(htmlContent, finalURL)
+	if isInvalidProductTitle(title) || title == "Sản phẩm Affiliate" {
+		if ogTitle != "" {
+			title = ogTitle
+		} else if strings.Contains(strings.ToLower(finalURL), "tiktok") {
+			title = "Sản phẩm TikTok Shop"
+		}
+	} else if ogTitle != "" && len(ogTitle) > len(title) {
+		title = ogTitle
+	}
+
 	images := extractImages(htmlContent, finalURL)
+	if ogImg != "" {
+		images = append([]string{ogImg}, images...)
+	}
+
 	price, originalPrice := extractPrice(htmlContent)
 	pid := extractPlatformPID(finalURL, rawURL)
 	shop := extractShopName(htmlContent, finalURL)
 	theme, category := inferThemeAndCategory(title, htmlContent)
 
 	if price <= 0 {
-		price = 199000 // default placeholder price
+		switch category {
+		case "Thời trang":
+			price = 249000
+		case "Làm đẹp":
+			price = 189000
+		case "Gia dụng":
+			price = 159000
+		case "Ẩm thực":
+			price = 99000
+		default:
+			price = 199000
+		}
 	}
 
 	return &ExtractedProduct{
@@ -155,7 +222,7 @@ func extractTitle(h, finalURL string) string {
 
 	for _, c := range candidates {
 		cleaned := cleanProductTitle(c)
-		if len(cleaned) >= 5 {
+		if len(cleaned) >= 5 && !isInvalidProductTitle(cleaned) {
 			return cleaned
 		}
 	}
@@ -383,40 +450,44 @@ func extractShopName(h, finalURL string) string {
 }
 
 func inferThemeAndCategory(title, htmlContent string) (string, string) {
-	lower := strings.ToLower(title + " " + htmlContent[:min(len(htmlContent), 1000)])
+	contentToScan := title
+	if len(htmlContent) > 0 && !isInvalidProductTitle(htmlContent[:min(len(htmlContent), 500)]) {
+		contentToScan += " " + htmlContent[:min(len(htmlContent), 1000)]
+	}
+	lower := strings.ToLower(contentToScan)
 
-	fashionKeywords := []string{"áo", "quần", "váy", "đầm", "giày", "dép", "túi", "hoodie", "thời trang", "sơ mi", "khoác", "chân váy"}
+	fashionKeywords := []string{"áo", "quần", "váy", "đầm", "giày", "dép", "túi", "hoodie", "thời trang", "sơ mi", "khoác", "chân váy", "dress", "skirt", "croptop", "blazer", "cardigan", "yếm", "babydoll", "bigsize"}
 	for _, kw := range fashionKeywords {
 		if strings.Contains(lower, kw) {
 			return "fashion", "Thời trang"
 		}
 	}
 
-	beautyKeywords := []string{"son", "kem", "serum", "mỹ phẩm", "nước hoa", "da", "trang điểm", "làm đẹp", "chống nắng", "sữa rửa mặt"}
+	beautyKeywords := []string{"son", "kem", "serum", "mỹ phẩm", "nước hoa", "da", "trang điểm", "làm đẹp", "chống nắng", "sữa rửa mặt", "toner", "cushion", "phấn", "dưỡng ẩm", "mặt nạ"}
 	for _, kw := range beautyKeywords {
 		if strings.Contains(lower, kw) {
 			return "beauty", "Làm đẹp"
 		}
 	}
 
-	techKeywords := []string{"tai nghe", "loa", "điện thoại", "sạc", "pin", "laptop", "chuột", "bàn phím", "điện tử", "bluetooth", "cáp"}
-	for _, kw := range techKeywords {
-		if strings.Contains(lower, kw) {
-			return "tech", "Điện tử"
-		}
-	}
-
-	homeKeywords := []string{"nồi", "chảo", "bếp", "bình", "gia dụng", "chăn", "gối", "đèn", "kệ", "máy xay", "nồi chiên", "nấu ăn", "dụng cụ", "nhà bếp", "silicon", "bát", "đũa", "thìa", "muỗng", "chén", "ly", "cốc"}
+	homeKeywords := []string{"nồi", "chảo", "bếp", "bình", "gia dụng", "chăn", "gối", "đèn", "kệ", "máy xay", "nồi chiên", "nấu ăn", "dụng cụ", "nhà bếp", "silicon", "bát", "đũa", "thìa", "muỗng", "chén", "ly", "cốc", "hộp", "khay"}
 	for _, kw := range homeKeywords {
 		if strings.Contains(lower, kw) {
 			return "home", "Gia dụng"
 		}
 	}
 
-	foodKeywords := []string{"bánh", "kẹo", "trà", "cà phê", "đồ ăn", "ăn vặt", "thực phẩm", "hạt", "sữa"}
+	foodKeywords := []string{"bánh", "kẹo", "trà", "cà phê", "đồ ăn", "ăn vặt", "thực phẩm", "hạt", "sữa", "snack"}
 	for _, kw := range foodKeywords {
 		if strings.Contains(lower, kw) {
 			return "food", "Ẩm thực"
+		}
+	}
+
+	techKeywords := []string{"tai nghe", "loa", "điện thoại", "sạc", "pin", "laptop", "chuột", "bàn phím", "điện tử", "bluetooth", "cáp", "màn hình", "ốp lưng"}
+	for _, kw := range techKeywords {
+		if strings.Contains(lower, kw) {
+			return "tech", "Điện tử"
 		}
 	}
 

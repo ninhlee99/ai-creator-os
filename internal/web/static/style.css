@@ -231,16 +231,7 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
   position: relative;
   background: var(--accent-subtle); color: var(--accent);
   font-weight: 650;
-}
-.sidebar nav a.active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 9px;
-  bottom: 9px;
-  width: 3px;
-  border-radius: 999px;
-  background: var(--accent);
+  border-radius: 8px;
 }
 .sidebar nav a .nav-icon {
   width: 17px;
