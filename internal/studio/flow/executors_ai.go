@@ -215,13 +215,40 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 	aspect := nodeParamString(node.Params, "aspect", "9:16")
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_googleflow.mp4", node.ID))
 
-	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Đang gửi yêu cầu tạo video tới Google Flow (ingredients: %d ảnh tham chiếu, aspect: %s)...", len(ingredients), aspect))
+	platform := "googleflow"
+	prov := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "provider", "")))
+	model := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "model", "")))
+	if prov == "museai" || prov == "muse_ai" || strings.Contains(model, "muse") {
+		platform = "museai"
+	} else if prov != "" && prov != "google_flow" && prov != "googleflow" && prov != "flow" {
+		platform = prov
+	}
+
+	if platform == "museai" && ctx.MuseRenderWithSession != nil {
+		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Chạy qua Muse AI theo model/provider đã chọn (%d ảnh tham chiếu)...", len(ingredients)))
+		isNew := ctx.startMuseThread()
+		threadURL := ""
+		if ctx.MuseThread != nil {
+			threadURL = ctx.MuseThread.URL
+		}
+		nextURL, renderErr := ctx.MuseRenderWithSession(ctx.Context, isNew, threadURL, "Fashion Shot", enhancedPrompt, ingredients, outPath)
+		if renderErr == nil && fileExists(outPath) && isVideoFile(outPath) {
+			if ctx.MuseThread != nil && nextURL != "" {
+				ctx.MuseThread.URL = nextURL
+			}
+			ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Video Muse AI đã sẵn sàng -> %s", filepath.Base(outPath)))
+			return map[string]any{"video_out": outPath}, nil
+		}
+		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Muse AI chưa hoàn tất (%v). Thử tiếp qua engine mặc định...", renderErr))
+	}
+
+	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Đang gửi yêu cầu tạo video tới %s (ingredients: %d ảnh tham chiếu, aspect: %s)...", platform, len(ingredients), aspect))
 
 	if ctx.EngineCall == nil {
-		return nil, fmt.Errorf("Google Flow chưa được nối với workflow engine")
+		return nil, fmt.Errorf("engine sinh video chưa được nối với workflow engine")
 	}
 	projectID, accountID := googleFlowThreadValues(ctx)
-	nextProjectID, nextAccountID, err := ctx.EngineCall(ctx.Context, "googleflow", enhancedPrompt, ingredients, aspect, projectID, accountID, outPath)
+	nextProjectID, nextAccountID, err := ctx.EngineCall(ctx.Context, platform, enhancedPrompt, ingredients, aspect, projectID, accountID, outPath)
 	setGoogleFlowThreadValues(ctx, nextProjectID, nextAccountID)
 	if err != nil {
 		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Google Flow chưa phản hồi (%v). Kích hoạt bộ tạo video chuyển động điện ảnh dự phòng...", err))
@@ -458,7 +485,7 @@ func renderCinematicMotionShot(ctx *ExecutionContext, files []string, prompt, ou
 		badgeSize := 280
 		filterComplex := fmt.Sprintf(
 			"[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,%s,setsar=1[bg];"+
-				"[1:v]scale=%d:%d:force_original_aspect_ratio=cover,crop=%d:%d,setsar=1[pip];"+
+				"[1:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[pip];"+
 				"[bg][pip]overlay=main_w-overlay_w-36:36[vout]",
 			motionFilter, badgeSize, badgeSize, badgeSize, badgeSize,
 		)

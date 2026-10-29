@@ -182,7 +182,7 @@ func (s *Server) renderCompositeVideo(ctx context.Context, cfg compositeVideoCon
 			badgeSize := width / 5
 			vf := fmt.Sprintf(
 				"[0:v]scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:black,setsar=1[bg];"+
-					"[1:v]scale=%d:%d:force_original_aspect_ratio=cover,crop=%d:%d,setsar=1[pip];"+
+					"[1:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[pip];"+
 					"[bg][pip]overlay=main_w-overlay_w-40:40[vout]",
 				width, height, width, height,
 				badgeSize, badgeSize, badgeSize, badgeSize,
@@ -291,7 +291,7 @@ func (s *Server) renderCompositeVideo(ctx context.Context, cfg compositeVideoCon
 		inputArgs = append(inputArgs, "-i", cfg.CharacterPhoto)
 		badgeSize := width / 5
 		filterParts = append(filterParts,
-			fmt.Sprintf("[%d:v]scale=%d:%d:force_original_aspect_ratio=cover,crop=%d:%d,setsar=1[pip]", nextIdx, badgeSize, badgeSize, badgeSize, badgeSize),
+			fmt.Sprintf("[%d:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[pip]", nextIdx, badgeSize, badgeSize, badgeSize, badgeSize),
 			fmt.Sprintf("[vcat][pip]overlay=main_w-overlay_w-40:40[vout]"),
 		)
 		finalMap = "[vout]"

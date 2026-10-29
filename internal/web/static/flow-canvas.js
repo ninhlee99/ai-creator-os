@@ -3968,97 +3968,41 @@
       // 3. LLM / Model selector dynamically populated based on provider_mode
       const modelGroup = document.getElementById('inspector-model-group');
       const modelSelect = document.getElementById('inspector-model-select');
-      const supportsModel = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'model');
+      const modeSelect = document.getElementById('inspector-provider-mode-select');
+      const nodeCat = String(cat).toLowerCase();
+      const nodeType = String(node.type || '').toLowerCase();
+      const supportsModel = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'model') ||
+        Object.prototype.hasOwnProperty.call(node.params || {}, 'model') ||
+        ['ai', 'render', 'custom', 'generator'].includes(nodeCat) ||
+        ['google_flow_video', 'muse_ai_video', 'custom_universal_ai', 'custom_llm_processor', 'custom_image_generator', 'custom_video_generator', 'gemini_vision', 'virtual_tryon', 'fashion_video_render', 'prompt_optimizer', 'text_generate', 'common_ai_video', 'ai_video_generate'].includes(nodeType) ||
+        nodeType.includes('video') || nodeType.includes('image') || nodeType.includes('llm') || nodeType.includes('render') || nodeType.includes('vision');
+
       if (modelGroup && modelSelect) {
         modelGroup.style.display = supportsModel ? 'block' : 'none';
+        if (modeSelect) {
+          modeSelect.value = node.params?.provider_mode === 'api_key' ? 'api_key' : 'web_ai';
+          modeSelect.onchange = () => {
+            if (!node.params) node.params = {};
+            node.params.provider_mode = modeSelect.value;
+            this.populateModelSelector(node, def, modelSelect, modeSelect.value === 'api_key');
+            this.updateNodeModelBadge(node.id, node.params.model || 'auto');
+            this.markGraphDirty();
+          };
+        }
+
         const isAPIKeyMode = node.params?.provider_mode === 'api_key';
-        modelSelect.innerHTML = '';
+        this.populateModelSelector(node, def, modelSelect, isAPIKeyMode);
 
-        if (isAPIKeyMode) {
-          // 1. User configured API Keys from Settings
-          if (Array.isArray(this.customAPIModels) && this.customAPIModels.length > 0) {
-            const userGroup = document.createElement('optgroup');
-            userGroup.label = '🔑 Cấu hình API Key của bạn (Cài đặt)';
-            this.customAPIModels.forEach(m => {
-              const opt = document.createElement('option');
-              opt.value = m.name;
-              opt.textContent = `${m.name} (${m.model})`;
-              userGroup.appendChild(opt);
-            });
-            modelSelect.appendChild(userGroup);
-          }
-
-          // 2. Standard 2026 API Models
-          const stdGroup = document.createElement('optgroup');
-          stdGroup.label = '⚡ Model API Chuẩn 2026';
-          [
-            ['auto', 'Tự động chọn (Khuyên dùng)'],
-            ['gpt-4.5', 'OpenAI GPT-4.5 (2026)'],
-            ['gpt-4o', 'OpenAI GPT-4o'],
-            ['gpt-4o-mini', 'OpenAI GPT-4o Mini'],
-            ['gemini-2.5-pro', 'Google Gemini 2.5 Pro (2026)'],
-            ['gemini-2.5-flash', 'Google Gemini 2.5 Flash (2026)'],
-            ['claude-3-7-sonnet', 'Anthropic Claude 3.7 Sonnet (2026)'],
-            ['claude-3-5-sonnet', 'Anthropic Claude 3.5 Sonnet'],
-            ['grok-3', 'xAI Grok 3 (2026)'],
-            ['veo-3.1-fast', 'Google Veo 3.1 Fast (Video API)'],
-            ['gen3a_turbo', 'Runway Gen-3 Alpha Turbo (Video API)'],
-            ['ray-2', 'Luma Ray-2 (Video API)'],
-            ['kling-1.5', 'Kling 1.5 Pro (Video API)'],
-            ['sora', 'OpenAI Sora (Video API 2026)'],
-            ['dall-e-3', 'DALL-E 3 (Image API)'],
-            ['imagen-3', 'Imagen 3 (Image API)'],
-            ['flux-1-schnell', 'Flux 1 Schnell (Image API)']
-          ].forEach(([val, lbl]) => {
-            const opt = document.createElement('option');
-            opt.value = val;
-            opt.textContent = lbl;
-            stdGroup.appendChild(opt);
-          });
-          modelSelect.appendChild(stdGroup);
-        } else {
-          // Web AI (Logged-in browser accounts)
-          const webGroup = document.createElement('optgroup');
-          webGroup.label = '🌐 Web AI (Tài khoản login trình duyệt 2026)';
-          [
-            ['auto', 'Tự động chọn theo Web AI'],
-            ['veo-3.1-fast', 'Google Flow · Veo 3.1 Fast (2026)'],
-            ['muse-gen2', 'Muse AI · Gen-2 (2026)'],
-            ['gemini-2.5-flash', 'Gemini Web · 2.5 Flash (2026)'],
-            ['gemini-2.5-pro', 'Gemini Web · 2.5 Pro (2026)'],
-            ['gpt-4.5', 'ChatGPT Web · GPT-4.5 (2026)'],
-            ['gpt-4o', 'ChatGPT Web · GPT-4o'],
-            ['grok-3', 'Grok Web · Grok 3 (2026)'],
-            ['grok-2', 'Grok Web · Grok 2'],
-            ['claude-3-7-sonnet', 'Claude Web · 3.7 Sonnet (2026)'],
-            ['claude-3-5-sonnet', 'Claude Web · 3.5 Sonnet'],
-            ['dall-e-3', 'DALL-E 3 (Ảnh ChatGPT)'],
-            ['imagen-3', 'Imagen 3 (Ảnh Gemini)'],
-            ['flux-1-schnell', 'Flux 1 (Ảnh Grok)']
-          ].forEach(([val, lbl]) => {
-            const opt = document.createElement('option');
-            opt.value = val;
-            opt.textContent = lbl;
-            webGroup.appendChild(opt);
-          });
-          modelSelect.appendChild(webGroup);
-        }
-
-        const currentModel = node.params?.model || def.default_params?.model || 'auto';
-        // Check if currentModel exists in select, if not add it
-        const exists = Array.from(modelSelect.options).some(o => o.value === currentModel);
-        if (!exists && currentModel) {
-          const customOpt = document.createElement('option');
-          customOpt.value = currentModel;
-          customOpt.textContent = `Model đã chọn: ${currentModel}`;
-          modelSelect.appendChild(customOpt);
-        }
-        modelSelect.value = currentModel;
         modelSelect.onchange = () => {
           const m = modelSelect.value;
           if (!node.params) node.params = {};
           node.params.model = m;
+          const mappedProv = this.providerForModel(m);
+          if (mappedProv) {
+            node.params.provider = mappedProv;
+          }
           this.updateNodeModelBadge(node.id, m);
+          this.markGraphDirty();
         };
       }
 
@@ -4496,6 +4440,103 @@
         'auto': 'Auto LLM',
       };
       return map[model.toLowerCase()] || model;
+    }
+
+    providerForModel(model) {
+      if (!model) return '';
+      const m = String(model).toLowerCase();
+      if (m.includes('veo') || m.includes('flow')) return 'google_flow';
+      if (m.includes('muse')) return 'muse_ai';
+      if (m.includes('gemini') || m.includes('imagen')) return 'gemini';
+      if (m.includes('gpt') || m.includes('dall-e') || m.includes('chatgpt')) return 'chatgpt';
+      if (m.includes('claude')) return 'claude';
+      if (m.includes('grok') || m.includes('flux')) return 'grok';
+      if (m.includes('gen3') || m.includes('runway')) return 'runway';
+      if (m.includes('ray') || m.includes('luma')) return 'luma';
+      if (m.includes('kling')) return 'kling';
+      if (m.includes('sora')) return 'sora';
+      return '';
+    }
+
+    populateModelSelector(node, def, modelSelect, isAPIKeyMode) {
+      if (!modelSelect) return;
+      modelSelect.innerHTML = '';
+      if (isAPIKeyMode) {
+        if (Array.isArray(this.customAPIModels) && this.customAPIModels.length > 0) {
+          const userGroup = document.createElement('optgroup');
+          userGroup.label = '🔑 Cấu hình API Key của bạn (Cài đặt)';
+          this.customAPIModels.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.textContent = `${m.name} (${m.model})`;
+            userGroup.appendChild(opt);
+          });
+          modelSelect.appendChild(userGroup);
+        }
+
+        const stdGroup = document.createElement('optgroup');
+        stdGroup.label = '⚡ Model API Chuẩn 2026';
+        [
+          ['auto', 'Tự động chọn (Khuyên dùng)'],
+          ['gpt-4.5', 'OpenAI GPT-4.5 (2026)'],
+          ['gpt-4o', 'OpenAI GPT-4o'],
+          ['gpt-4o-mini', 'OpenAI GPT-4o Mini'],
+          ['gemini-2.5-pro', 'Google Gemini 2.5 Pro (2026)'],
+          ['gemini-2.5-flash', 'Google Gemini 2.5 Flash (2026)'],
+          ['claude-3-7-sonnet', 'Anthropic Claude 3.7 Sonnet (2026)'],
+          ['claude-3-5-sonnet', 'Anthropic Claude 3.5 Sonnet'],
+          ['grok-3', 'xAI Grok 3 (2026)'],
+          ['veo-3.1-fast', 'Google Veo 3.1 Fast (Video API)'],
+          ['gen3a_turbo', 'Runway Gen-3 Alpha Turbo (Video API)'],
+          ['ray-2', 'Luma Ray-2 (Video API)'],
+          ['kling-1.5', 'Kling 1.5 Pro (Video API)'],
+          ['sora', 'OpenAI Sora (Video API 2026)'],
+          ['dall-e-3', 'DALL-E 3 (Image API)'],
+          ['imagen-3', 'Imagen 3 (Image API)'],
+          ['flux-1-schnell', 'Flux 1 Schnell (Image API)']
+        ].forEach(([val, lbl]) => {
+          const opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = lbl;
+          stdGroup.appendChild(opt);
+        });
+        modelSelect.appendChild(stdGroup);
+      } else {
+        const webGroup = document.createElement('optgroup');
+        webGroup.label = '🌐 Web AI (Tài khoản login trình duyệt 2026)';
+        [
+          ['auto', 'Tự động chọn theo Web AI'],
+          ['veo-3.1-fast', 'Google Flow · Veo 3.1 Fast (2026)'],
+          ['muse-gen2', 'Muse AI · Gen-2 (2026)'],
+          ['gemini-2.5-flash', 'Gemini Web · 2.5 Flash (2026)'],
+          ['gemini-2.5-pro', 'Gemini Web · 2.5 Pro (2026)'],
+          ['gpt-4.5', 'ChatGPT Web · GPT-4.5 (2026)'],
+          ['gpt-4o', 'ChatGPT Web · GPT-4o'],
+          ['grok-3', 'Grok Web · Grok 3 (2026)'],
+          ['grok-2', 'Grok Web · Grok 2'],
+          ['claude-3-7-sonnet', 'Claude Web · 3.7 Sonnet (2026)'],
+          ['claude-3-5-sonnet', 'Claude Web · 3.5 Sonnet'],
+          ['dall-e-3', 'DALL-E 3 (Ảnh ChatGPT)'],
+          ['imagen-3', 'Imagen 3 (Ảnh Gemini)'],
+          ['flux-1-schnell', 'Flux 1 (Ảnh Grok)']
+        ].forEach(([val, lbl]) => {
+          const opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = lbl;
+          webGroup.appendChild(opt);
+        });
+        modelSelect.appendChild(webGroup);
+      }
+
+      const currentModel = node.params?.model || def.default_params?.model || 'auto';
+      const exists = Array.from(modelSelect.options).some(o => o.value === currentModel);
+      if (!exists && currentModel) {
+        const customOpt = document.createElement('option');
+        customOpt.value = currentModel;
+        customOpt.textContent = `Model đã chọn: ${currentModel}`;
+        modelSelect.appendChild(customOpt);
+      }
+      modelSelect.value = currentModel;
     }
 
     updateNodeModelBadge(nodeId, model) {

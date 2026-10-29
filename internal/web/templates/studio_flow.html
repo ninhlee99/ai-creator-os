@@ -172,8 +172,14 @@
           <small id="inspector-node-guidance" class="text-muted" style="display:none"></small>
 
           <section id="inspector-tab-parameters" class="wf-inspector-tab-pane active" role="tabpanel" aria-labelledby="inspector-tab-parameters-button" data-inspector-pane="parameters">
-            <div id="inspector-model-group" class="wf-form-group wf-model-selector-group" style="display:none;">
-              <label for="inspector-model-select" class="wf-field-label"><span>Model AI</span></label>
+            <div id="inspector-model-group" class="wf-form-group wf-model-selector-group" style="display:none;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <label for="inspector-model-select" class="wf-field-label" style="margin:0;font-weight:700"><span>Model AI</span></label>
+                <select id="inspector-provider-mode-select" class="wf-form-select" style="width:auto;padding:2px 8px;font-size:11px;height:24px;border-radius:6px">
+                  <option value="web_ai">Web AI (Tài khoản login)</option>
+                  <option value="api_key">API Key (Khóa trả phí)</option>
+                </select>
+              </div>
               <select id="inspector-model-select" class="wf-form-select">
                 <optgroup label="Mặc định hệ thống"><option value="active">Model đang cấu hình</option><option value="auto">Tự động chọn</option></optgroup>
                 <optgroup label="Google Gemini"><option value="gemini-2.5-flash">Gemini 2.5 Flash (2026)</option><option value="gemini-2.5-pro">Gemini 2.5 Pro (2026)</option></optgroup>
