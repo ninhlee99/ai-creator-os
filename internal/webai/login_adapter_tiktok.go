@@ -115,13 +115,25 @@ func (tikTokLoginAdapter) matchesIdentityURL(rawURL string) bool {
 func (tikTokLoginAdapter) identityScript() string {
 	return `(() => {
 		try {
+			// 1. Trích xuất username từ global state TikTok
+			if (window.SIGI_STATE && window.SIGI_STATE.AppContext && window.SIGI_STATE.AppContext.user && window.SIGI_STATE.AppContext.user.uniqueId) {
+				return '@' + window.SIGI_STATE.AppContext.user.uniqueId;
+			}
+			if (window.__DEFAULT_SCOPE__ && window.__DEFAULT_SCOPE__['webapp.app-context'] && window.__DEFAULT_SCOPE__['webapp.app-context'].user && window.__DEFAULT_SCOPE__['webapp.app-context'].user.uniqueId) {
+				return '@' + window.__DEFAULT_SCOPE__['webapp.app-context'].user.uniqueId;
+			}
+			// 2. Trích xuất username từ link profile trên thanh điều hướng
 			const link = document.querySelector('a[href*="/@"]');
 			if (link) {
 				const m = link.getAttribute('href').match(/@([a-zA-Z0-9_.-]+)/);
 				if (m) return '@' + m[1];
 			}
+			// 3. Trích xuất username từ title icon profile
 			const title = document.querySelector('[data-e2e="user-title"], [data-e2e="profile-icon"]');
-			if (title && title.innerText && title.innerText.trim()) return title.innerText.trim();
+			if (title && title.innerText && title.innerText.trim()) {
+				const text = title.innerText.trim();
+				return text.startsWith('@') ? text : '@' + text;
+			}
 		} catch(_) {}
 		return '';
 	})()`

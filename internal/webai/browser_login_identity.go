@@ -326,6 +326,12 @@ func cdpExtractPageIdentity(port int, target WebLoginTarget) string {
 		}
 		if str, ok := msg.Result.Result.Value.(string); ok {
 			cand := strings.TrimSpace(str)
+			if target.Platform == PlatformTikTok && cand != "" {
+				if strings.HasPrefix(cand, "@") {
+					return cand
+				}
+				return "@" + cand
+			}
 			if clean := cleanExtractedEmail(cand); clean != "" {
 				return clean
 			}

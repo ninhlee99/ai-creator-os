@@ -313,6 +313,42 @@ func (s *Store) UpsertAccountSessionWithCookieJar(platform, sessionKey, cookie s
 	cookieJar = normalizeCookieJar(cookieJar)
 	var existingID, existingCookie, existingKey, existingCookieJar string
 
+	// 0. TikTok: Chỉ duy trì duy nhất 1 tài khoản TikTok trong hệ thống (Single TikTok Account)
+	if platform == PlatformTikTok {
+		err := s.db.QueryRow(`
+			SELECT id, cookie, session_key, cookie_jar FROM webai_accounts
+			WHERE platform = ?
+			ORDER BY is_active DESC, updated_at DESC LIMIT 1
+		`, platform).Scan(&existingID, &existingCookie, &existingKey, &existingCookieJar)
+		if err == nil && existingID != "" {
+			newKey := sessionKey
+			if newKey == "" {
+				newKey = existingKey
+			}
+			newCookie := cookie
+			if newCookie == "" {
+				newCookie = existingCookie
+			}
+			newCookieJar := cookieJar
+			if len(newCookieJar) == 0 {
+				newCookieJar = decodeCookieJar(existingCookieJar)
+			}
+			if len(newCookieJar) == 0 {
+				newCookieJar = mergeCookieJarHeader(nil, newCookie, platform)
+			} else {
+				newCookieJar = mergeCookieHeaderIntoSnapshot(newCookieJar, newCookie, platform)
+			}
+			_, uerr := s.db.Exec(`
+				UPDATE webai_accounts
+				SET session_key = ?, cookie = ?, cookie_jar = ?, account_name = ?, email = ?, status = 'ok',
+				    tier = ?, tier_confirmed = 0,
+				    is_active = 1, updated_at = ?, last_checked = ?
+				WHERE id = ?
+			`, newKey, newCookie, encodeCookieJar(newCookieJar), accountName, email, tier, now, now, existingID)
+			return existingID, uerr
+		}
+	}
+
 	// 1. Nếu có email: tìm chính xác tài khoản cùng platform và email để cập nhật
 	if email != "" {
 		err := s.db.QueryRow(`

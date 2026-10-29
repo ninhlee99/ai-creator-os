@@ -110,9 +110,18 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 				return
 			}
 			accountName := tgt.Name
-			if email != "" {
+			if tgt.Platform == webai.PlatformTikTok {
+				if email != "" && email != "TikTok User" {
+					if !strings.HasPrefix(email, "@") {
+						email = "@" + email
+					}
+					accountName = email
+				} else {
+					accountName = "TikTok (@user)"
+				}
+			} else if email != "" {
 				accountName = fmt.Sprintf("%s (%s)", tgt.Name, email)
-			} else if tgt.Platform == webai.PlatformMuseAI || tgt.Platform == webai.PlatformTikTok {
+			} else if tgt.Platform == webai.PlatformMuseAI {
 				accountName = fmt.Sprintf("%s (phiên %s)", tgt.Name, time.Now().Format("02/01 15:04:05"))
 			}
 			id, err := s.WebAI.UpsertAccountSessionWithCookieJar(tgt.Platform, auth.SessionValue, auth.CookieHeader, auth.CookieJar, accountName, email, "unknown")

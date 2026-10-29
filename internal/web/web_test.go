@@ -73,8 +73,8 @@ func TestDashboard(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("GET / = %d, want 303 See Other", rec.Code)
 	}
-	if loc := rec.Header().Get("Location"); loc != "/workflow" {
-		t.Fatalf("GET / redirect location = %q, want /workflow", loc)
+	if loc := rec.Header().Get("Location"); loc != "/workflow/create" {
+		t.Fatalf("GET / redirect location = %q, want /workflow/create", loc)
 	}
 }
 

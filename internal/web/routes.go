@@ -21,13 +21,13 @@ func (s *Server) Routes() http.Handler {
 	// Đợt S: health endpoint cho watchdog ngoài — không qua onboardGate.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 
-	// Trang chủ điều hướng trực tiếp vào Studio Workflow Canvas.
+	// Trang chủ điều hướng trực tiếp vào màn hình Tạo video AI bằng 1 câu lệnh.
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
-		http.Redirect(w, r, "/workflow", http.StatusSeeOther)
+		http.Redirect(w, r, "/workflow/create", http.StatusSeeOther)
 	})
 	mux.HandleFunc("GET /dashboard", s.handleDashboard)
 	mux.HandleFunc("POST /automation/switch", s.handleAutoSwitch)
