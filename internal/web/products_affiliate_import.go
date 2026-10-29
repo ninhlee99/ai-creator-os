@@ -45,16 +45,28 @@ func (s *Server) handleProductsImportLink(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// If images were found and Studio is running, download the primary photo locally
+	// Tải toàn bộ danh sách ảnh của sản phẩm (ảnh bìa, chi tiết chất liệu, các góc chụp, bảng size) về máy
 	if s.Studio != nil && len(extracted.ImageURLs) > 0 {
 		_ = os.MkdirAll(s.Studio.UploadDir(), 0755)
-		filename := fmt.Sprintf("aff_%s.jpg", extracted.PlatformPID)
-		localPath := filepath.Join(s.Studio.UploadDir(), filename)
-		dlCtx, dlCancel := context.WithTimeout(r.Context(), 15*time.Second)
-		if dlErr := studio.DownloadImage(dlCtx, extracted.ImageURLs[0], localPath); dlErr == nil {
-			extracted.ImageURLs = append([]string{"/uploads/" + filename}, extracted.ImageURLs...)
+		var localImageURLs []string
+		dlCtx, dlCancel := context.WithTimeout(r.Context(), 45*time.Second)
+		for idx, imgURL := range extracted.ImageURLs {
+			if idx >= 10 {
+				break
+			}
+			filename := fmt.Sprintf("aff_%s_%d.jpg", extracted.PlatformPID, idx)
+			if idx == 0 {
+				filename = fmt.Sprintf("aff_%s.jpg", extracted.PlatformPID)
+			}
+			localPath := filepath.Join(s.Studio.UploadDir(), filename)
+			if dlErr := studio.DownloadImage(dlCtx, imgURL, localPath); dlErr == nil && fileExists(localPath) {
+				localImageURLs = append(localImageURLs, "/uploads/"+filename)
+			}
 		}
 		dlCancel()
+		if len(localImageURLs) > 0 {
+			extracted.ImageURLs = append(localImageURLs, extracted.ImageURLs...)
+		}
 	}
 
 	id, err := s.Products.SaveImportedProduct(*extracted)

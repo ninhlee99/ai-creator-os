@@ -65,10 +65,9 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 	}
 	defer os.RemoveAll(profileDir)
 
-	args := webai.OptimizedHeadlessBrowserArgs(0, profileDir, "412,915")
-	// Dùng User-Agent mobile để trang hiển thị dạng mobile web (nơi popup Get the full app experience xuất hiện)
+	args := webai.OptimizedHeadlessBrowserArgs(0, profileDir, "1280,800")
 	args = append(args[:len(args)-1],
-		"--user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+		"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
 		"--lang=vi-VN,vi",
 		"about:blank",
 	)
@@ -109,7 +108,17 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 	_ = sendCDP(1, "Network.enable", map[string]any{})
 	_ = sendCDP(2, "Page.enable", map[string]any{})
 	_ = sendCDP(3, "Page.addScriptToEvaluateOnNewDocument", map[string]any{
-		"source": `try{Object.defineProperty(navigator,'webdriver',{get:()=>undefined});}catch(_){}`,
+		"source": `try{
+			Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+			window.chrome = {
+				app: { isInstalled: false },
+				runtime: {},
+				loadTimes: () => {},
+				csi: () => {}
+			};
+			Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+			Object.defineProperty(navigator, 'languages', { get: () => ['vi-VN', 'vi', 'en-US', 'en'] });
+		}catch(_){}`,
 	})
 
 	// Cài đặt cookie nếu có
@@ -244,15 +253,22 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 			u = u.trim();
 			if (u.startsWith('//')) u = 'https:' + u;
 			if (!u.startsWith('http')) return '';
-			// Gỡ bỏ crop/resize template của TikTok CDN để tải ảnh gốc chất lượng cao nhất
-			u = u.replace(/~tplv-[a-zA-Z0-9_\-\.:]+(?:\.[a-zA-Z0-9]+)?/g, '');
+			// Đối với ByteDance / TikTok CDN: không gỡ bỏ toàn bộ template tplv vì CDN sẽ từ chối trả ảnh (lỗi 2004/405).
+			// Thay vào đó, nâng cấp resize thành 1080:1080 chất lượng cao
+			if (u.includes('ibyteimg.com') || u.includes('tiktokcdn.com')) {
+				if (u.includes('resize-jpeg:')) {
+					u = u.replace(/resize-jpeg:\d+:\d+/g, 'resize-jpeg:1080:1080');
+				} else if (!u.includes('~tplv-') && !u.match(/\.(jpeg|jpg|png|webp)($|\?)/i)) {
+					u = u + '~tplv-aphluv4xwc-resize-jpeg:1080:1080.jpeg';
+				}
+			}
 			return u;
 		};
 
 		const isGoodImage = (u) => {
 			if (!u || u.startsWith('data:')) return false;
 			const lower = u.toLowerCase();
-			if (lower.includes('avatar') || lower.includes('icon') || lower.includes('logo') || lower.includes('1x1') || lower.includes('badge') || lower.includes('pixel') || lower.includes('favicon')) {
+			if (lower.includes('avatar') || lower.includes('icon') || lower.includes('logo') || lower.includes('1x1') || lower.includes('badge') || lower.includes('pixel') || lower.includes('favicon') || lower.includes('captcha')) {
 				return false;
 			}
 			return lower.includes('ibyteimg.com') || lower.includes('tiktokcdn.com') || lower.includes('susercontent.com') || lower.includes('alicdn.com') || lower.includes('tikicdn.com') || lower.includes('scdn.vn') || lower.match(/\.(jpeg|jpg|png|webp)($|\?)/i);
@@ -311,9 +327,18 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 				return;
 			}
 			if (typeof obj === 'object') {
+				if (Array.isArray(obj.urlList)) {
+					for (const u of obj.urlList) addImg(u);
+				}
+				if (Array.isArray(obj.url_list)) {
+					for (const u of obj.url_list) addImg(u);
+				}
+				if (Array.isArray(obj.images)) {
+					for (const im of obj.images) deepExtractFromJSON(im);
+				}
 				for (const k of Object.keys(obj)) {
 					const lk = k.toLowerCase();
-					if (lk.includes('image') || lk.includes('img') || lk.includes('photo') || lk.includes('picture') || lk.includes('url') || lk.includes('desc') || lk.includes('detail') || lk.includes('video') || lk.includes('play_addr') || lk.includes('sku')) {
+					if (lk.includes('image') || lk.includes('img') || lk.includes('photo') || lk.includes('picture') || lk.includes('url') || lk.includes('desc') || lk.includes('detail') || lk.includes('video') || lk.includes('play_addr') || lk.includes('sku') || lk.includes('productinfo')) {
 						deepExtractFromJSON(obj[k]);
 					}
 				}
@@ -324,11 +349,28 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 			if (window.__UNIVERSAL_DATA_FOR_REHYDRATION__) deepExtractFromJSON(window.__UNIVERSAL_DATA_FOR_REHYDRATION__);
 			if (window.SIGI_STATE) deepExtractFromJSON(window.SIGI_STATE);
 			if (window.RENDER_DATA) deepExtractFromJSON(window.RENDER_DATA);
-			document.querySelectorAll('script[type="application/json"], script[id*="DATA"], script[id*="STATE"]').forEach(s => {
+			const sEl = document.getElementById('__UNIVERSAL_DATA_FOR_REHYDRATION__') || document.querySelector('script#__UNIVERSAL_DATA_FOR_REHYDRATION__') || document.getElementById('SIGI_STATE') || document.getElementById('RENDER_DATA');
+			if (sEl && sEl.textContent) {
 				try {
-					const parsed = JSON.parse(s.textContent || '{}');
-					deepExtractFromJSON(parsed);
+					deepExtractFromJSON(JSON.parse(sEl.textContent));
 				} catch(_) {}
+			}
+			document.querySelectorAll('script').forEach(s => {
+				const txt = s.textContent || '';
+				if (txt.includes('ibyteimg.com') || txt.includes('tos-alisg') || txt.includes('tos-maliva')) {
+					const matches = txt.match(/https?:\\?\/\\?\/[^\s"'<>\\]+ibyteimg\.com\\?\/[^\s"'<>\\]+/g);
+					if (matches) {
+						matches.forEach(m => {
+							const clean = m.replace(/\\u002F/g, '/').replace(/\\/g, '');
+							addImg(clean);
+						});
+					}
+				}
+				if (s.type === 'application/json' || s.id.includes('DATA') || s.id.includes('STATE')) {
+					try {
+						deepExtractFromJSON(JSON.parse(txt));
+					} catch(_) {}
+				}
 			});
 		} catch(e) {
 			logs.push('JSON parse: ' + e.message);

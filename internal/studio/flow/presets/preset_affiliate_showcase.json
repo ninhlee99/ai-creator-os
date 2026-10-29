@@ -101,31 +101,31 @@
           {
             "duration_seconds": 6,
             "variables": {
-              "shot_prompt": "Open with a clear product-use hook. Introduce {{product_name}} through an immediate, truthful interaction."
+              "shot_prompt": "Hook shot (0-6s): Full body showcase introducing {{product_name}}. Model turns confidently to camera with an engaging smile, highlighting the overall silhouette and elegant fit."
             }
           },
           {
             "duration_seconds": 6,
             "variables": {
-              "shot_prompt": "Show the selected character naturally using {{product_name}}. Keep exact listing appearance."
+              "shot_prompt": "Detail shot (6-12s): Macro close-up tracking shot gliding over the fabric texture, seams, bow-knot details, and mesh layers of {{product_name}}, showcasing premium material quality."
             }
           },
           {
             "duration_seconds": 6,
             "variables": {
-              "shot_prompt": "Show a medium framing and a confident, natural product demonstration."
+              "shot_prompt": "Movement shot (12-18s): Gentle twirl and 360-degree rotation showing how {{product_name}} flows dynamically with movement, emphasizing comfort and flattering waistline."
             }
           },
           {
             "duration_seconds": 6,
             "variables": {
-              "shot_prompt": "Show one sharp product detail while it remains worn or actively used."
+              "shot_prompt": "Lifestyle shot (18-24s): Medium framing in natural ambient setting, posing naturally to show real-world wearability and styling versatility of {{product_name}}."
             }
           },
           {
             "duration_seconds": 6,
             "variables": {
-              "shot_prompt": "Close with a memorable product-use payoff and a clean final composition."
+              "shot_prompt": "Payoff CTA shot (24-30s): Warm, smiling direct-to-camera presentation, gesturing naturally toward the TikTok Shop product cart with a welcoming call to order today."
             }
           }
         ]

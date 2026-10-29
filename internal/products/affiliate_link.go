@@ -152,6 +152,7 @@ func isInvalidProductTitle(t string) bool {
 	lower := strings.ToLower(strings.TrimSpace(t))
 	return lower == "" ||
 		strings.Contains(lower, "security check") ||
+		strings.Contains(lower, "verify to continue") ||
 		strings.Contains(lower, "robot or human") ||
 		strings.Contains(lower, "captcha") ||
 		strings.Contains(lower, "access denied") ||
@@ -283,7 +284,14 @@ var (
 func cleanCDNImageURL(u string) string {
 	u = strings.TrimSpace(u)
 	if strings.Contains(u, "ibyteimg.com") || strings.Contains(u, "tiktokcdn.com") {
-		u = tiktokCropSuffixRegex.ReplaceAllString(u, "")
+		// Do NOT strip the entire ~tplv template from ByteDance images,
+		// because ByteDance CDN requires the processing template or image format to serve the image.
+		// Instead, upgrade small thumbnails to full resolution (1080:1080).
+		if strings.Contains(u, "resize-jpeg:") {
+			u = regexp.MustCompile(`resize-jpeg:\d+:\d+`).ReplaceAllString(u, "resize-jpeg:1080:1080")
+		} else if !strings.Contains(u, "~tplv-") && !strings.Contains(u, ".jpg") && !strings.Contains(u, ".jpeg") && !strings.Contains(u, ".png") && !strings.Contains(u, ".webp") {
+			u = u + "~tplv-aphluv4xwc-resize-jpeg:1080:1080.jpeg"
+		}
 	} else if strings.Contains(u, "susercontent.com") {
 		u = shopeeThumbSuffixRegex.ReplaceAllString(u, "")
 	}
