@@ -10,7 +10,7 @@ Thanh điều hướng Cài đặt gồm 3 tab chuẩn:
    - Quản lý các tài khoản AI (ChatGPT, Gemini, Claude, Grok...).
    - Đăng nhập phiên Web AI qua Chromium desktop riêng biệt.
    - Thống kê hạn mức và cấu hình mô hình AI mặc định.
-   - Xuất và nhập cấu hình an toàn bằng JSON.
+   - Cấu hình API Key & Model tùy biến cho các node Workflow.
 
 2. **🔀 Thứ tự AI (`/settings/providers`)**:
    - Cấu hình chuỗi ưu tiên nhà cung cấp AI (Provider chain order).

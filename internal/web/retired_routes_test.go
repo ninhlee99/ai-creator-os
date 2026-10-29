@@ -24,6 +24,8 @@ func TestRetiredTrendPresetRoutesAreGone(t *testing.T) {
 		{http.MethodGet, "/api/studio/story-plots"},
 		{http.MethodPost, "/create-one-command"},
 		{http.MethodPost, "/api/create-one-command"},
+		{http.MethodGet, "/settings/config/export-json"},
+		{http.MethodPost, "/settings/config/import-json"},
 	} {
 		req := httptest.NewRequest(tc.method, tc.path, nil)
 		rec := httptest.NewRecorder()

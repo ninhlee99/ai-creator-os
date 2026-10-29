@@ -12,9 +12,9 @@ Web AI cung cấp account Muse AI/Google Flow cho tác vụ tạo media thuộc 
 - Session connected không chứng minh quyền generation, gói miễn phí hoặc credits còn lại.
 - Không retry qua account khác nếu request có thể đã được provider nhận.
 
-## Cấu hình JSON
+## Sao lưu và phục hồi
 
-JSON export ở màn API Key không chứa credential hoặc Web AI session. Backup ZIP cũng bỏ `webai.db`; sau khi restore sang máy mới, đăng nhập lại Web AI. Import vẫn nhận cấu hình legacy có credential; chỉ nhập file tin cậy và xoay key nếu file từng bị lộ.
+Sao lưu hệ thống sử dụng cơ chế Backup ZIP chuẩn tại **Cài đặt → An toàn**. Cơ sở dữ liệu Web AI (`webai.db`) được loại trừ khỏi file backup vì lý do an toàn bảo mật; sau khi restore sang máy mới, người dùng chỉ cần đăng nhập lại tài khoản Web AI trên giao diện.
 
 ## Giới hạn
 

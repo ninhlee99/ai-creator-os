@@ -151,8 +151,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
 	mux.HandleFunc("POST /settings/models/update", s.handleModelsUpdate)
 	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
-	mux.HandleFunc("GET /settings/config/export-json", s.handleConfigJSONExport)
-	mux.HandleFunc("POST /settings/config/import-json", s.handleConfigJSONImport)
 	mux.HandleFunc("POST /settings/master", s.handleSettingsMaster)
 	mux.HandleFunc("POST /settings/api-budget", s.handleSettingsAPIBudget)
 	mux.HandleFunc("POST /settings/api", s.handleSettingsAPIToggle)
