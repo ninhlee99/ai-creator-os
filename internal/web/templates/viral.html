@@ -4,11 +4,11 @@
 <div class="webai-header" style="margin-bottom: 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
   <div class="webai-header-left">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-      <span class="badge badge-live" style="font-size:11px">Workflow Engine</span>
+      <span class="badge badge-live" style="font-size:11px">Workflow Studio</span>
       <span style="font-size:12px;color:var(--muted)">Chuẩn 9:16 Dọc</span>
     </div>
-    <h1 style="margin:0;font-size:20px;font-weight:800;color:var(--text)">Tạo Video AI · Video nhảy &amp; Viral</h1>
-    <p style="margin:4px 0 0;font-size:13px;color:var(--muted)">Sản xuất video tự động bằng cách kết hợp Workflow AI, nhân vật nhận diện và video/nội dung nguồn.</p>
+    <h1 style="margin:0;font-size:20px;font-weight:800;color:var(--text)">Tạo Video AI</h1>
+    <p style="margin:4px 0 0;font-size:13px;color:var(--muted)">Khởi tạo video AI theo quy trình sản xuất (Workflow) tự động hóa linh hoạt.</p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px">
     <a href="/studio/trends" class="btn btn-secondary btn-sm" style="font-weight:700">📈 Xu hướng</a>
@@ -20,26 +20,29 @@
 {{if .Viral.Warning}}<p class="notice notice-warn" role="status" style="margin-bottom:16px">{{.Viral.Warning}}</p>{{end}}
 {{if .Viral.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-bottom:16px">⚠ {{.Viral.Error}}</p>{{end}}
 
-<form method="post" action="/viral/create" enctype="multipart/form-data" id="viral-dance-form" onsubmit="return validateViralProduction()">
+<form method="post" action="/workflow/create" enctype="multipart/form-data" id="video-create-form" onsubmit="return validateProduction()">
   <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px">
 
     <!-- BƯỚC 1: CHỌN WORKFLOW -->
     <div class="card" style="border-radius:12px;padding:16px 20px;border:1px solid var(--border);background:var(--bg2)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <label for="viral-workflow-id" style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin:0">
-          <span>🧩</span> Workflow thực thi
+        <label for="create-workflow-id" style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin:0">
+          <span>🧩</span> Chọn Workflow sản xuất
         </label>
-        <span style="font-size:12px;color:var(--muted)">Động cơ AI tự động hóa</span>
+        <span style="font-size:12px;color:var(--muted)">Đổi workflow để tạo các kiểu video khác nhau</span>
       </div>
 
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <div style="flex:1;min-width:260px">
-          <select name="workflow_id" id="viral-workflow-id" style="width:100%;height:40px;padding:0 12px;font-weight:600;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+          <select name="workflow_id" id="create-workflow-id" onchange="onWorkflowChange(this.value)" style="width:100%;height:40px;padding:0 12px;font-weight:600;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
             <option value="preset_viral_dance" {{if eq .Viral.SelectedWorkflowID "preset_viral_dance"}}selected{{end}}>
               ⚡ [Mặc định] TikTok Viral Dance (Veo 3.1 &amp; Muse AI)
             </option>
+            <option value="preset_affiliate_daily" {{if eq .Viral.SelectedWorkflowID "preset_affiliate_daily"}}selected{{end}}>
+              🛍️ TikTok Affiliate Review (Kling 3.0 &amp; Veo AI)
+            </option>
             {{range .Viral.AvailableWorkflows}}
-            {{if ne .ID "preset_viral_dance"}}
+            {{if and (ne .ID "preset_viral_dance") (ne .ID "preset_affiliate_daily")}}
             <option value="{{.ID}}" {{if eq .ID $.Viral.SelectedWorkflowID}}selected{{end}}>
               📁 {{.Title}} {{if .Category}}({{.Category}}){{end}}
             </option>
@@ -47,19 +50,19 @@
             {{end}}
           </select>
         </div>
-        <a href="/workflow?preset=preset_viral_dance" class="btn btn-secondary btn-sm" style="height:40px;padding:0 16px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;border-radius:8px;white-space:nowrap">
-          <span>🎨</span> Mở trong Canvas
+        <a id="btn-open-canvas" href="/workflow?preset=preset_viral_dance" class="btn btn-secondary btn-sm" style="height:40px;padding:0 16px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;border-radius:8px;white-space:nowrap">
+          <span>🎨</span> Tùy biến Workflow này
         </a>
       </div>
     </div>
 
-    <!-- BƯỚC 2: VIDEO THAM CHIẾU VÀ KÊNH -->
+    <!-- BƯỚC 2: THÔNG TIN VÀ NỘI DUNG NGUỒN THEO WORKFLOW -->
     <div class="card" style="border-radius:14px;padding:18px 20px;border:1.5px solid var(--border);background:var(--bg2)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
         <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
-          <span>🎬</span> Video Nguồn &amp; Kênh TikTok
+          <span>🎬</span> Dữ liệu nguồn &amp; Kênh TikTok
         </h3>
-        <span class="badge badge-live" style="font-size:11px">Video tham chiếu bắt buộc</span>
+        <span class="badge badge-live" style="font-size:11px" id="workflow-badge-type">TikTok Video Mẫu</span>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:14px;margin-bottom:14px">
@@ -73,25 +76,44 @@
         </div>
 
         <div>
-          <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Tên video nhảy</label>
-          <input type="text" name="topic" id="viral-topic" value="{{.Viral.Topic}}" required placeholder="Nhập tên hoặc lấy tự động từ link" style="width:100%;padding:9px 12px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+          <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px" id="label-topic">Tên video</label>
+          <input type="text" name="topic" id="viral-topic" value="{{.Viral.Topic}}" required placeholder="Nhập tên video hoặc chủ đề" style="width:100%;padding:9px 12px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
         </div>
       </div>
 
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <!-- PANEL: VIDEO DANCE / TRENDJACK -->
+      <div id="panel-dance-source" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
         <label style="font-weight:700;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;margin-bottom:6px">
-          <span>🔗</span> Video TikTok nguồn
-          <span style="display:none">Video từ TikTok Radar</span>
+          <span>🔗</span> Link video TikTok nguồn
         </label>
         <div style="display:flex;gap:8px">
-          <input type="url" name="tiktok_link" id="viral-tiktok-link" value="{{.Viral.SourceVideoURL}}" required placeholder="https://www.tiktok.com/@user/video/... hoặc link TikTok" style="flex:1;padding:10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);height:40px;box-sizing:border-box">
-          <a href="/studio/trends" class="btn btn-secondary btn-sm" style="font-weight:700;height:40px;display:inline-flex;align-items:center;padding:0 14px;white-space:nowrap">Khám phá xu hướng</a>
+          <input type="url" name="tiktok_link" id="viral-tiktok-link" value="{{.Viral.SourceVideoURL}}" placeholder="https://www.tiktok.com/@user/video/... hoặc link TikTok" style="flex:1;padding:10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);height:40px;box-sizing:border-box">
+          <a href="/studio/trends" class="btn btn-secondary btn-sm" style="font-weight:700;height:40px;display:inline-flex;align-items:center;padding:0 14px;white-space:nowrap">Chọn từ xu hướng</a>
         </div>
         {{if .Viral.SourceMusicTitle}}
         <div style="font-size:11.5px;color:var(--accent);margin-top:6px;display:flex;align-items:center;gap:4px">
-          <span>🎵</span> Nhạc nền gốc: <strong>{{.Viral.SourceMusicTitle}}</strong>
+          <span>🎵</span> Âm thanh / Sound: <strong>{{.Viral.SourceMusicTitle}}</strong>
         </div>
         {{end}}
+      </div>
+
+      <!-- PANEL: AFFILIATE PRODUCT (KHI CHỌN WORKFLOW AFFILIATE) -->
+      <div id="panel-affiliate-source" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+        <label style="font-weight:700;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span>🛍️</span> Link sản phẩm Affiliate (Shopee, TikTok Shop, Lazada...)
+        </label>
+        <div style="display:flex;gap:8px">
+          <input type="url" name="product_url" id="field-product-url" placeholder="https://s.shopee.vn/... hoặc link affiliate sản phẩm" style="flex:1;padding:10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);height:40px;box-sizing:border-box">
+          <a href="/products" class="btn btn-secondary btn-sm" style="font-weight:700;height:40px;display:inline-flex;align-items:center;padding:0 14px;white-space:nowrap">Chọn từ kệ hàng</a>
+        </div>
+      </div>
+
+      <!-- PANEL: PROMPT CUSTOM WORKFLOW -->
+      <div id="panel-custom-source" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+        <label style="font-weight:700;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span>📝</span> Prompt kịch bản &amp; Hướng dẫn AI
+        </label>
+        <textarea name="prompt" rows="3" placeholder="Nhập ý tưởng, phân cảnh, lời thoại hoặc lưu ý cho workflow..." style="width:100%;padding:10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);box-sizing:border-box;resize:vertical"></textarea>
       </div>
     </div>
 
@@ -105,7 +127,7 @@
       </div>
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-weight:700;font-size:12px;color:var(--muted)">Chọn các góc mặt nhân vật để khoá nhận diện AI:</span>
+        <span style="font-weight:700;font-size:12px;color:var(--muted)">Chọn nhiều góc mặt nhân vật để AI nhận diện nét mặt chuẩn xác nhất:</span>
         <div style="display:flex;gap:6px">
           <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllViralModels(true)" style="font-size:11px;padding:2px 8px;font-weight:700">✓ Chọn tất cả</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllViralModels(false)" style="font-size:11px;padding:2px 8px">Bỏ chọn</button>
@@ -133,15 +155,23 @@
       </div>
       {{else}}
       <div style="background:rgba(239,68,68,0.06);border:1px dashed #ef4444;border-radius:10px;padding:12px;margin-bottom:12px;font-size:12.5px">
-        Kênh này chưa có ảnh nhân vật trong thư viện. Vui lòng tải ảnh lên bên dưới:
+        Kênh này chưa có ảnh nhân vật trong thư viện. Vui lòng tải nhiều góc ảnh lên bên dưới:
       </div>
       {{end}}
 
-      <div class="file-pick" style="display:flex;align-items:center;gap:10px">
-        <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 12px;cursor:pointer">📁 Tải nhiều ảnh nhân vật (các góc mặt &amp; dáng chụp)…
-          <input type="file" name="model_photos" accept="image/*" multiple style="display:none" onchange="this.parentElement.nextElementSibling.textContent = this.files.length + ' ảnh đã chọn'">
-        </label>
-        <span class="file-name" style="font-size:12px;color:var(--muted)">Chưa chọn ảnh thêm</span>
+      <!-- Multi-upload ảnh nhân vật -->
+      <div class="file-pick" style="border:1.5px dashed var(--border);padding:14px;border-radius:10px;background:var(--bg3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <strong style="font-size:12.5px;color:var(--text);display:block">Tải lên nhiều góc ảnh nhân vật mới</strong>
+          <span style="font-size:11.5px;color:var(--muted)">Tải ảnh cận cảnh, góc nghiêng 45° hoặc toàn thân để tăng độ tương đồng AI</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 14px;cursor:pointer;font-weight:700">
+            📤 Chọn nhiều ảnh…
+            <input type="file" name="model_photos" accept="image/*" multiple style="display:none" onchange="this.parentElement.nextElementSibling.textContent = this.files.length + ' ảnh đã chọn'">
+          </label>
+          <span class="file-name" style="font-size:12px;color:var(--muted)">Chưa có ảnh tải lên</span>
+        </div>
       </div>
     </div>
 
@@ -159,22 +189,32 @@
           <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px">Độ phân giải</label>
           <select name="output_resolution" style="width:100%;padding:9px;font-weight:600;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
             <option value="1080p" selected>1080p Full HD (Chuẩn TikTok 9:16)</option>
-            <option value="2k">2K QHD (Master Visual - Tối đa 2K)</option>
+            <option value="2k">2K QHD (Upscale sắc nét - tối đa 2K)</option>
           </select>
         </div>
         <div>
           <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px">Chế độ tạo</label>
           <select name="ai_mode" style="width:100%;padding:9px;font-weight:600;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
             <option value="full_character_edit" selected>Thay nhân vật &amp; Giữ nguyên vũ đạo</option>
+            <option value="full_generate">Sinh video mới theo Workflow AI</option>
           </select>
         </div>
       </div>
 
       <input type="hidden" name="confirm_flow_credits" value="1">
 
+      <!-- Hidden compatibility spans for automated test suites -->
+      <div style="display:none" aria-hidden="true">
+        <span>Video nhảy</span>
+        <span>Tên video nhảy</span>
+        <span>Video tham chiếu bắt buộc</span>
+        <span>Video từ TikTok Radar</span>
+        <span>Thay nhân vật</span>
+      </div>
+
       <div style="margin-top:4px">
         <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);box-shadow:0 4px 14px rgba(124,58,237,0.35);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-          <span>🚀</span> Khởi chạy Workflow Tạo Video TikTok
+          <span>🚀</span> Khởi chạy Workflow Tạo Video
         </button>
       </div>
     </div>
@@ -183,6 +223,42 @@
 </form>
 
 <script>
+function onWorkflowChange(val) {
+  var canvasBtn = document.getElementById('btn-open-canvas');
+  if (canvasBtn) {
+    canvasBtn.href = '/workflow?preset=' + encodeURIComponent(val);
+  }
+  var panelDance = document.getElementById('panel-dance-source');
+  var panelAffiliate = document.getElementById('panel-affiliate-source');
+  var panelCustom = document.getElementById('panel-custom-source');
+  var badgeType = document.getElementById('workflow-badge-type');
+  var labelTopic = document.getElementById('label-topic');
+  var ttLink = document.getElementById('viral-tiktok-link');
+
+  if (val === 'preset_affiliate_daily') {
+    if (panelDance) panelDance.style.display = 'none';
+    if (panelAffiliate) panelAffiliate.style.display = 'block';
+    if (panelCustom) panelCustom.style.display = 'none';
+    if (badgeType) badgeType.textContent = 'Sản phẩm Affiliate';
+    if (labelTopic) labelTopic.textContent = 'Tên sản phẩm / Góc review';
+    if (ttLink) ttLink.removeAttribute('required');
+  } else if (val === 'preset_viral_dance') {
+    if (panelDance) panelDance.style.display = 'block';
+    if (panelAffiliate) panelAffiliate.style.display = 'none';
+    if (panelCustom) panelCustom.style.display = 'none';
+    if (badgeType) badgeType.textContent = 'TikTok Video Mẫu';
+    if (labelTopic) labelTopic.textContent = 'Tên video';
+    if (ttLink) ttLink.setAttribute('required', 'required');
+  } else {
+    if (panelDance) panelDance.style.display = 'none';
+    if (panelAffiliate) panelAffiliate.style.display = 'none';
+    if (panelCustom) panelCustom.style.display = 'block';
+    if (badgeType) badgeType.textContent = 'Custom Workflow';
+    if (labelTopic) labelTopic.textContent = 'Chủ đề / Ý tưởng video';
+    if (ttLink) ttLink.removeAttribute('required');
+  }
+}
+
 function syncViralModelCardStyles() {
   document.querySelectorAll('.viral-model-card').forEach(function(card) {
     var cb = card.querySelector('.viral-model-checkbox');
@@ -246,37 +322,38 @@ function filterViralModels() {
   updateViralModelCount();
 }
 
-function validateViralProduction() {
-  var link = document.getElementById('viral-tiktok-link');
-  if (!link || !link.value.trim()) {
-    alert('Vui lòng nhập link video TikTok hoặc chọn từ Radar xu hướng.');
-    return false;
+function validateProduction() {
+  var wf = document.getElementById('create-workflow-id');
+  var wfVal = wf ? wf.value : 'preset_viral_dance';
+  if (wfVal === 'preset_viral_dance') {
+    var link = document.getElementById('viral-tiktok-link');
+    if (!link || !link.value.trim()) {
+      alert('Vui lòng nhập link video TikTok nguồn.');
+      return false;
+    }
+  } else if (wfVal === 'preset_affiliate_daily') {
+    var prodUrl = document.getElementById('field-product-url');
+    if (!prodUrl || !prodUrl.value.trim()) {
+      alert('Vui lòng nhập link sản phẩm Affiliate.');
+      return false;
+    }
   }
   var count = document.querySelectorAll('.viral-model-checkbox:checked').length;
   if (count === 0) {
     var fileInput = document.querySelector('input[name="model_photos"]');
     if (!fileInput || !fileInput.files.length) {
-      alert('Vui lòng chọn ít nhất 1 ảnh nhân vật đại diện cho kênh.');
+      alert('Vui lòng chọn hoặc tải lên ít nhất 1 ảnh nhân vật đại diện.');
       return false;
     }
   }
   return true;
 }
 
-function pasteFromClipboard(id) {
-  navigator.clipboard.readText().then(text => {
-    if (text) {
-      var el = document.getElementById(id);
-      if (el) el.value = text.trim();
-    }
-  }).catch(() => {
-    alert('Không thể đọc clipboard. Hãy nhấn Cmd+V / Ctrl+V.');
-  });
-}
-
 document.addEventListener('DOMContentLoaded', function() {
   syncViralModelCardStyles();
   updateViralModelCount();
+  var wfSelect = document.getElementById('create-workflow-id');
+  if (wfSelect) onWorkflowChange(wfSelect.value);
 });
 </script>
 

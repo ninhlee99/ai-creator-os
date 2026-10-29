@@ -330,7 +330,11 @@ func writeViralCreateError(w http.ResponseWriter, r *http.Request, analysisOnly 
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
 		return
 	}
-	http.Redirect(w, r, "/viral?err="+url.QueryEscape(message), http.StatusSeeOther)
+	target := "/workflow/create"
+	if strings.HasPrefix(r.URL.Path, "/viral") {
+		target = "/viral"
+	}
+	http.Redirect(w, r, target+"?err="+url.QueryEscape(message), http.StatusSeeOther)
 }
 
 func studioUnmarshalJSON(data string, v any) error {

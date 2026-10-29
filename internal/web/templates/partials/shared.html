@@ -33,7 +33,6 @@ body.aicos-dialog-open{overflow:hidden}
 {{define "settings-nav"}}
 <nav class="tabs" aria-label="Các mục cài đặt">
   <a href="/settings/system"{{if eq .SettingsPage "system"}} class="active" aria-current="page"{{end}}>⚙️ Hệ thống</a>
-  <a href="/settings/accesstrade"{{if eq .SettingsPage "accesstrade"}} class="active" aria-current="page"{{end}}>🛒 Accesstrade</a>
   <a href="/settings/providers"{{if eq .SettingsPage "providers"}} class="active" aria-current="page"{{end}}>🔀 Thứ tự AI</a>
   <a href="/settings/safety"{{if eq .SettingsPage "safety"}} class="active" aria-current="page"{{end}}>🛡️ An toàn</a>
 </nav>

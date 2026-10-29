@@ -639,7 +639,7 @@ function openRadarPlayer(videoId, title, music, videoUrl, author, views, likes, 
   iframe.src = 'https://www.tiktok.com/player/v1/' + videoId + '?controls=1&autoplay=1&description=1&music_info=1';
 
   soundBtn.href = '/studio?source_music_title=' + encodeURIComponent(safeMusic) + '&source_music_video_url=' + encodeURIComponent(videoUrl);
-  viralBtn.href = '/viral?source_video_url=' + encodeURIComponent(videoUrl) + '&source_music_title=' + encodeURIComponent(safeMusic) + '&topic=' + encodeURIComponent(safeTitle);
+  viralBtn.href = '/workflow/create?source_video_url=' + encodeURIComponent(videoUrl) + '&source_music_title=' + encodeURIComponent(safeMusic) + '&topic=' + encodeURIComponent(safeTitle);
   ttBtn.href = videoUrl;
 
   modal.style.display = 'flex';
@@ -842,7 +842,7 @@ document.addEventListener('keydown', function(e) {
 
       <!-- 4. Nút hành động trực tiếp -->
       <div style="margin-top:auto;padding-top:8px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);">
-        <a href="/viral?tiktok_link={{urlquery .VideoURL}}&source_video_url={{urlquery .VideoURL}}&source_music_title={{urlquery .Music}}&topic={{urlquery .Title}}"
+        <a href="/workflow/create?tiktok_link={{urlquery .VideoURL}}&source_video_url={{urlquery .VideoURL}}&source_music_title={{urlquery .Music}}&topic={{urlquery .Title}}"
            class="btn btn-primary"
            style="width:100%;font-size:12px;font-weight:700;padding:8px 10px;border-radius:8px;text-align:center;background:linear-gradient(135deg, #2563eb, #7c3aed);border:none;box-shadow:0 2px 8px rgba(124,58,237,0.3);text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
           <span>⚡</span> Tạo video theo trend

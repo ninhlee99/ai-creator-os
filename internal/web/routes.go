@@ -176,7 +176,9 @@ func (s *Server) Routes() http.Handler {
 	// Accesstrade (Đợt C): hunter + order sync + công tắc tick.
 	mux.HandleFunc("POST /at/hunt", s.handleATHunt)
 	mux.HandleFunc("POST /at/orders/sync", s.handleATOrderSync)
-	// TikTok viral video creation.
+	// Universal Workflow Video Creation Studio
+	mux.HandleFunc("GET /workflow/create", s.handleViral)
+	mux.HandleFunc("POST /workflow/create", s.handleViralCreate)
 	mux.HandleFunc("GET /viral", s.handleViral)
 	mux.HandleFunc("POST /viral/create", s.handleViralCreate)
 
