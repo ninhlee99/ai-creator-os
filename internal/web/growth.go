@@ -413,7 +413,7 @@ func followerTrendPeriod(span time.Duration) string {
 
 // annotateStudioVideoPerformance compares each linked post with other linked
 // Studio posts of the same flow on the same channel. It reports only observed
-// counters and synced AccessTrade orders; it does not infer watch time or age.
+// counters and synced affiliate orders; it does not infer watch time or age.
 func annotateStudioVideoPerformance(rows []growthStudioVideoRow) {
 	type baseline struct {
 		sum   float64
@@ -470,7 +470,7 @@ func annotateStudioVideoPerformance(rows []growthStudioVideoRow) {
 			continue
 		}
 		if !row.OrdersKnown {
-			row.SalesAdvice = "Chưa có lần đồng bộ đơn AccessTrade; chưa kết luận chuyển đổi."
+			row.SalesAdvice = "Chưa có lần đồng bộ đơn Affiliate; chưa kết luận chuyển đổi."
 			continue
 		}
 		if row.viewsValue > 0 {
@@ -482,7 +482,7 @@ func annotateStudioVideoPerformance(rows []growthStudioVideoRow) {
 		case row.Orders.PendingCount > 0:
 			row.SalesAdvice = "Có đơn đang chờ duyệt; đợi kết quả trước khi đổi offer."
 		case row.Orders.RejectedCount > 0:
-			row.SalesAdvice = "Đơn đã bị từ chối; kiểm tra trạng thái offer và điều kiện ghi nhận AccessTrade."
+			row.SalesAdvice = "Đơn đã bị từ chối; kiểm tra trạng thái offer và điều kiện ghi nhận Affiliate."
 		default:
 			row.SalesAdvice = "Chưa ghi nhận đơn theo mã video; kiểm tra tracking, giá và CTA. Chưa có dữ liệu click để tách nguyên nhân."
 		}

@@ -105,7 +105,7 @@
             <strong>{{.Orders.TotalCount}} đơn</strong>{{if .OrderPerView}} · {{.OrderPerView}} / lượt xem{{end}}<br>
             <span class="hint">Chờ {{.Orders.PendingCount}} · duyệt {{.Orders.ApprovedCount}} · từ chối {{.Orders.RejectedCount}}</span><br>
             <span class="hint">Hoa hồng đã duyệt: {{printf "%.0f" .Orders.ApprovedCommission}}₫ · đồng bộ {{.OrdersSyncedAt}}</span>
-          {{else}}Chưa có snapshot đơn AccessTrade{{end}}
+          {{else}}Chưa có snapshot đơn Affiliate{{end}}
         {{else}}Chưa ghép đơn trước khi TikTok xác minh video thuộc kênh{{end}}
       {{else}}Job chưa có mã tracking riêng{{end}}
     {{else}}—{{end}}

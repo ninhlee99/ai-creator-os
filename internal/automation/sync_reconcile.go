@@ -121,7 +121,7 @@ func (s *Service) commissionSource() (OrdersSource, string) {
 	if s.CommissionSource != nil {
 		return s.CommissionSource, ""
 	}
-	return nil, "Hoa hồng được đối soát tự động qua Accesstrade (30 phút/lần) — xem ở trang Affiliate."
+	return nil, "Hoa hồng được đối soát tự động qua affiliate — xem ở trang Affiliate."
 }
 
 // noteCommissionState records the current source state only when it
@@ -137,7 +137,7 @@ func (s *Service) noteCommissionState(status, msg string) {
 	}
 	_ = s.Settings.Set(commissionStateSetting, status)
 	_ = s.Settings.Set("commission.note", msg)
-	target := "Accesstrade"
+	target := "Affiliate"
 	_ = s.decide("system", "commission_reconcile", &target, msg,
 		map[string]any{"source_state": status})
 }

@@ -43,7 +43,7 @@ func TrendReadiness(ctx context.Context, path string, p AffiliateParams, caption
 		{Label: "Caption có lời kêu gọi (link/mua/bio)", Ok: hasCTA(caption),
 			Tip: "Thêm câu kêu gọi hành động, ví dụ “Link mua ở mô tả”."},
 		{Label: "Có link affiliate để ra tiền", Ok: strings.TrimSpace(p.AffLink) != "",
-			Tip: "Nhập mã Accesstrade để app tự tạo link theo dõi hoa hồng."},
+			Tip: "Nhập link affiliate hoặc chọn sản phẩm từ kệ hàng để theo dõi hoa hồng."},
 	}
 	r := TrendReport{Total: len(checks), Checks: checks}
 	for _, c := range checks {

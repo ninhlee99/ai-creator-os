@@ -524,7 +524,7 @@ function copyAffiliateTrackingLink(button) {
   if (!value) return;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(value).then(function() {
-      window.showAppNotice('Đã sao chép link tracking AccessTrade của video.', { title: 'Đã sao chép', tone: 'success' });
+      window.showAppNotice('Đã sao chép link affiliate của video.', { title: 'Đã sao chép', tone: 'success' });
     }).catch(function() { window.showAppPrompt('Sao chép link tracking:', value, { label: 'Link tracking', readOnly: true, selectOnOpen: true, confirmText: 'Đóng' }); });
   } else {
     window.showAppPrompt('Sao chép link tracking:', value, { label: 'Link tracking', readOnly: true, selectOnOpen: true, confirmText: 'Đóng' });
@@ -584,6 +584,6 @@ function copyAffiliateTrackingLink(button) {
 <div class="hint" style="margin:4px 0 8px;overflow-wrap:anywhere">
   {{if .ProductName}}<div><strong>Sản phẩm cần gắn trong TikTok Shop:</strong> {{.ProductName}}{{if .ProductShopID}} · ID <code>{{.ProductShopID}}</code>{{end}}{{if .ProductPageURL}} · <a href="{{.ProductPageURL}}" target="_blank" rel="noopener noreferrer">Mở listing ↗</a>{{end}}</div>{{end}}
   {{if .AffiliateAttributionID}}<div>Mã đối chiếu đơn (sub2): <code>{{.AffiliateAttributionID}}</code></div>{{else}}<div>Chưa có mã tracking riêng cho video.</div>{{end}}
-  {{if .AffiliateLink}}<div class="flex flex-wrap items-center gap-2"><span>Link tracking AccessTrade:</span><a href="{{.AffiliateLink}}" target="_blank" rel="noopener noreferrer">Mở link ↗</a><button type="button" class="btn btn-secondary btn-sm" data-affiliate-link="{{.AffiliateLink}}" onclick="copyAffiliateTrackingLink(this)">Sao chép link</button></div><small>Trong TikTok, gắn sản phẩm từ TikTok Shop bằng tìm kiếm sản phẩm. Link AccessTrade dùng đối chiếu đơn; chưa thay thế product card.</small>{{end}}
+  {{if .AffiliateLink}}<div class="flex flex-wrap items-center gap-2"><span>Link affiliate:</span><a href="{{.AffiliateLink}}" target="_blank" rel="noopener noreferrer">Mở link ↗</a><button type="button" class="btn btn-secondary btn-sm" data-affiliate-link="{{.AffiliateLink}}" onclick="copyAffiliateTrackingLink(this)">Sao chép link</button></div><small>Trong TikTok, gắn sản phẩm từ TikTok Shop bằng tìm kiếm sản phẩm. Link affiliate dùng đối chiếu đơn; chưa thay thế product card.</small>{{end}}
 </div>
 {{end}}

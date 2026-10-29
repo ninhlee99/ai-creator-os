@@ -1,13 +1,11 @@
 package web
 
-// Affiliate product catalog: discovery, manual add, shelf, and scheduling.
+// Affiliate product catalog: shelf and scheduling.
 
 import (
 	"log"
 	"math"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
@@ -32,80 +30,16 @@ func themeOptions() []themeOption {
 	return out
 }
 
-// resolveMinCommission parses the "min_commission" percent field; an empty
-// value falls back to the theme's suggested floor.
-func resolveMinCommission(theme, raw string) float64 {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		if t, ok := products.DescribeTheme(theme); ok {
-			return t.DefaultMinCommission * 100
-		}
-		return 0
-	}
-	p, _ := strconv.ParseFloat(raw, 64)
-	if p < 0 {
-		p = 0
-	}
-	if p > 100 {
-		p = 100
-	}
-	return p
-}
-
-// ---------------------------------------------------------------- products
-
-// handleProducts renders the product discovery page: theme + commission
-// floor form, plus the best saved products for the selected theme. The
-// "shelf" tab is the affiliate shelf (legacy /shop route redirects here).
+// handleProducts renders the affiliate product page: 1-link import and shelf products.
 func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
-	rawTab := r.URL.Query().Get("tab")
-	tab := productTabName(rawTab)
-	if rawTab != "" && rawTab != tab {
-		q := r.URL.Query()
-		q.Set("tab", tab)
-		u := *r.URL
-		u.RawQuery = q.Encode()
-		http.Redirect(w, r, u.RequestURI(), http.StatusSeeOther)
-		return
-	}
 	if s.Products == nil {
 		s.renderProductResults(w, r, s.ctx(
-			"Tab", tab,
-			"Themes", themeOptions(),
 			"Shelf", s.shelfViews(),
 			"Error", "Kho sản phẩm chưa được khởi tạo. Hãy kiểm tra cấu hình app rồi thử lại.",
 		))
 		return
 	}
-	theme := strings.TrimSpace(r.URL.Query().Get("theme"))
-	keyword := strings.TrimSpace(r.URL.Query().Get("q"))
-	minPct := resolveMinCommission(theme, r.URL.Query().Get("min"))
-	var results []products.Product
-	var rerr error
-	if tab == "affiliate" || tab == "shelf" {
-		// Affiliate operations and shelf tab have their own dedicated views; do not load discovery candidates.
-	} else if tab == "pending" {
-		results, rerr = s.Products.ReviewList(products.ReviewPending, keyword, theme, 100)
-	} else if tab == "rejected" {
-		results, rerr = s.Products.ReviewList(products.ReviewRejected, keyword, theme, 50)
-	} else if keyword != "" || theme != "" {
-		results, rerr = s.Products.Search(keyword, theme, minPct/100, 30)
-	} else {
-		results, rerr = s.Products.TopHighCommission(30)
-	}
-	results = excludeSource(results, "market_verified")
-	if rerr != nil {
-		s.renderProductResults(w, r, s.ctx(
-			"Tab", tab,
-			"Themes", themeOptions(),
-			"Theme", theme,
-			"Keyword", keyword,
-			"MinPct", minPct,
-			"Shelf", s.shelfViews(),
-			"Error", "Không đọc được kho sản phẩm: "+rerr.Error(),
-		))
-		return
-	}
+
 	var availableWorkflows []WorkflowOption
 	if s.Studio != nil {
 		if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
@@ -129,17 +63,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if len(results) > 0 {
-		results = s.attachProductSalesChange(results)
-		results = s.attachTikTokRadarEvidence(r.Context(), results)
-	}
 	s.renderProductResults(w, r, s.ctx(
-		"Tab", tab,
-		"Themes", themeOptions(),
-		"Theme", theme,
-		"Keyword", keyword,
-		"MinPct", minPct,
-		"Results", results,
 		"Shelf", s.shelfViews(),
 		"AvailableModels", s.listModelPhotoCards(),
 		"AccountOptions", accountOptions,
@@ -162,23 +86,6 @@ func (s *Server) renderProductResults(w http.ResponseWriter, r *http.Request, da
 	s.render(w, "products", data)
 }
 
-func productTabName(tab string) string {
-	switch tab {
-	case "shelf", "ke":
-		return "shelf"
-	case "affiliate", "tracking":
-		return "affiliate"
-	case "rejected", "removed":
-		return "rejected"
-	case "pending", "review":
-		return "pending"
-	case "", "discover", "tim":
-		return "discover"
-	default:
-		return "discover"
-	}
-}
-
 // productView is the template projection of one shelf product (Kệ hàng).
 type productView struct {
 	ID                 int64
@@ -199,8 +106,7 @@ type productView struct {
 
 // shelfViews projects the shared product store's shelf (status
 // shelf/scaled) for the "Kệ hàng" tab — the products AI gắn vào
-// video/live. R2-W1: one store — autopilot and the shelf read the same
-// kho, so adding here makes the product immediately pickable.
+// video/live.
 func (s *Server) shelfViews() []productView {
 	if s.Products == nil {
 		return nil
@@ -244,14 +150,4 @@ func (s *Server) shelfViews() []productView {
 		})
 	}
 	return views
-}
-
-func excludeSource(items []products.Product, source string) []products.Product {
-	out := items[:0]
-	for _, p := range items {
-		if p.Source != source {
-			out = append(out, p)
-		}
-	}
-	return out
 }

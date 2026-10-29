@@ -225,7 +225,7 @@ func TestReconcileFailClosedNoSource(t *testing.T) {
 	if len(decisions) != 1 {
 		t.Fatalf("decisions = %d, want exactly 1", len(decisions))
 	}
-	if !strings.Contains(decisions[0].Reason, "đối soát tự động qua Accesstrade") {
+	if !strings.Contains(decisions[0].Reason, "đối soát tự động qua affiliate") {
 		t.Errorf("decision reason = %q, want the honest no-source reason", decisions[0].Reason)
 	}
 

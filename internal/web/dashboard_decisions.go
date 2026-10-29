@@ -101,7 +101,7 @@ func dashboardDecisionEvidence(agent, action, raw string) string {
 	case agent == "growth_publisher":
 		source = "Growth + TikTok"
 	case agent == "system" && action == "commission_reconcile":
-		source = "AccessTrade reconciliation"
+		source = "Affiliate reconciliation"
 	}
 	if source != "" {
 		parts = append([]string{"nguồn: " + source}, parts...)
@@ -126,7 +126,7 @@ func dashboardEvidenceScalar(value any) (string, bool) {
 func dashboardDecisionNextStep(agent, action, target string) (string, string) {
 	switch {
 	case agent == "system" && action == "commission_reconcile":
-		return "Mở đối soát Accesstrade", "/products#at-orders"
+		return "Mở kệ hàng", "/products"
 	case agent == "at_hunter" || agent == "hunter" || agent == "analyst":
 		return "Mở danh sách sản phẩm", "/products"
 	case strings.HasPrefix(agent, "growth_") || agent == "growth":
