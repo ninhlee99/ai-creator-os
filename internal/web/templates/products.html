@@ -356,6 +356,27 @@
         </div>
 
       </div>
+
+      <!-- KHỐI QUẢN LÝ & TẢI THÊM ẢNH SẢN PHẨM -->
+      <div style="grid-column: 1 / -1; background:var(--bg3); border:1.5px dashed var(--border); border-radius:12px; padding:14px 16px; margin-top:8px">
+        <form method="post" action="/products/add-images" enctype="multipart/form-data" style="margin:0">
+          <input type="hidden" name="product_id" id="detail-add-img-product-id" value="">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <span style="font-size:12.5px; font-weight:750; color:var(--text); display:flex; align-items:center; gap:6px">
+              <span>📸</span> Bổ sung góc ảnh cho sản phẩm này
+            </span>
+            <span style="font-size:11px; color:var(--muted)">Tải file từ máy hoặc dán link ảnh</span>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+            <input type="file" name="product_images" multiple accept="image/*" style="font-size:12px; color:var(--muted); flex:1; min-width:200px">
+            <input type="text" name="image_urls" placeholder="Hoặc dán URL ảnh bổ sung..." style="flex:2; min-width:240px; height:36px; padding:0 10px; font-size:12.5px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text)">
+            <button type="submit" class="btn btn-secondary btn-sm" style="height:36px; padding:0 16px; font-weight:750; font-size:12.5px; border-radius:8px; white-space:nowrap">
+              + Thêm ảnh
+            </button>
+          </div>
+        </form>
+      </div>
+
     </div>
 
     <!-- FOOTER ACTIONS -->
@@ -466,6 +487,9 @@ function openProductDetailModal(id) {
   if (!card) return;
   var d = card.dataset || {};
   
+  var addImgId = document.getElementById('detail-add-img-product-id');
+  if (addImgId) addImgId.value = id;
+
   document.getElementById('detail-title').innerText = d.title || '';
   document.getElementById('detail-sku').innerText = d.sku || 'N/A';
   

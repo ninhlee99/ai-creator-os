@@ -71,6 +71,79 @@ func (s *Server) handleProductsImportLink(w http.ResponseWriter, r *http.Request
 	seeOther(w, r, "/products?tab=shelf&ok="+url.QueryEscape(msg))
 }
 
+// handleProductsAddImages allows adding multiple images (via upload or URLs) to an existing product.
+func (s *Server) handleProductsAddImages(w http.ResponseWriter, r *http.Request) {
+	if s.Products == nil {
+		s.fail(w, fmt.Errorf("kho sản phẩm chưa khởi tạo"), "add product images")
+		return
+	}
+	_ = r.ParseMultipartForm(50 << 20)
+	_ = r.ParseForm()
+
+	productID, _ := strconv.ParseInt(r.FormValue("product_id"), 10, 64)
+	if productID <= 0 {
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Mã sản phẩm không hợp lệ."))
+		return
+	}
+
+	var newImages []string
+
+	// 1. Parse text URLs
+	rawURLs := r.FormValue("image_urls")
+	if strings.TrimSpace(rawURLs) != "" {
+		for _, u := range strings.FieldsFunc(rawURLs, func(c rune) bool {
+			return c == '\n' || c == '\r' || c == ',' || c == ';' || c == ' '
+		}) {
+			u = strings.TrimSpace(u)
+			if strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") {
+				newImages = append(newImages, u)
+			}
+		}
+	}
+
+	// 2. Parse uploaded files
+	if r.MultipartForm != nil && len(r.MultipartForm.File["product_images"]) > 0 {
+		uploadDir := "./data/uploads"
+		if s.Studio != nil {
+			uploadDir = s.Studio.UploadDir()
+		}
+		_ = os.MkdirAll(uploadDir, 0755)
+
+		for idx, fh := range r.MultipartForm.File["product_images"] {
+			ext := filepath.Ext(fh.Filename)
+			if ext == "" {
+				ext = ".jpg"
+			}
+			fname := fmt.Sprintf("prod_%d_%d_%d%s", productID, time.Now().Unix(), idx+1, ext)
+			dest := filepath.Join(uploadDir, fname)
+
+			src, err := fh.Open()
+			if err != nil {
+				continue
+			}
+			out, err := os.Create(dest)
+			if err == nil {
+				_, _ = io.Copy(out, src)
+				out.Close()
+				newImages = append(newImages, "/uploads/"+fname)
+			}
+			src.Close()
+		}
+	}
+
+	if len(newImages) == 0 {
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Vui lòng chọn file ảnh để tải lên hoặc nhập URL ảnh."))
+		return
+	}
+
+	if err := s.Products.AddProductImages(productID, newImages); err != nil {
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Không thể cập nhật ảnh sản phẩm: "+err.Error()))
+		return
+	}
+
+	seeOther(w, r, fmt.Sprintf("/products?tab=shelf&ok=%s", url.QueryEscape(fmt.Sprintf("✓ Đã thêm thành công %d hình ảnh vào sản phẩm!", len(newImages)))))
+}
+
 // handleProductsCreateVideo handles 1-click video creation job queueing for a shelf product.
 func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Request) {
 	if s.Products == nil {

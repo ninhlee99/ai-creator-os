@@ -268,6 +268,8 @@ func extractImages(h, finalURL string) []string {
 
 	addImg := func(u string) {
 		u = strings.TrimSpace(html.UnescapeString(u))
+		u = strings.ReplaceAll(u, `\/`, `/`)
+		u = strings.Trim(u, `"' `)
 		if u == "" {
 			return
 		}
@@ -325,21 +327,33 @@ func extractImages(h, finalURL string) []string {
 	jsonArrayImageRegex := regexp.MustCompile(`"(?:images|image)"\s*:\s*\[([^\]]+)\]`)
 	for _, m := range jsonArrayImageRegex.FindAllStringSubmatch(h, -1) {
 		if len(m) > 1 {
-			rawItems := strings.Split(m[1], ",")
-			for _, it := range rawItems {
-				it = strings.Trim(strings.TrimSpace(it), "\"")
-				if strings.HasPrefix(it, "http://") || strings.HasPrefix(it, "https://") {
-					addImg(it)
-				} else if len(it) == 32 && !strings.Contains(it, " ") {
-					// Hash ảnh Shopee: ví dụ vn-11134207-7r98o-xyz123 hoặc 32 hex chars
-					addImg("https://down-vn.img.susercontent.com/file/" + it)
+			content := strings.ReplaceAll(m[1], `\/`, `/`)
+			var items []string
+			if err := json.Unmarshal([]byte("["+content+"]"), &items); err == nil {
+				for _, it := range items {
+					it = strings.TrimSpace(it)
+					if strings.HasPrefix(it, "http://") || strings.HasPrefix(it, "https://") {
+						addImg(it)
+					} else if len(it) == 32 && !strings.Contains(it, " ") {
+						addImg("https://down-vn.img.susercontent.com/file/" + it)
+					}
+				}
+			} else {
+				rawItems := strings.Split(content, ",")
+				for _, it := range rawItems {
+					it = strings.Trim(strings.TrimSpace(it), `"' `)
+					if strings.HasPrefix(it, "http://") || strings.HasPrefix(it, "https://") {
+						addImg(it)
+					} else if len(it) == 32 && !strings.Contains(it, " ") {
+						addImg("https://down-vn.img.susercontent.com/file/" + it)
+					}
 				}
 			}
 		}
 	}
 
 	// Trích xuất trực tiếp các URL ảnh CDN sản phẩm phổ biến trên sàn (giữ nguyên query params cho signed URL)
-	cdnRegex := regexp.MustCompile(`https://[a-zA-Z0-9_\-\.]*(?:susercontent\.com|ibyteimg\.com|tiktokcdn\.com|alicdn\.com|tikicdn\.com|scdn\.vn)/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?`)
+	cdnRegex := regexp.MustCompile(`https?:\\?/\\?/[a-zA-Z0-9_\-\.]*(?:susercontent\.com|ibyteimg\.com|tiktokcdn\.com|alicdn\.com|tikicdn\.com|scdn\.vn)/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?`)
 	for _, m := range cdnRegex.FindAllString(h, -1) {
 		addImg(m)
 		if len(images) >= 8 {

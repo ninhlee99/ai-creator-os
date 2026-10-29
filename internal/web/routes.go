@@ -145,6 +145,7 @@ func (s *Server) Routes() http.Handler {
 	// Tab "Kệ hàng" (gộp từ trang /shop cũ) nằm trong cùng trang này.
 	mux.HandleFunc("GET /products", s.handleProducts)
 	mux.HandleFunc("POST /products/import-link", s.handleProductsImportLink)
+	mux.HandleFunc("POST /products/add-images", s.handleProductsAddImages)
 	mux.HandleFunc("POST /products/create-video", s.handleProductsCreateVideo)
 	mux.HandleFunc("POST /products/shelf/add", s.handleProductsShelfAdd)
 	mux.HandleFunc("POST /products/shelf/toggle", s.handleProductsShelfToggle)

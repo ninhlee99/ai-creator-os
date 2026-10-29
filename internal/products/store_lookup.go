@@ -1,6 +1,7 @@
 package products
 
 import (
+	"encoding/json"
 	"strings"
 )
 
@@ -44,6 +45,34 @@ func (s *Store) GetByID(id int64) (Product, error) {
 	p, err := scanProduct(s.db.QueryRow(
 		`SELECT `+productCols+` FROM products WHERE id=?`, id))
 	return p, err
+}
+
+// AddProductImages bổ sung thêm các hình ảnh mới vào sản phẩm đã có.
+func (s *Store) AddProductImages(id int64, newImages []string) error {
+	if len(newImages) == 0 {
+		return nil
+	}
+	p, err := s.GetByID(id)
+	if err != nil {
+		return err
+	}
+	seen := make(map[string]bool)
+	for _, img := range p.ImageURLs {
+		seen[img] = true
+	}
+	for _, img := range newImages {
+		img = strings.TrimSpace(img)
+		if img != "" && !seen[img] {
+			seen[img] = true
+			p.ImageURLs = append(p.ImageURLs, img)
+		}
+	}
+	imgs, err := json.Marshal(p.ImageURLs)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`UPDATE products SET image_urls = ? WHERE id = ?`, string(imgs), id)
+	return err
 }
 
 // SearchThemes lists distinct themes with product counts (for the UI).
