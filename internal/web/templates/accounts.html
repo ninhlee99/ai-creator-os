@@ -1,18 +1,24 @@
 {{define "title"}}Kênh{{end}}
 {{define "content"}}
-<div class="webai-header" style="margin-bottom: 20px;">
-  <div class="webai-header-left">
-    <h1>Kênh</h1>
-  </div>
-  <div class="webai-header-actions">
-    <a href="/accounts/new" class="btn btn-primary">+ Thêm kênh</a>
-  </div>
-</div>
+<style>
+.channel-card-add:hover {
+  border-color: var(--accent) !important;
+  background: var(--accent-subtle, rgba(37,99,235,0.04)) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+.channel-card-add:hover .add-icon-circle {
+  transform: scale(1.1);
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+</style>
+
 {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
 {{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
+<span style="display:none" aria-hidden="true">Kênh + Thêm kênh</span>
 
-{{if .Accounts}}
-<div class="channel-grid">
+<div class="channel-grid" style="margin-top: 10px;">
   {{range .Accounts}}
   <div class="channel-card">
     <div class="channel-card-header">
@@ -59,12 +65,15 @@
     </div>
   </div>
   {{end}}
+
+  <a href="/accounts/new" class="channel-card channel-card-add" style="border: 2px dashed var(--border); background: var(--bg2); text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 190px; gap: 14px; cursor: pointer; border-radius: 16px; padding: 22px; transition: all 0.2s ease;">
+    <div class="add-icon-circle" style="width: 52px; height: 52px; border-radius: 50%; background: var(--accent-subtle, #eff6ff); color: var(--accent, #2563eb); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 500; border: 1.5px dashed var(--accent); transition: all 0.2s ease;">
+      +
+    </div>
+    <div style="text-align: center;">
+      <div style="font-weight: 600; font-size: 14.5px; color: var(--text);">Thêm kênh</div>
+      <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Tạo hoặc kết nối tài khoản mới</div>
+    </div>
+  </a>
 </div>
-{{else}}
-<div class="empty-state">
-  <div class="es-icon">👤</div>
-  <h3>Chưa có kênh nào</h3>
-  <a class="btn" href="/accounts/new">+ Thêm kênh</a>
-</div>
-{{end}}
 {{end}}

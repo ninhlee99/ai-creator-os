@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -222,7 +224,10 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 	nextProjectID, nextAccountID, err := ctx.EngineCall(ctx.Context, "googleflow", enhancedPrompt, ingredients, aspect, projectID, accountID, outPath)
 	setGoogleFlowThreadValues(ctx, nextProjectID, nextAccountID)
 	if err != nil {
-		return nil, fmt.Errorf("Google Flow không tạo được video: %w", err)
+		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Google Flow chưa phản hồi (%v). Kích hoạt bộ tạo video chuyển động điện ảnh dự phòng...", err))
+		if renderErr := renderCinematicMotionShot(ctx, ingredients, prompt, outPath); renderErr != nil {
+			return nil, fmt.Errorf("Google Flow không tạo được video: %w", err)
+		}
 	}
 	if !fileExists(outPath) || !isVideoFile(outPath) {
 		return nil, fmt.Errorf("Google Flow không tạo được tệp video hợp lệ")
@@ -313,7 +318,10 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_museai.mp4", safeWorkflowPathPart(node.ID)))
 	threadTitle := fmt.Sprintf("Flow [%s: %s]", node.ID, node.Title)
 	if err := renderMuseWorkflowNode(ctx, threadTitle, prompt, ingredients, outPath); err != nil {
-		return nil, err
+		ctx.Log(fmt.Sprintf("MuseAIVideoNode: Web AI render chưa phản hồi (%v). Kích hoạt bộ tạo video chuyển động điện ảnh dự phòng...", err))
+		if renderErr := renderCinematicMotionShot(ctx, ingredients, prompt, outPath); renderErr != nil {
+			return nil, err
+		}
 	}
 	if !fileExists(outPath) || !isVideoFile(outPath) {
 		return nil, fmt.Errorf("Muse AI không tạo được video đầu ra hợp lệ")
@@ -346,6 +354,45 @@ func renderMuseWorkflowNode(ctx *ExecutionContext, threadTitle, prompt string, f
 	}
 	if ctx.MuseThread != nil && strings.TrimSpace(nextThreadURL) != "" {
 		ctx.MuseThread.URL = nextThreadURL
+	}
+	return nil
+}
+
+func renderCinematicMotionShot(ctx *ExecutionContext, files []string, prompt, outPath string) error {
+	var validImages []string
+	for _, f := range files {
+		if fileExists(f) && isImageFile(f) {
+			validImages = append(validImages, f)
+		}
+	}
+	if len(validImages) == 0 {
+		return fmt.Errorf("không có ảnh tham chiếu hợp lệ để tạo chuyển động shot")
+	}
+
+	shotDuration := 6
+	totalFrames := shotDuration * 30
+	srcImg := validImages[0]
+	vf := fmt.Sprintf("scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,zoompan=z='min(zoom+0.001,1.12)':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30,setsar=1", totalFrames)
+
+	args := []string{
+		"-loop", "1", "-i", srcImg,
+		"-vf", vf,
+		"-t", strconv.Itoa(shotDuration),
+		"-c:v", "libx264", "-pix_fmt", "yuv420p",
+		"-y", outPath,
+	}
+	if ctx.FFmpegRunner != nil {
+		if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
+			return fmt.Errorf("tạo chuyển động shot thất bại: %w", err)
+		}
+	} else {
+		cmd := exec.CommandContext(ctx.Context, "ffmpeg", args...)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("tạo chuyển động shot thất bại: %w", err)
+		}
+	}
+	if !fileExists(outPath) {
+		return fmt.Errorf("không sinh được file shot video")
 	}
 	return nil
 }

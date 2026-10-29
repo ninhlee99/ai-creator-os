@@ -52,7 +52,8 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 	coveragePending := false
 	refreshErr := ""
 	if s.Studio != nil {
-		coveragePending = s.Studio.QueueTikTokRadarTopicRefresh(topic, len(videos))
+		s.Studio.QueueTikTokRadarTopicRefresh(topic, len(videos))
+		coveragePending = s.Studio.IsTikTokRadarRefreshing(topic)
 		refreshErr = s.Studio.TikTokRadarTopicRefreshError(topic)
 	}
 	if err == nil && refreshErr != "" {

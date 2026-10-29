@@ -146,17 +146,17 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 	case <-time.After(4 * time.Second):
 	}
 
-	// Script thực thi: cuộn trang, phát hiện & click "Not now", cuộn tiếp để lazy load toàn bộ ảnh
+	// Script thực thi: phát hiện & click popup, mở rộng thẻ "About this product" / "Product description",
+	// cuộn trang từ từ để tải toàn bộ ảnh mô tả sắc nét, trích xuất ảnh và video từ DOM và JSON State
 	evalScript := `(async () => {
 		const logs = [];
 
-		// Cuộn lần 1 để kích hoạt hiển thị popup "Get the full app experience"
-		window.scrollBy({ top: 380, behavior: 'instant' });
-		await new Promise(r => setTimeout(r, 900));
+		// 1. Cuộn nhẹ để kích hoạt popup "Get the full app experience" nếu có
+		window.scrollBy({ top: 350, behavior: 'instant' });
+		await new Promise(r => setTimeout(r, 700));
 
-		// Phát hiện popup và click "Not now" hoặc dấu "✕"
+		// 2. Phát hiện popup và click "Not now" hoặc dấu "✕"
 		let dismissed = false;
-		// 1. Quét tìm nút hoặc text "Not now" / "Để sau" / "Không phải bây giờ"
 		const allTextEls = Array.from(document.querySelectorAll('button, div, span, a, p'));
 		for (const el of allTextEls) {
 			const txt = (el.textContent || '').trim().toLowerCase();
@@ -167,8 +167,6 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 				break;
 			}
 		}
-
-		// 2. Nếu chưa đóng được, tìm nút icon ✕ / × / Close
 		if (!dismissed) {
 			const closeBtns = document.querySelectorAll('button, [role="button"], [aria-label*="close" i], [aria-label*="đóng" i]');
 			for (const btn of closeBtns) {
@@ -181,8 +179,6 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 				}
 			}
 		}
-
-		// 3. Fallback: Nếu có modal backdrop / dialog che màn hình, tìm svg close
 		if (!dismissed) {
 			const modalSvgs = document.querySelectorAll('div[class*="modal"] svg, div[class*="dialog"] svg, div[class*="popup"] svg');
 			for (const svg of modalSvgs) {
@@ -196,40 +192,155 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 			}
 		}
 
-		await new Promise(r => setTimeout(r, 600));
+		await new Promise(r => setTimeout(r, 500));
 
-		// Cuộn lần 2 sâu hơn để kích hoạt tải ảnh mô tả và chi tiết
-		window.scrollBy({ top: 800, behavior: 'instant' });
-		await new Promise(r => setTimeout(r, 900));
-
-		// Cuộn lần 3 xuống khu vực đánh giá & hình ảnh feedback của khách hàng
-		window.scrollBy({ top: 1200, behavior: 'instant' });
-		await new Promise(r => setTimeout(r, 1000));
-
-		// Trích xuất toàn bộ hình ảnh sản phẩm
-		const seen = new Set();
-		const images = [];
-		document.querySelectorAll('img').forEach(img => {
-			let src = img.currentSrc || img.src || img.getAttribute('data-src') || '';
-			src = src.trim();
-			if (!src || src.startsWith('data:')) return;
-			if (src.includes('ibyteimg.com') || src.includes('tiktokcdn.com') || src.includes('susercontent.com') || src.includes('alicdn.com')) {
-				if (!src.includes('avatar') && !src.includes('icon') && !src.includes('logo') && !src.includes('1x1') && !src.includes('badge')) {
-					if (!seen.has(src)) {
-						seen.add(src);
-						images.push(src);
+		// 3. Tự động mở rộng (Expand) thẻ "About this product" / "Product description" / "Mô tả sản phẩm"
+		const expandDescription = () => {
+			const keywords = ['about this product', 'product description', 'mô tả sản phẩm', 'chi tiết sản phẩm', 'xem thêm', 'view more', 'see more', 'read more'];
+			const candidates = Array.from(document.querySelectorAll('h2, h3, h4, h5, button, div, span, p, a'));
+			for (const el of candidates) {
+				const txt = (el.innerText || el.textContent || '').trim().toLowerCase();
+				if (keywords.some(kw => txt === kw || (txt.includes(kw) && txt.length < 50))) {
+					const clickTarget = el.closest('button') || el.querySelector('button') || el.parentElement?.querySelector('button, [class*="arrow" i], [class*="chevron" i], [class*="expand" i], [class*="icon" i]') || el;
+					if (clickTarget && typeof clickTarget.click === 'function') {
+						try {
+							clickTarget.click();
+							logs.push('Expanded: ' + txt);
+						} catch(_) {}
 					}
 				}
 			}
+		};
+		expandDescription();
+
+		// 4. Cuộn từ từ toàn bộ trang để kích hoạt toàn bộ lazy-load ảnh trong thẻ mô tả sản phẩm
+		const scrollMax = Math.min(document.body.scrollHeight || 6000, 8000);
+		for (let top = 400; top <= scrollMax; top += 600) {
+			window.scrollTo({ top: top, behavior: 'instant' });
+			await new Promise(r => setTimeout(r, 160));
+		}
+
+		// Gọi lại expand một lần nữa sau khi đã cuộn (nút "Xem thêm" có thể xuất hiện sau khi cuộn)
+		expandDescription();
+		await new Promise(r => setTimeout(r, 600));
+
+		// 5. Trích xuất văn bản mô tả (Product description)
+		let descriptionText = '';
+		const descEls = document.querySelectorAll('[class*="product-description" i], [class*="product_description" i], [class*="detail-desc" i], [class*="desc-detail" i], [data-testid*="desc" i], [class*="desc" i]');
+		for (const el of descEls) {
+			const t = (el.innerText || '').trim();
+			if (t.length > descriptionText.length && !t.includes('©') && !t.includes('TikTok Shop')) {
+				descriptionText = t;
+			}
+		}
+
+		// 6. Trích xuất toàn bộ hình ảnh sản phẩm (cả trong mô tả "About this product", carousel và biến thể)
+		const seen = new Set();
+		const images = [];
+		const videos = [];
+
+		const cleanImgUrl = (u) => {
+			if (!u || typeof u !== 'string') return '';
+			u = u.trim();
+			if (u.startsWith('//')) u = 'https:' + u;
+			if (!u.startsWith('http')) return '';
+			// Gỡ bỏ crop/resize template của TikTok CDN để tải ảnh gốc chất lượng cao nhất
+			u = u.replace(/~tplv-[a-zA-Z0-9_\-\.:]+(?:\.[a-zA-Z0-9]+)?/g, '');
+			return u;
+		};
+
+		const isGoodImage = (u) => {
+			if (!u || u.startsWith('data:')) return false;
+			const lower = u.toLowerCase();
+			if (lower.includes('avatar') || lower.includes('icon') || lower.includes('logo') || lower.includes('1x1') || lower.includes('badge') || lower.includes('pixel') || lower.includes('favicon')) {
+				return false;
+			}
+			return lower.includes('ibyteimg.com') || lower.includes('tiktokcdn.com') || lower.includes('susercontent.com') || lower.includes('alicdn.com') || lower.includes('tikicdn.com') || lower.includes('scdn.vn') || lower.match(/\.(jpeg|jpg|png|webp)($|\?)/i);
+		};
+
+		const addImg = (u) => {
+			const cleaned = cleanImgUrl(u);
+			if (cleaned && isGoodImage(cleaned) && !seen.has(cleaned)) {
+				seen.add(cleaned);
+				images.push(cleaned);
+			}
+		};
+
+		// 6A. Trích xuất từ tất cả thẻ img
+		document.querySelectorAll('img').forEach(img => {
+			addImg(img.currentSrc);
+			addImg(img.src);
+			addImg(img.getAttribute('data-src'));
+			addImg(img.getAttribute('data-original-src'));
+			addImg(img.getAttribute('data-lazy-src'));
+			const srcset = img.getAttribute('srcset');
+			if (srcset) {
+				srcset.split(',').forEach(s => addImg(s.trim().split(' ')[0]));
+			}
 		});
 
-		// Trích xuất tiêu đề sản phẩm
+		// 6B. Trích xuất từ background-image của các container mô tả
+		document.querySelectorAll('[class*="desc" i] *, [class*="detail" i] *, [class*="about" i] *').forEach(el => {
+			const bg = window.getComputedStyle(el).backgroundImage;
+			if (bg && bg.startsWith('url(')) {
+				const m = bg.match(/url\(['"]?(https?:\/\/[^'"]+)['"]?\)/);
+				if (m && m[1]) addImg(m[1]);
+			}
+		});
+
+		// 6C. Trích xuất video sản phẩm (nếu có)
+		document.querySelectorAll('video, [class*="video" i] video').forEach(v => {
+			const vSrc = v.currentSrc || v.src || v.querySelector('source')?.src || '';
+			if (vSrc && vSrc.startsWith('http') && !videos.includes(vSrc)) {
+				videos.push(vSrc);
+			}
+		});
+
+		// 6D. Quét sâu trong dữ liệu JSON hydrate của TikTok Shop (window.__UNIVERSAL_DATA_FOR_REHYDRATION__, SIGI_STATE, RENDER_DATA)
+		const deepExtractFromJSON = (obj) => {
+			if (!obj) return;
+			if (typeof obj === 'string') {
+				if (isGoodImage(obj)) addImg(obj);
+				if (obj.startsWith('http') && (obj.includes('.mp4') || obj.includes('tiktokcdn.com/video') || obj.includes('bytevcloud.com'))) {
+					if (!videos.includes(obj)) videos.push(obj);
+				}
+				return;
+			}
+			if (Array.isArray(obj)) {
+				for (const item of obj) deepExtractFromJSON(item);
+				return;
+			}
+			if (typeof obj === 'object') {
+				for (const k of Object.keys(obj)) {
+					const lk = k.toLowerCase();
+					if (lk.includes('image') || lk.includes('img') || lk.includes('photo') || lk.includes('picture') || lk.includes('url') || lk.includes('desc') || lk.includes('detail') || lk.includes('video') || lk.includes('play_addr') || lk.includes('sku')) {
+						deepExtractFromJSON(obj[k]);
+					}
+				}
+			}
+		};
+
+		try {
+			if (window.__UNIVERSAL_DATA_FOR_REHYDRATION__) deepExtractFromJSON(window.__UNIVERSAL_DATA_FOR_REHYDRATION__);
+			if (window.SIGI_STATE) deepExtractFromJSON(window.SIGI_STATE);
+			if (window.RENDER_DATA) deepExtractFromJSON(window.RENDER_DATA);
+			document.querySelectorAll('script[type="application/json"], script[id*="DATA"], script[id*="STATE"]').forEach(s => {
+				try {
+					const parsed = JSON.parse(s.textContent || '{}');
+					deepExtractFromJSON(parsed);
+				} catch(_) {}
+			});
+		} catch(e) {
+			logs.push('JSON parse: ' + e.message);
+		}
+
+		// 7. Trích xuất tiêu đề sản phẩm
 		let title = '';
 		const h1 = document.querySelector('h1, [class*="product-title" i], [class*="product_title" i], [class*="title" i]');
 		if (h1) title = (h1.innerText || '').trim();
 		if (!title || title.length < 5) title = document.title || '';
 
-		// Trích xuất giá bán
+		// 8. Trích xuất giá bán
 		let priceText = '';
 		let originalPriceText = '';
 		const priceEls = Array.from(document.querySelectorAll('span, div, p')).filter(el => {
@@ -243,7 +354,7 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 			}
 		}
 
-		// Trích xuất tên shop
+		// 9. Trích xuất tên shop
 		let shop = '';
 		const shopEl = document.querySelector('[class*="shop-name" i], [class*="shop_name" i], [class*="seller" i], [class*="store" i]');
 		if (shopEl) shop = (shopEl.innerText || '').trim();
@@ -251,10 +362,12 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 		return {
 			url: window.location.href,
 			title: title,
+			description: descriptionText,
 			shop: shop,
 			priceText: priceText,
 			originalPriceText: originalPriceText,
 			images: images,
+			videos: videos,
 			dismissed: dismissed,
 			logs: logs
 		};
@@ -269,10 +382,12 @@ func ExtractTikTokProductWithBrowser(ctx context.Context, targetURL string) (*Ex
 	var evalRes struct {
 		URL               string   `json:"url"`
 		Title             string   `json:"title"`
+		Description       string   `json:"description"`
 		Shop              string   `json:"shop"`
 		PriceText         string   `json:"priceText"`
 		OriginalPriceText string   `json:"originalPriceText"`
 		Images            []string `json:"images"`
+		Videos            []string `json:"videos"`
 		Dismissed         bool     `json:"dismissed"`
 		Logs              []string `json:"logs"`
 	}
@@ -328,6 +443,7 @@ extractionDone:
 		img = strings.TrimSpace(htmlUnescape(img))
 		img = strings.ReplaceAll(img, `\/`, `/`)
 		img = strings.Trim(img, `"' `)
+		img = cleanCDNImageURL(img)
 		if strings.HasPrefix(img, "http://") || strings.HasPrefix(img, "https://") {
 			if !seenImgs[img] {
 				seenImgs[img] = true
@@ -341,6 +457,7 @@ extractionDone:
 	if ogImg != "" {
 		ogImg = strings.TrimSpace(htmlUnescape(ogImg))
 		ogImg = strings.ReplaceAll(ogImg, `\/`, `/`)
+		ogImg = cleanCDNImageURL(ogImg)
 		if !seenImgs[ogImg] {
 			cleanedImages = append([]string{ogImg}, cleanedImages...)
 		}
@@ -374,7 +491,9 @@ extractionDone:
 	return &ExtractedProduct{
 		PlatformPID:    pid,
 		Title:          title,
+		Description:    evalRes.Description,
 		ImageURLs:      cleanedImages,
+		VideoURLs:      evalRes.Videos,
 		Price:          price,
 		OriginalPrice:  origPrice,
 		Currency:       "VND",

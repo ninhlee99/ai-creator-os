@@ -81,7 +81,8 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
 		"BackupLastOK", "BackupOffsiteDir", "NotifyOn", "NotifyWebhook", "NotifyChat", "NotifyHasBot",
 		"TickBeats", "QuotaCircuit", "WebAIPlatforms", "WebAIConnected", "WebAIStudioReady", "GeminiModels",
-		"TikTokRadarConfigured", "TikTokCookieActive", "TikTokAccountName", "TikTokCookieCount")
+		"TikTokRadarConfigured", "TikTokCookieActive", "TikTokAccountName", "TikTokCookieCount",
+		"SchedEnabled", "SchedHours", "SchedNextRun")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"

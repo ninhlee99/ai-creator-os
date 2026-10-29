@@ -8,21 +8,26 @@ import (
 	"strings"
 )
 
-// handleStudioScheduleSave saves the autopilot schedule settings directly from Studio.
+// handleStudioScheduleSave saves the autopilot schedule settings directly from Studio or Settings.
 func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request) {
+	redirectBase := "/settings/system"
+	if strings.Contains(r.Header.Get("Referer"), "studio/jobs") {
+		redirectBase = "/studio/jobs"
+	}
+
 	if s.Ledger == nil {
-		seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Kho cài đặt chưa khởi tạo"))
+		seeOther(w, r, redirectBase+"?err="+url.QueryEscape("Kho cài đặt chưa khởi tạo"))
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Không đọc được dữ liệu form: "+err.Error()))
+		seeOther(w, r, redirectBase+"?err="+url.QueryEscape("Không đọc được dữ liệu form: "+err.Error()))
 		return
 	}
 	enabled := "0"
 	if r.PostFormValue("enabled") == "on" {
 		enabled = "1"
 	}
-	hours := 6
+	hours := 4
 	if h, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("interval_hours"))); err == nil && h >= 1 && h <= 168 {
 		hours = h
 	}
@@ -34,7 +39,7 @@ func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request
 	} {
 		if err := st.Set(setting.key, setting.value); err != nil {
 			msg := fmt.Sprintf("Không lưu đủ cấu hình lịch (%s); một số giá trị có thể đã cập nhật. Hãy tải lại và kiểm tra.", setting.key)
-			seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape(msg))
+			seeOther(w, r, redirectBase+"?err="+url.QueryEscape(msg))
 			return
 		}
 	}
@@ -43,11 +48,15 @@ func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request
 	if enabled == "1" {
 		msg = fmt.Sprintf("Đã lưu lịch mỗi %d giờ; producer đang tạm dừng nên chưa tạo video.", hours)
 	}
-	seeOther(w, r, "/studio/jobs?tab=schedule&msg="+url.QueryEscape(msg))
+	seeOther(w, r, redirectBase+"?ok="+url.QueryEscape(msg))
 }
 
 // handleStudioScheduleRunNow reports the current production gate instead of
 // claiming that a paused Autopilot cycle was started.
 func (s *Server) handleStudioScheduleRunNow(w http.ResponseWriter, r *http.Request) {
-	seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Tạo video Autopilot đang tạm dừng cho tới khi có xác nhận dùng Muse AI credits theo kênh."))
+	redirectBase := "/settings/system"
+	if strings.Contains(r.Header.Get("Referer"), "studio/jobs") {
+		redirectBase = "/studio/jobs"
+	}
+	seeOther(w, r, redirectBase+"?err="+url.QueryEscape("Tạo video Autopilot đang tạm dừng cho tới khi có xác nhận dùng Muse AI credits theo kênh."))
 }

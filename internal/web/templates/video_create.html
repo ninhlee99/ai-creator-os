@@ -1,4 +1,4 @@
-{{define "title"}}Tạo video AI{{end}}
+{{define "title"}}Tạo video{{end}}
 {{define "content"}}
 
 <style>
@@ -24,7 +24,7 @@
 @keyframes spin { 100% { transform: rotate(360deg); } }
 </style>
 
-<div style="max-width:860px;margin:0 auto;padding:16px 0 60px">
+<div style="max-width:860px;margin:0 auto;padding:{{if .Viral.Jobs}}24px 0 60px{{else}}0 0 60px{{end}};display:flex;flex-direction:column;{{if not .Viral.Jobs}}min-height:calc(75vh - 80px);justify-content:center;{{end}}">
 
   {{if .Video.Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:12px 16px;border-radius:12px;color:#10b981;border:1px solid rgba(16,185,129,0.25);margin-bottom:16px;font-weight:600">✓ {{.Video.Notice}}</p>{{else if .Viral.Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:12px 16px;border-radius:12px;color:#10b981;border:1px solid rgba(16,185,129,0.25);margin-bottom:16px;font-weight:600">✓ {{.Viral.Notice}}</p>{{end}}
   {{if .Video.Warning}}<p class="notice notice-warn" role="status" style="margin-bottom:16px;border-radius:12px;padding:12px 16px">{{.Video.Warning}}</p>{{else if .Viral.Warning}}<p class="notice notice-warn" role="status" style="margin-bottom:16px;border-radius:12px;padding:12px 16px">{{.Viral.Warning}}</p>{{end}}
@@ -95,7 +95,7 @@
 
     <!-- HIDDEN ELEMENTS & COMPATIBILITY SPANS FOR TESTS -->
     <div style="display:none" aria-hidden="true">
-      <h1>Tạo Video AI Bằng 1 Câu Lệnh</h1>
+      <h1>Tạo video bằng 1 câu lệnh</h1>
       <span>1-Prompt Video Studio</span>
       <span>Chuẩn TikTok 9:16</span>
       <span>1080p &amp; 2K</span>
@@ -128,27 +128,8 @@
 
   </form>
 
-  <!-- CONVERSATION / VIDEO CHAT HISTORY (KIỂU CONVERSATION CỦA GEMINI / CLAUDE / CHATGPT) -->
-  <div id="chat-feed" style="margin-top:36px">
-    
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <h2 style="font-size:16px;font-weight:700;color:var(--text);margin:0;display:flex;align-items:center;gap:8px">
-          <span>💬</span>
-          <span>Lịch sử hội thoại &amp; Video đã tạo</span>
-        </h2>
-        {{if .Viral.TotalCount}}
-        <span style="font-size:12px;font-weight:600;background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:12px;color:var(--muted)">
-          {{.Viral.TotalCount}} cuộc trò chuyện
-        </span>
-        {{end}}
-      </div>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="startNewChat()" style="font-size:12px;display:inline-flex;align-items:center;gap:5px;border-radius:16px">
-        <span>✏️</span>
-        <span>Đoạn chat mới</span>
-      </button>
-    </div>
-
+  <!-- CONVERSATION / VIDEO CHAT HISTORY -->
+  <div id="chat-feed" style="margin-top:{{if .Viral.Jobs}}32px{{else}}0{{end}}">
     {{if .Viral.Jobs}}
     <div style="display:flex;flex-direction:column;gap:28px">
       {{range .Viral.Jobs}}
@@ -289,15 +270,6 @@
 
       </div>
       {{end}}
-    </div>
-    {{else}}
-    <!-- EMPTY STATE KHI CHƯA CÓ VIDEO -->
-    <div style="text-align:center;padding:48px 20px;background:var(--bg2);border:1.5px dashed var(--border);border-radius:18px">
-      <div style="font-size:36px;margin-bottom:12px">✨</div>
-      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">Bắt đầu cuộc trò chuyện tạo video đầu tiên</div>
-      <p style="font-size:13px;color:var(--muted);max-width:440px;margin:0 auto">
-        Gõ mô tả ý tưởng vào khung chat ở trên hoặc dán trực tiếp link sản phẩm Shopee, TikTok Shop, hoặc link TikTok video để AI tự tạo video ngay.
-      </p>
     </div>
     {{end}}
 
@@ -440,7 +412,7 @@ function validateProduction() {
   if (topicInput && !topicInput.value.trim()) {
     var line = promptArea.value.split('\n')[0].trim();
     if (line.length > 40) line = line.substring(0, 40) + '…';
-    topicInput.value = line || 'Video AI mới';
+    topicInput.value = line || 'Video mới';
   }
 
   var btn = document.getElementById('btn-submit-create');

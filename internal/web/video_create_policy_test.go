@@ -19,7 +19,7 @@ func TestVideoCreateRejectsUnreadyEditorBeforeParsingUpload(t *testing.T) {
 	defer st.Close()
 
 	s := &Server{Studio: st}
-	req := httptest.NewRequest(http.MethodPost, "/workflow/create", strings.NewReader("not a multipart body"))
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("not a multipart body"))
 	rec := httptest.NewRecorder()
 	s.handleVideoCreateSubmit(rec, req)
 

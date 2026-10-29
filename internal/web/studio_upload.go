@@ -26,7 +26,7 @@ func saveUpload(r *http.Request, field, dir string) (string, error) {
 	}
 	ext := strings.ToLower(filepath.Ext(hdr.Filename))
 	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp", ".mp3", ".m4a", ".wav", ".ogg":
+	case ".jpg", ".jpeg", ".png", ".webp", ".mp3", ".m4a", ".wav", ".ogg", ".mp4", ".mov", ".webm", ".m4v":
 	default:
 		return "", fmt.Errorf("file %s: định dạng %s không hỗ trợ", field, ext)
 	}

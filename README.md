@@ -1,22 +1,21 @@
 # MiuNova (AI Creator OS)
 
-Hệ thống sản xuất nội dung video AI tự động hóa linh hoạt theo quy trình (Workflow):
+Hệ thống sản xuất nội dung video tự động hóa linh hoạt theo quy trình (Workflow):
 
-1. **Sản phẩm Affiliate**: Thêm sản phẩm nhanh chỉ từ 1 link (Shopee, TikTok Shop, Lazada...) → Hệ thống tự động phân tích lấy ảnh, tên, giá → Khởi chạy workflow tạo video 1-click.
-2. **Universal Video Studio (`/workflow/create`)**: Tạo đa dạng thể loại video (TikTok Viral Dance, TikTok Affiliate Review, Custom Workflow) điều khiển trực quan theo từng workflow AI.
-3. **Workflow Canvas**: Kéo-thả trực quan, hỗ trợ Web AI Tools, Prompt Custom, TTS, và Upscale hình ảnh/video tối đa 2K.
+1. **Tạo video bằng 1 câu lệnh (`/`)**: Giao diện khởi động trực tiếp, tự động nhận diện ý tưởng, bóc tách link sản phẩm/video để kích hoạt quy trình render.
+2. **Sản phẩm Affiliate (`/products`)**: Thêm sản phẩm nhanh chỉ từ 1 link (Shopee, TikTok Shop, Lazada, Tiki, Sendo...) → Hệ thống tự động bóc tách nhiều ảnh, tên, giá → Khởi chạy workflow tạo video 1-click.
+3. **Workflow Canvas (`/workflow`)**: Kéo-thả trực quan, hỗ trợ Web AI Tools, Custom Prompt, TTS, và Upscale hình ảnh/video tối đa 2K.
 
 ## Cấu trúc Menu Điều hướng
 
-- **Tổng quan**: Dashboard trực quan hóa số liệu (`/`).
-- **TikTok**: Xu hướng video & âm thanh hot (`/studio/trends`).
-- **Affiliate**: Quản lý sản phẩm & kệ hàng (`/products`).
-- **Workflow**: Canvas kéo-thả (`/workflow`), Tạo video đa thể loại (`/workflow/create`), Lịch sử tác vụ (`/studio/jobs`).
-- **Hệ thống**: Phân tích tăng trưởng (`/growth`), Kênh TikTok & nhân vật (`/accounts`), Cài đặt (`/settings`).
+- **Studio & Video**: Tạo video (`/`), Workflow Canvas (`/workflow`), Lịch sử tác vụ (`/studio/jobs`).
+- **Affiliate**: Feed xu hướng (`/studio/trends`), Sản phẩm & kệ hàng (`/products`), Kênh TikTok & nhân vật (`/accounts`).
+- **Vận hành**: Phân tích tăng trưởng (`/growth`), Cài đặt hệ thống (`/settings`).
+- **Hạ tầng**: Giám sát RAM, CPU & Ổ cứng thời gian thực tại chân sidebar.
 
 ## Hiện trạng
 
-Hai flow chưa đạt hoàn chỉnh end-to-end. Radar AI phân loại vũ đạo và chủ đề từ frame/caption nhưng cần xác minh trên nguồn thật; nguồn sản phẩm AccessTrade thiếu dữ liệu bán gần đây và đánh giá; TikTok metrics chưa có nguồn đồng bộ đầy đủ. Xem [Implementation status](docs/IMPLEMENTATION_STATUS.md).
+Radar phân tích vũ đạo và chủ đề từ frame/caption qua Web AI; sản phẩm affiliate bóc tách trực tiếp từ link sàn TMĐT; TikTok Display API đồng bộ chỉ số tương tác video thực tế. Xem [Implementation status](docs/IMPLEMENTATION_STATUS.md).
 
 ## UI stack
 
@@ -24,10 +23,10 @@ Go HTML templates + HTMX partial updates + Tailwind CSS compiled to local static
 
 ## Chạy ứng dụng
 
-~~~bash
+```bash
 go build -o aicos ./cmd/aicos
 ./aicos
-~~~
+```
 
 Mở http://localhost:8080. Dựng video cần FFmpeg trên máy chạy app.
 

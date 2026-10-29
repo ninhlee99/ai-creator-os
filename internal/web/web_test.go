@@ -390,12 +390,16 @@ func TestMergedPagesRedirects(t *testing.T) {
 	t.Cleanup(func() { store.Close() })
 	s.Products = store
 
-	// legacy URLs -> 303 to the tab that replaced them
-	for _, tc := range []struct{ method, path, wantLoc string }{
-		{http.MethodGet, "/content", "/studio"},
-		{http.MethodPost, "/content", "/studio"},
-		{http.MethodGet, "/shop", "/products?tab=shelf"},
-		{http.MethodPost, "/shop/add", "/products?tab=shelf"},
+	// legacy dissolved URLs -> 404
+	for _, tc := range []struct{ method, path string }{
+		{http.MethodGet, "/content"},
+		{http.MethodPost, "/content"},
+		{http.MethodGet, "/shop"},
+		{http.MethodPost, "/shop/add"},
+		{http.MethodGet, "/workflow/create"},
+		{http.MethodPost, "/workflow/create"},
+		{http.MethodGet, "/viral"},
+		{http.MethodPost, "/viral/create"},
 	} {
 		var rec *httptest.ResponseRecorder
 		if tc.method == http.MethodPost {
@@ -403,12 +407,8 @@ func TestMergedPagesRedirects(t *testing.T) {
 		} else {
 			rec = get(t, s, tc.path)
 		}
-		if rec.Code != http.StatusSeeOther {
-			t.Errorf("%s %s = %d, want 303", tc.method, tc.path, rec.Code)
-			continue
-		}
-		if loc := rec.Header().Get("Location"); loc != tc.wantLoc {
-			t.Errorf("%s %s Location = %q, want %q", tc.method, tc.path, loc, tc.wantLoc)
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("%s %s = %d, want 404", tc.method, tc.path, rec.Code)
 		}
 	}
 

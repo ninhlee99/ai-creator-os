@@ -38,6 +38,11 @@ func ProbeWidth(ctx context.Context, path string) int {
 	return w
 }
 
+// ProbeDuration trả về thời lượng thực tế của file video/audio (giây).
+func ProbeDuration(ctx context.Context, path string) float64 {
+	return probeDuration(ctx, path)
+}
+
 // probeDuration trả về thời lượng thực tế của file video (giây).
 func probeDuration(ctx context.Context, path string) float64 {
 	cmd := exec.CommandContext(ctx, "ffprobe",

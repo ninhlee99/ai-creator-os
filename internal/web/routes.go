@@ -57,15 +57,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts/{id}/models/{photoID}/delete", s.handleAccountModelDelete)
 	mux.HandleFunc("GET /models/{account}/{file}", s.handleModelPhoto)
 
-	// Điều hướng Thư Viện Nhân Vật -> Quản lý trực tiếp theo Kênh (/accounts)
-	mux.HandleFunc("GET /models", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/accounts", http.StatusSeeOther)
-	})
-
-	// Đường dẫn tắt chuyên biệt cho Affiliate
-	mux.HandleFunc("GET /affiliate", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/studio", http.StatusSeeOther)
-	})
 	// Brand DNA (Bản sắc thương hiệu cho kênh — Organic growth)
 	mux.HandleFunc("POST /accounts/{id}/brand-dna", s.handleAccountBrandDNASave)
 	mux.HandleFunc("POST /accounts/{id}/brand-dna/reset", s.handleAccountBrandDNAReset)
@@ -76,7 +67,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/affiliate/plan", s.handleStudioAffiliatePlan)
 	mux.HandleFunc("POST /studio/affiliate", s.handleStudioAffiliateCreate)
 	mux.HandleFunc("GET /studio/jobs", s.handleStudioJobs)
-	mux.HandleFunc("GET /studio/create", redirectTo("/workflow"))
 	mux.HandleFunc("POST /studio/generate", s.handleStudioAIGenerate)
 	mux.HandleFunc("GET /studio/jobs/{id}", s.handleStudioJobDetail)
 	mux.HandleFunc("POST /studio/jobs/{id}/cancel", s.handleStudioJobCancel)
@@ -126,8 +116,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/system/sidebar-metrics", s.handleSystemSidebarMetrics)
 	mux.HandleFunc("POST /api/system/kill-process", s.handleKillProcess)
 
-	// Legacy Web AI prompt cockpit now redirects to account login settings.
-	mux.HandleFunc("GET /web-ai", redirectTo("/settings/system#tab-webai"))
 	mux.HandleFunc("POST /web-ai/accounts/delete", s.handleWebAIAccountDelete)
 	mux.HandleFunc("POST /web-ai/accounts/test", s.handleWebAIAccountTest)
 	mux.HandleFunc("POST /web-ai/accounts/reset-cooldown", s.handleWebAIAccountResetCooldown)
@@ -183,19 +171,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /kill", s.handleKill)
 	mux.HandleFunc("POST /unkill", s.handleUnkill)
 
-	// Universal Video Creation Studio (vẫn hỗ trợ alias /workflow/create)
-	mux.HandleFunc("GET /workflow/create", s.handleVideoCreate)
-	mux.HandleFunc("POST /workflow/create", s.handleVideoCreateSubmit)
-	// Điều hướng tương thích route cũ /viral sang /workflow/create
-	mux.HandleFunc("GET /viral", func(w http.ResponseWriter, r *http.Request) {
-		target := "/workflow/create"
-		if r.URL.RawQuery != "" {
-			target += "?" + r.URL.RawQuery
-		}
-		http.Redirect(w, r, target, http.StatusMovedPermanently)
-	})
-	mux.HandleFunc("POST /viral/create", s.handleVideoCreateSubmit)
-
 	// provider chain configuration (new requirement)
 	mux.HandleFunc("GET /settings/chain", s.handleChainGet)
 	mux.HandleFunc("POST /settings/chain", s.handleChainSave)
@@ -226,19 +201,6 @@ func (s *Server) Routes() http.Handler {
 	// Đợt T: đặt/tắt mật khẩu dashboard.
 	mux.HandleFunc("POST /settings/auth/password", s.handleAuthPasswordSet)
 	mux.HandleFunc("POST /settings/auth/password/disable", s.handleAuthPasswordDisable)
-
-	// Đợt 2 (gộp trang): URL cũ của các trang đã gộp redirect 303 sang tab
-	// thay thế, để bookmark/form cũ vẫn tới đúng chỗ. Trang /analytics đã
-	// tan hẳn (doanh thu ở Trang chủ, chi phí API ở Cài đặt, số liệu video
-	// ở /growth) nên không giữ redirect.
-	for _, legacy := range []struct{ pattern, target string }{
-		{"GET /content", "/studio"},
-		{"POST /content", "/studio"},
-		{"GET /shop", "/products?tab=shelf"},
-		{"POST /shop/add", "/products?tab=shelf"},
-	} {
-		mux.HandleFunc(legacy.pattern, redirectTo(legacy.target))
-	}
 
 	return s.railsRequestLogger(s.recoverer(s.originGate(s.authGate(s.onboardGate(mux)))))
 }

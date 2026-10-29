@@ -420,6 +420,22 @@ type radarTopicRefreshJobParams struct {
 
 const radarTopicRefreshCooldown = 15 * time.Minute
 
+// IsTikTokRadarRefreshing returns whether a crawl or AI analysis job is actively running or queued for topic.
+func (s *Studio) IsTikTokRadarRefreshing(topic string) bool {
+	topic = strings.TrimSpace(topic)
+	if s == nil || s.db == nil || topic == "" {
+		return false
+	}
+	s.mu.Lock()
+	state := s.radarTopicRefreshStates[topic]
+	s.mu.Unlock()
+	if state.running {
+		return true
+	}
+	jobID, _, err := s.findActiveTikTokRadarRefreshJob(topic)
+	return err == nil && jobID != ""
+}
+
 // QueueTikTokRadarTopicRefresh starts or resumes durable crawler, AI analysis,
 // and ranking work without holding the page request open. Only one headless
 // crawler runs at a time. Returns true while queued or running so UI can poll.

@@ -1,6 +1,6 @@
 # Hướng dẫn Vận hành Hệ thống
 
-Hướng dẫn sử dụng các chức năng thực tế của AI Creator OS.
+Hướng dẫn sử dụng các chức năng thực tế của AI Creator OS (MiuNova).
 
 ## 1. Chuẩn bị
 
@@ -11,21 +11,21 @@ Hướng dẫn sử dụng các chức năng thực tế của AI Creator OS.
 ## 2. Thêm Sản phẩm Affiliate & Tạo Video
 
 1. Vào menu **Sản phẩm** (`/products`).
-2. Dán link affiliate sản phẩm từ Shopee, TikTok Shop, Lazada... vào ô nhập và bấm **Phân tích & Lưu sản phẩm**.
-3. Hệ thống tự động lấy ảnh, tên, giá và lưu vào danh sách Kệ hàng.
+2. Dán link sản phẩm từ Shopee, TikTok Shop, Lazada, Tiki, Sendo... vào ô nhập và bấm **Phân tích & Lưu sản phẩm**.
+3. Hệ thống tự động bóc tách nhiều ảnh, tên, giá và lưu vào danh sách Kệ hàng.
 4. Tại dòng sản phẩm muốn tạo video, bấm **`⚡ Tạo video`**.
-5. Chọn kênh TikTok đích, chọn workflow thực thi (mặc định: `preset_affiliate_daily`), chọn ảnh nhân vật (hoặc tải thêm nhiều góc ảnh mới) rồi bấm **Khởi chạy Workflow**.
+5. Chọn kênh TikTok đích, chọn workflow thực thi (mặc định: `preset_affiliate_daily`), chọn ảnh nhân vật (hoặc tải thêm nhiều góc ảnh mới) rồi bấm **Tạo video**.
 
-## 3. Tạo Video AI Đa Thể loại (Universal Studio)
+## 3. Tạo Video Đa Thể loại (Universal Studio)
 
-1. Vào menu **Tạo video** (`/workflow/create`).
-2. **Chọn Workflow**: Chọn loại video bạn muốn sản xuất:
-   - *TikTok Viral Dance*: Tái hiện điệu nhảy hot trend với nhân vật đại diện của kênh.
-   - *TikTok Affiliate Review*: Video bán hàng, review sản phẩm affiliate.
-   - *Custom Workflow*: Các workflow tự tạo theo ý muốn.
-3. **Nhập dữ liệu**: Giao diện tự thích ứng theo workflow (link video nguồn, link sản phẩm, hoặc chủ đề/prompt).
+1. Vào menu **Tạo video** (`/`).
+2. **Chọn loại video**:
+   - `⚡ Tự Động (Auto)`: Hệ thống tự động phân tích prompt và link để kích hoạt workflow phù hợp.
+   - `🛍️ Video Affiliate`: Chuyên sâu review sản phẩm TikTok Shop / Shopee.
+   - `🔥 Video TikTok Viral`: Chuyên sâu bắt trend âm nhạc, vũ đạo, biến hình.
+3. **Nhập dữ liệu**: Gõ ý tưởng vào khung chat hoặc dán trực tiếp link sản phẩm / video mẫu.
 4. **Nhân vật đại diện**: Chọn các góc ảnh có sẵn hoặc upload nhiều góc ảnh nhân vật mới.
-5. **Thiết lập render**: Chọn 1080p hoặc 2K, bấm **`🚀 Khởi chạy Workflow Tạo Video`**. Tác vụ sẽ tự động được đưa vào hàng đợi xử lý.
+5. **Thiết lập render**: Chọn 1080p hoặc 2K, bấm **`Tạo Video`**. Tác vụ sẽ tự động được đưa vào hàng đợi xử lý.
 
 ## 4. Quản lý Workflow Canvas
 

@@ -3,10 +3,10 @@
   <span style="display:none" aria-hidden="true">{{.Version}}</span>
 
   <!-- 1. BẢO MẬT & THÔNG BÁO (2 CỘT HIỆN ĐẠI) -->
-  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px; margin-bottom:24px">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px; margin-bottom:20px; width:100%; box-sizing:border-box">
 
     <!-- CỘT 1: MẬT KHẨU TRUY CẬP -->
-    <div class="form-card" style="margin:0; border:1px solid var(--border); border-radius:12px; background:var(--bg2); padding:20px">
+    <div class="form-card" style="margin:0; max-width:none; width:100%; box-sizing:border-box; border:1px solid var(--border); border-radius:12px; background:var(--bg2); padding:20px">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
         <h4 style="margin:0; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px">
           <span>🔐</span> Mật khẩu Dashboard
@@ -54,7 +54,7 @@
     </div>
 
     <!-- CỘT 2: THÔNG BÁO TỰ ĐỘNG -->
-    <div class="form-card" style="margin:0; border:1px solid var(--border); border-radius:12px; background:var(--bg2); padding:20px">
+    <div class="form-card" style="margin:0; max-width:none; width:100%; box-sizing:border-box; border:1px solid var(--border); border-radius:12px; background:var(--bg2); padding:20px">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
         <h4 style="margin:0; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px">
           <span>📢</span> Thông báo Đa Kênh
@@ -97,6 +97,65 @@
       </form>
     </div>
 
+  </div>
+
+  <!-- 2. LỊCH TỰ ĐỘNG AUTOPILOT -->
+  <div class="form-card" style="margin:0 0 24px; max-width:none; width:100%; box-sizing:border-box; border:1px solid var(--border); border-radius:12px; background:var(--bg2); padding:20px">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px">
+      <h4 style="margin:0; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px">
+        <span>⏰</span> Lịch Tự Động Autopilot
+      </h4>
+      <div>
+        {{if .SchedEnabled}}
+          <span class="badge badge-warn" style="font-size:11px; font-weight:700">LỊCH BẬT · PRODUCER TẠM DỪNG</span>
+        {{else}}
+          <span class="badge badge-no" style="font-size:11px; font-weight:700">LỊCH ĐANG TẮT</span>
+        {{end}}
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px; margin-bottom:18px">
+      <div style="background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px 14px">
+        <div style="font-size:11.5px; color:var(--muted); margin-bottom:4px">CHU KỲ ĐÃ LƯU</div>
+        <div style="font-size:16px; font-weight:800; color:var(--text)">
+          Mỗi {{if .SchedHours}}{{.SchedHours}}{{else}}4{{end}} giờ / lượt
+        </div>
+      </div>
+      <div style="background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px 14px">
+        <div style="font-size:11.5px; color:var(--muted); margin-bottom:4px">LẦN AUTOPILOT THỬ TIẾP THEO</div>
+        <div style="font-size:13.5px; font-weight:700; color:var(--accent)">
+          {{if .SchedNextRun}}{{.SchedNextRun}}{{else}}Chưa lên lịch{{end}}
+        </div>
+      </div>
+    </div>
+
+    <form method="post" action="/studio/schedule" style="margin:0">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; align-items:flex-end">
+        <div style="background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:12px 14px">
+          <label style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:13px; cursor:pointer; margin:0">
+            <input type="checkbox" name="enabled" {{if .SchedEnabled}}checked{{end}} style="width:16px; height:16px; cursor:pointer">
+            <span>Bật lịch tự động sản xuất video</span>
+          </label>
+          <p style="font-size:11.5px; color:var(--muted); margin:4px 0 0 24px; line-height:1.4">
+            Hệ thống sẽ định kỳ kiểm tra và tự động sản xuất video theo chu kỳ đã chọn.
+          </p>
+        </div>
+
+        <div>
+          <label style="font-size:12px; font-weight:700; display:block; margin-bottom:6px">Chu kỳ chạy</label>
+          <div style="display:flex; gap:10px; align-items:center">
+            <select name="interval_hours" style="flex:1; height:38px; padding:0 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg3); color:var(--text); font-size:13px">
+              <option value="2" {{if eq .SchedHours 2}}selected{{end}}>Mỗi 2 giờ (Tối đa công suất)</option>
+              <option value="4" {{if or (eq .SchedHours 4) (not .SchedHours)}}selected{{end}}>Mỗi 4 giờ (Khuyên dùng)</option>
+              <option value="6" {{if eq .SchedHours 6}}selected{{end}}>Mỗi 6 giờ (Chuẩn)</option>
+              <option value="12" {{if eq .SchedHours 12}}selected{{end}}>Mỗi 12 giờ (2 video/ngày)</option>
+              <option value="24" {{if eq .SchedHours 24}}selected{{end}}>Mỗi 24 giờ (1 video/ngày)</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700; height:38px; padding:0 18px; border-radius:8px; white-space:nowrap">💾 Lưu Lịch</button>
+          </div>
+        </div>
+      </div>
+    </form>
   </div>
 
   <!-- HIDDEN COMPATIBILITY MARKERS -->

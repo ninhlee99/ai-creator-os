@@ -21,7 +21,9 @@ import (
 type ExtractedProduct struct {
 	PlatformPID    string
 	Title          string
+	Description    string
 	ImageURLs      []string
+	VideoURLs      []string
 	Price          float64
 	OriginalPrice  float64
 	Currency       string
@@ -271,6 +273,23 @@ func cleanProductTitle(t string) string {
 	return t
 }
 
+var (
+	tiktokCropSuffixRegex  = regexp.MustCompile(`~tplv-[a-zA-Z0-9_\-\.:]+(?:\.[a-zA-Z0-9]+)?`)
+	shopeeThumbSuffixRegex = regexp.MustCompile(`_tn(?:\.webp)?$`)
+)
+
+// cleanCDNImageURL strips thumbnail/crop downscaling parameters from TikTok, Shopee,
+// and other marketplaces to return the full-resolution original product image.
+func cleanCDNImageURL(u string) string {
+	u = strings.TrimSpace(u)
+	if strings.Contains(u, "ibyteimg.com") || strings.Contains(u, "tiktokcdn.com") {
+		u = tiktokCropSuffixRegex.ReplaceAllString(u, "")
+	} else if strings.Contains(u, "susercontent.com") {
+		u = shopeeThumbSuffixRegex.ReplaceAllString(u, "")
+	}
+	return u
+}
+
 func extractImages(h, finalURL string) []string {
 	seen := make(map[string]bool)
 	var images []string
@@ -293,6 +312,7 @@ func extractImages(h, finalURL string) []string {
 		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 			return
 		}
+		u = cleanCDNImageURL(u)
 		// Skip tiny icons, tracking pixels, badges
 		lower := strings.ToLower(u)
 		if strings.Contains(lower, "favicon") || strings.Contains(lower, "icon") ||
@@ -332,8 +352,8 @@ func extractImages(h, finalURL string) []string {
 		}
 	}
 
-	// Trích xuất nhiều ảnh từ mảng JSON (Shopee, Lazada, Tiki, TikTok Shop)
-	jsonArrayImageRegex := regexp.MustCompile(`"(?:images|image)"\s*:\s*\[([^\]]+)\]`)
+	// Trích xuất nhiều ảnh từ mảng JSON (Shopee, Lazada, Tiki, TikTok Shop) bao gồm ảnh mô tả chi tiết
+	jsonArrayImageRegex := regexp.MustCompile(`"(?:images|image|image_list|detail_images|desc_detail)"\s*:\s*\[([^\]]+)\]`)
 	for _, m := range jsonArrayImageRegex.FindAllStringSubmatch(h, -1) {
 		if len(m) > 1 {
 			content := strings.ReplaceAll(m[1], `\/`, `/`)
@@ -365,13 +385,13 @@ func extractImages(h, finalURL string) []string {
 	cdnRegex := regexp.MustCompile(`https?:\\?/\\?/[a-zA-Z0-9_\-\.]*(?:susercontent\.com|ibyteimg\.com|tiktokcdn\.com|alicdn\.com|tikicdn\.com|scdn\.vn)/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?`)
 	for _, m := range cdnRegex.FindAllString(h, -1) {
 		addImg(m)
-		if len(images) >= 8 {
+		if len(images) >= 40 {
 			break
 		}
 	}
 
-	if len(images) > 8 {
-		images = images[:8]
+	if len(images) > 40 {
+		images = images[:40]
 	}
 	return images
 }

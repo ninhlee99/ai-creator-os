@@ -23,34 +23,23 @@ func newViralServer(t *testing.T) *Server {
 	return s
 }
 
-func TestViralLegacyRedirect(t *testing.T) {
-	s := newTestServer(t)
-	rec := get(t, s, "/viral")
-	if rec.Code != http.StatusMovedPermanently {
-		t.Fatalf("GET /viral = %d, want 301", rec.Code)
-	}
-	if loc := rec.Header().Get("Location"); loc != "/workflow/create" {
-		t.Fatalf("GET /viral redirect = %q, want /workflow/create", loc)
-	}
-}
-
 func TestVideoCreatePageNoStudio(t *testing.T) {
 	s := newTestServer(t) // Studio == nil
-	rec := get(t, s, "/workflow/create")
+	rec := get(t, s, "/")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /workflow/create = %d, want 200", rec.Code)
+		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, "Video nhảy") {
-		t.Errorf("trang /workflow/create thiếu tiêu đề: %s", body)
+		t.Errorf("trang / thiếu tiêu đề: %s", body)
 	}
 }
 
 func TestVideoCreatePageRenders(t *testing.T) {
 	s := newViralServer(t)
-	rec := get(t, s, "/workflow/create")
+	rec := get(t, s, "/")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /workflow/create = %d, want 200", rec.Code)
+		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
@@ -60,7 +49,7 @@ func TestVideoCreatePageRenders(t *testing.T) {
 		"Thay nhân vật",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("trang /workflow/create thiếu nội dung %q", want)
+			t.Errorf("trang / thiếu nội dung %q", want)
 		}
 	}
 }
@@ -69,14 +58,14 @@ func TestVideoCreateSubmit(t *testing.T) {
 	s := newViralServer(t)
 
 	// Test form create redirecting when editor is not ready
-	rec := postForm(t, s, "/workflow/create", url.Values{
+	rec := postForm(t, s, "/", url.Values{
 		"topic":       {"3 Sai Lầm Tài Chính"},
 		"genre":       {"lifehack"},
 		"visual_mood": {"cinematic"},
 		"duration":    {"30"},
 	})
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("POST /workflow/create = %d, want 303", rec.Code)
+		t.Fatalf("POST / = %d, want 303", rec.Code)
 	}
 	loc := rec.Header().Get("Location")
 	if !strings.Contains(loc, "err=") {
@@ -86,13 +75,13 @@ func TestVideoCreateSubmit(t *testing.T) {
 
 func TestViralPageOnePromptFeatures(t *testing.T) {
 	s := newViralServer(t)
-	rec := get(t, s, "/workflow/create")
+	rec := get(t, s, "/")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /workflow/create = %d, want 200", rec.Code)
+		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"Tạo Video AI Bằng 1 Câu Lệnh",
+		"Tạo video bằng 1 câu lệnh",
 		"Tự Động (Auto)",
 		"Video Affiliate",
 		"Video TikTok Viral",
@@ -104,12 +93,12 @@ func TestViralPageOnePromptFeatures(t *testing.T) {
 		"2K QHD",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("GET /workflow/create thiếu tính năng %q", want)
+			t.Errorf("GET / thiếu tính năng %q", want)
 		}
 	}
 	for _, forbidden := range []string{"4k", "4K", "8k", "8K"} {
 		if strings.Contains(body, forbidden) {
-			t.Errorf("GET /workflow/create chứa tùy chọn độ phân giải bị loại bỏ %q", forbidden)
+			t.Errorf("GET / chứa tùy chọn độ phân giải bị loại bỏ %q", forbidden)
 		}
 	}
 }
@@ -158,5 +147,45 @@ func TestValidateAndEnforceViralChannelFallback(t *testing.T) {
 	}
 	if user != "Meow" || id != 10 {
 		t.Errorf("user=%q id=%d, want Meow 10", user, id)
+	}
+}
+
+func TestParsePromptDirectives(t *testing.T) {
+	prompt := "Tạo video review son môi Merzy cực xinh https://shopee.vn/son-123 độ phân giải 2K giọng nam truyền cảm"
+	d := parsePromptDirectives(prompt)
+	if d.Resolution != "2K" {
+		t.Errorf("Resolution = %q, want 2K", d.Resolution)
+	}
+	if d.Voice != "male" {
+		t.Errorf("Voice = %q, want male", d.Voice)
+	}
+	if d.Genre != "affiliate" {
+		t.Errorf("Genre = %q, want affiliate", d.Genre)
+	}
+	if strings.Contains(d.CleanTopic, "http") {
+		t.Errorf("CleanTopic should not contain URLs: %q", d.CleanTopic)
+	}
+}
+
+func TestDetectAutoWorkflow(t *testing.T) {
+	// Fashion try-on
+	outType, wf := detectAutoWorkflow("Phối đồ outfit mùa đông ấm áp thời trang", "Thời trang", "", "", 1, false, "")
+	if outType != "workflow" || wf != "preset_fashion_tryon" {
+		t.Errorf("got %s %s, want workflow preset_fashion_tryon", outType, wf)
+	}
+	// Audio story
+	outType, wf = detectAutoWorkflow("Kể câu chuyện cổ tích và bài học cuộc sống", "Truyện audio", "", "", 0, false, "")
+	if outType != "workflow" || wf != "preset_audio_story" {
+		t.Errorf("got %s %s, want workflow preset_audio_story", outType, wf)
+	}
+	// Viral dance
+	outType, wf = detectAutoWorkflow("Nhảy vũ đạo bắt trend hot tiktok triệu view", "Vũ đạo", "", "", 0, true, "")
+	if outType != "viral" || wf != "preset_viral_dance" {
+		t.Errorf("got %s %s, want viral preset_viral_dance", outType, wf)
+	}
+	// Affiliate
+	outType, wf = detectAutoWorkflow("Review đập hộp tai nghe bluetooth", "Tai nghe", "https://shopee.vn/sp", "", 1, false, "")
+	if outType != "affiliate" || wf != "preset_affiliate_daily" {
+		t.Errorf("got %s %s, want affiliate preset_affiliate_daily", outType, wf)
 	}
 }

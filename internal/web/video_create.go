@@ -28,7 +28,7 @@ type videoJobView struct {
 
 type viralJobView = videoJobView
 
-// videoCreateView là mô hình dữ liệu chính cho trang tạo video AI (/workflow/create).
+// videoCreateView là mô hình dữ liệu chính cho trang tạo video AI (/).
 type videoCreateView struct {
 	StudioOK              bool
 	Jobs                  []videoJobView

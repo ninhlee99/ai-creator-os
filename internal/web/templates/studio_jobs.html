@@ -19,14 +19,11 @@
     <a href="/studio/jobs?tab=failed" class="{{if eq .Tab "failed"}}active{{end}}">
       Lỗi {{if .FailedCount}}<span class="badge badge-err" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.FailedCount}}</span>{{end}}
     </a>
-    <a href="/studio/jobs?tab=schedule" class="{{if eq .Tab "schedule"}}active{{end}}">
-      Lịch tự động
-    </a>
   </nav>
 
   <div style="display:flex; gap:8px; align-items:center;">
     <a href="/workflow" class="btn btn-secondary btn-sm" style="font-weight:600;padding:6px 12px;border-radius:8px">🎨 Workflow</a>
-    <a href="/" class="btn btn-secondary btn-sm" style="font-weight:600;padding:6px 12px;border-radius:8px">⚡ Tạo video AI</a>
+    <a href="/" class="btn btn-secondary btn-sm" style="font-weight:600;padding:6px 12px;border-radius:8px">⚡ Tạo video</a>
     <a href="/products" class="btn btn-secondary btn-sm" style="font-weight:600;padding:6px 12px;border-radius:8px">🛍️ Sản phẩm Affiliate</a>
   </div>
 </div>
@@ -34,76 +31,7 @@
 {{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
 {{if .Err}}<p class="err">{{.Err}}</p>{{end}}
 
-
-{{if eq .Tab "schedule"}}
-<!-- =========================================================================
-     VIEW: AUTOPILOT SCHEDULE MANAGEMENT DASHBOARD
-     ========================================================================= -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-bottom:20px">
-  <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">TRẠNG THÁI LỊCH</div>
-    <div>
-      {{if .SchedEnabled}}
-      <span class="badge badge-warn" style="font-size:12px;font-weight:700">LỊCH BẬT · PRODUCER TẠM DỪNG</span>
-      {{else}}
-      <span class="badge badge-no" style="font-size:12px;font-weight:700">LỊCH ĐANG TẮT</span>
-      {{end}}
-    </div>
-  </div>
-
-  <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">CHU KỲ ĐÃ LƯU</div>
-    <div style="font-size:18px;font-weight:800;color:var(--text)">
-      Mỗi {{.SchedHours}} giờ / lượt
-    </div>
-  </div>
-
-  <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">LẦN AUTOPILOT THỬ TIẾP THEO</div>
-    <div style="font-size:13.5px;font-weight:700;color:var(--accent)">
-      {{.SchedNextRun}}
-    </div>
-  </div>
-
-  <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">GỬI TIKTOK</div>
-    <div style="font-size:12px;font-weight:600;color:var(--text)">
-      Chỉ gửi Draft sau khi xem trước và xác nhận riêng từng video.
-    </div>
-  </div>
-</div>
-
-<div class="card" style="border-radius:14px;padding:22px;background:var(--bg2);margin-bottom:24px">
-  <h3 style="margin:0 0 16px;font-size:16px;display:flex;align-items:center;gap:8px">
-    <span>⚙️</span> Cấu hình lịch Autopilot
-  </h3>
-  <form method="post" action="/studio/schedule">
-    <div style="margin-bottom:16px">
-      <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer">
-        <input type="checkbox" name="enabled" {{if .SchedEnabled}}checked{{end}}>
-        <span>Bật lịch Autopilot</span>
-      </label>
-    </div>
-
-    <div style="margin-bottom:18px">
-      <div>
-        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Chu kỳ đã lưu · giờ</label>
-        <select name="interval_hours" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text)">
-          <option value="2" {{if eq .SchedHours 2}}selected{{end}}>Mỗi 2 giờ (Tối đa công suất)</option>
-          <option value="4" {{if eq .SchedHours 4}}selected{{end}}>Mỗi 4 giờ (Khuyên dùng)</option>
-          <option value="6" {{if eq .SchedHours 6}}selected{{end}}>Mỗi 6 giờ (Chuẩn)</option>
-          <option value="12" {{if eq .SchedHours 12}}selected{{end}}>Mỗi 12 giờ (2 video/ngày)</option>
-          <option value="24" {{if eq .SchedHours 24}}selected{{end}}>Mỗi 24 giờ (1 video/ngày)</option>
-        </select>
-      </div>
-    </div>
-
-    <div style="display:flex;justify-content:flex-end;gap:10px">
-      <button type="submit" class="btn btn-primary" style="font-weight:700">💾 Lưu Cấu Hình Lịch Tự Động</button>
-    </div>
-  </form>
-</div>
-{{else if eq .Tab "failed"}}
+{{if eq .Tab "failed"}}
 {{if .FailedJobs}}
 <div style="display:flex;flex-direction:column;gap:14px">
   {{range .FailedJobs}}
@@ -485,7 +413,7 @@
   <h3 style="margin:0 0 8px;font-size:18px">Hiện tại không có video nào đang trong dây chuyền dựng</h3>
   <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
     <a href="/" class="btn btn-primary" style="font-weight:700">⚡ Tạo video mới ngay</a>
-    <a href="/studio/jobs?tab=schedule" class="btn btn-secondary">📅 Xem lịch</a>
+    <a href="/settings/system" class="btn btn-secondary">⚙️ Cài đặt lịch</a>
     <a href="/studio/jobs?tab=done" class="btn btn-secondary">📂 Xem video đã hoàn thành ({{.DoneCount}})</a>
   </div>
 </div>

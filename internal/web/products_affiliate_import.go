@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -35,7 +36,7 @@ func (s *Server) handleProductsImportLink(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 	defer cancel()
 
 	extracted, err := products.ExtractFromAffiliateLink(ctx, rawURL)
@@ -301,68 +302,111 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 			var flowDone bool
 			if workflowID != "" && s.Studio != nil {
 				if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
-					if graph, err := fs.GetGraph(workflowID); err == nil && graph != nil {
-						progress(50, "Đang chạy workflow canvas: "+graph.Name+"...")
+					targetWF := workflowID
+					if targetWF == "preset_affiliate_daily" || targetWF == "auto" {
+						targetWF = "preset_affiliate_showcase"
+					}
+					if graph, err := fs.GetGraph(targetWF); err == nil && graph != nil {
+						progress(40, "Đang khởi tạo quy trình Workflow: "+graph.Name+"...")
+
+						// Nạp dữ liệu sản phẩm & nhân vật vào các Node của đồ thị
+						for i := range graph.Nodes {
+							node := &graph.Nodes[i]
+							if node.Params == nil {
+								node.Params = map[string]any{}
+							}
+							switch node.Type {
+							case "product_input":
+								node.Params["product_id"] = fmt.Sprint(prod.ID)
+								node.Params["product_title"] = prod.Title
+								node.Params["product_image"] = imgPath
+								node.Params["product_images"] = productImgPaths
+								node.Params["affiliate_url"] = prod.ProductURL
+							case "character_input":
+								if len(uploadedPhotos) > 0 {
+									node.Params["model_path"] = uploadedPhotos[0]
+									node.Params["model_paths"] = uploadedPhotos
+								}
+							}
+						}
+
+						narrText := fmt.Sprintf("%s. Danh mục %s. Giá chỉ %.0f đồng. Bấm vào giỏ hàng bên dưới để đặt ngay hôm nay!", prod.Title, prod.Category, prod.Price)
+						var ttsAudioPath string
+						if s.TTS != nil {
+							ttsCtx, ttsCancel := context.WithTimeout(ctx, 30*time.Second)
+							if audioBytes, err := s.TTS.Synthesize(ttsCtx, narrText, "vi-VN-HoaiMyNeural"); err == nil && len(audioBytes) > 0 {
+								ttsDst := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("tts_aff_%d_%d.mp3", prod.ID, time.Now().UnixNano()))
+								if err := os.WriteFile(ttsDst, audioBytes, 0644); err == nil {
+									ttsAudioPath = ttsDst
+								}
+							}
+							ttsCancel()
+						}
+
 						flowInputs := map[string]any{
-							"product_name":   prod.Title,
-							"product_id":     prod.ID,
-							"price":          prod.Price,
-							"category":       prod.Category,
-							"product_url":    prod.ProductURL,
-							"image":          imgPath,
-							"images":         productImgPaths,
-							"product_images": productImgPaths,
+							"product_name":      prod.Title,
+							"product_id":        prod.ID,
+							"price":             prod.Price,
+							"category":          prod.Category,
+							"product_url":       prod.ProductURL,
+							"image":             imgPath,
+							"images":            productImgPaths,
+							"product_images":    productImgPaths,
+							"resolution":        "1080p",
+							"output_resolution": "1080p",
+							"duration":          30.0,
+						}
+						if ttsAudioPath != "" {
+							flowInputs["voice_audio"] = ttsAudioPath
 						}
 						if len(uploadedPhotos) > 0 {
 							flowInputs["model_photo"] = uploadedPhotos[0]
 							flowInputs["character_photos"] = uploadedPhotos
 						}
-						runID := fmt.Sprintf("aff-fast-%d-%d", prod.ID, time.Now().Unix())
-						run, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs)
+
+						services := s.flowExecutionServices()
+						services.MuseCreditsAcknowledged = true
+						services.GoogleFlowCreditsAcknowledged = true
+
+						runID := fmt.Sprintf("aff-wf-%d-%d", prod.ID, time.Now().Unix())
+						run, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
 						if runErr == nil && run != nil && run.Status == "completed" {
 							if vid, ok := run.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {
 								if err := copyFile(vid, finalPath); err == nil {
 									flowDone = true
 								}
 							}
+						} else {
+							var errDetail string
+							if runErr != nil {
+								errDetail = runErr.Error()
+							} else if run != nil {
+								errDetail = run.Log
+							}
+							log.Printf("web: workflow execution failed: %s", errDetail)
+							progress(45, "Cảnh báo Workflow: "+errDetail)
 						}
 					}
 				}
 			}
 
-			// Nếu workflow không sinh video thì dựng video kết hợp toàn bộ ảnh sản phẩm chuẩn TikTok 9:16
+			// Nếu workflow chưa hoàn tất thì dựng video đa ảnh chất lượng cao chuẩn TikTok 9:16 kèm giọng đọc thuyết minh TTS
 			if !flowDone && len(productImgPaths) > 0 {
-				if len(productImgPaths) == 1 {
-					_ = studio.FFmpegRun(ctx,
-						"-loop", "1", "-i", productImgPaths[0],
-						"-c:v", "libx264", "-t", "5",
-						"-pix_fmt", "yuv420p",
-						"-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black",
-						"-y", finalPath,
-					)
-				} else {
-					var inputArgs []string
-					var filterComplex []string
-					perImageSec := 3
-					for i, pImg := range productImgPaths {
-						inputArgs = append(inputArgs, "-loop", "1", "-t", strconv.Itoa(perImageSec), "-i", pImg)
-						filterComplex = append(filterComplex, fmt.Sprintf("[%d:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,setsar=1[v%d]", i, i))
-					}
-					var concatInputs strings.Builder
-					for i := range productImgPaths {
-						concatInputs.WriteString(fmt.Sprintf("[v%d]", i))
-					}
-					concatInputs.WriteString(fmt.Sprintf("concat=n=%d:v=1:a=0[outv]", len(productImgPaths)))
-					filterComplex = append(filterComplex, concatInputs.String())
-
-					ffmpegArgs := append(inputArgs,
-						"-filter_complex", strings.Join(filterComplex, ";"),
-						"-map", "[outv]",
-						"-c:v", "libx264",
-						"-pix_fmt", "yuv420p",
-						"-y", finalPath,
-					)
-					_ = studio.FFmpegRun(ctx, ffmpegArgs...)
+				var charPhoto string
+				if len(uploadedPhotos) > 0 {
+					charPhoto = uploadedPhotos[0]
+				}
+				narrText := fmt.Sprintf("%s. Danh mục %s. Giá chỉ %.0f đồng. Bấm vào giỏ hàng bên dưới để đặt ngay hôm nay!", prod.Title, prod.Category, prod.Price)
+				cfg := compositeVideoConfig{
+					FinalPath:      finalPath,
+					Resolution:     "1080p",
+					Photos:         productImgPaths,
+					CharacterPhoto: charPhoto,
+					NarrationText:  narrText,
+					Voice:          "vi-VN-Standard-A",
+				}
+				if _, err := s.renderCompositeVideo(ctx, cfg); err != nil {
+					log.Printf("web: renderCompositeVideo fallback error: %v", err)
 				}
 			}
 

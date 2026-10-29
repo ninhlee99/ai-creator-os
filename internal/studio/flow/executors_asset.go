@@ -141,6 +141,20 @@ func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[str
 	modelName := nodeParamString(node.Params, "model_name", "")
 	var characterImages []string
 
+	if modelPath == "" {
+		modelPath = inputString(inputs, "model_path", "")
+		if modelPath == "" {
+			modelPath = inputString(inputs, "character_photo", "")
+		}
+		if modelPath == "" && ctx.WorkflowInputs != nil {
+			if mp, ok := ctx.WorkflowInputs["model_photo"]; ok && mp != nil {
+				modelPath = fmt.Sprint(mp)
+			} else if mp, ok := ctx.WorkflowInputs["character_photo"]; ok && mp != nil {
+				modelPath = fmt.Sprint(mp)
+			}
+		}
+	}
+
 	// 1. Kiểm tra nếu có dữ liệu ảnh upload trực tiếp dạng base64
 	if strings.HasPrefix(previewURL, "data:image/") {
 		savedUpload := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_character_upload.jpg", node.ID))
@@ -232,6 +246,48 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	prodTitle := nodeParamString(node.Params, "product_title", "")
 	productInfo := map[string]any{}
 	var productImageURLs []string
+
+	if prodID == "" {
+		prodID = inputString(inputs, "product_id", "")
+		if prodID == "" && ctx.WorkflowInputs != nil {
+			if idVal, ok := ctx.WorkflowInputs["product_id"]; ok && idVal != nil {
+				prodID = fmt.Sprint(idVal)
+			}
+		}
+	}
+	if prodImg == "" {
+		prodImg = inputString(inputs, "product_image", "")
+		if prodImg == "" {
+			prodImg = inputString(inputs, "image", "")
+		}
+		if prodImg == "" && ctx.WorkflowInputs != nil {
+			if imgVal, ok := ctx.WorkflowInputs["product_image"]; ok && imgVal != nil {
+				prodImg = fmt.Sprint(imgVal)
+			} else if imgVal, ok := ctx.WorkflowInputs["image"]; ok && imgVal != nil {
+				prodImg = fmt.Sprint(imgVal)
+			}
+		}
+	}
+	if prodTitle == "" {
+		prodTitle = inputString(inputs, "product_title", "")
+		if prodTitle == "" {
+			prodTitle = inputString(inputs, "product_name", "")
+		}
+		if prodTitle == "" && ctx.WorkflowInputs != nil {
+			if titleVal, ok := ctx.WorkflowInputs["product_title"]; ok && titleVal != nil {
+				prodTitle = fmt.Sprint(titleVal)
+			} else if titleVal, ok := ctx.WorkflowInputs["product_name"]; ok && titleVal != nil {
+				prodTitle = fmt.Sprint(titleVal)
+			}
+		}
+	}
+	if affURL == "" && ctx.WorkflowInputs != nil {
+		if uVal, ok := ctx.WorkflowInputs["product_url"]; ok && uVal != nil {
+			affURL = fmt.Sprint(uVal)
+		} else if uVal, ok := ctx.WorkflowInputs["affiliate_url"]; ok && uVal != nil {
+			affURL = fmt.Sprint(uVal)
+		}
+	}
 
 	if prodID != "" {
 		id, err := strconv.ParseInt(prodID, 10, 64)

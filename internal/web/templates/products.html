@@ -89,9 +89,6 @@
         <h2 style="margin:0 0 4px;font-size:16px;font-weight:750;border:none;padding:0;display:flex;align-items:center;gap:8px;color:var(--text)">
           <span>🔗</span> Nhập Sản Phẩm Tự Động Từ Link Sàn
         </h2>
-        <p style="margin:0;font-size:12.5px;color:var(--muted)">
-          Hệ thống tự động cào ảnh sắc nét (nhiều góc), tên sản phẩm, giá bán, hoa hồng và danh mục.
-        </p>
       </div>
 
       <!-- SÀN ĐƯỢC HỖ TRỢ -->
@@ -335,29 +332,12 @@
           </div>
         </div>
 
-      </div>
+        <div id="detail-link-box" style="display:none;margin-top:4px">
+          <a id="detail-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="font-size:12px;display:inline-flex;align-items:center;gap:6px;width:100%;justify-content:center;padding:7px 12px;border-radius:8px">
+            <span>🔗</span> Mở link gốc sản phẩm ↗
+          </a>
+        </div>
 
-      <!-- KHỐI QUẢN LÝ & TẢI THÊM ẢNH SẢN PHẨM -->
-      <div style="grid-column: 1 / -1; background:var(--bg3); border:1.5px dashed var(--border); border-radius:12px; padding:14px 16px; margin-top:8px">
-        <form method="post" action="/products/add-images" enctype="multipart/form-data" style="margin:0">
-          <input type="hidden" name="product_id" id="detail-add-img-product-id" value="">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
-            <span style="font-size:12.5px; font-weight:750; color:var(--text); display:flex; align-items:center; gap:6px">
-              <span>📸</span> Bổ sung góc ảnh cho sản phẩm này
-            </span>
-            <span id="detail-upload-hint" style="font-size:11px; color:var(--muted)">Tải file từ máy hoặc dán link ảnh</span>
-          </div>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-            <input type="file" id="detail-product-images-input" name="product_images" multiple accept="image/*" style="display:none;" onchange="updateProductAddImagesHint(this)">
-            <label for="detail-product-images-input" class="btn btn-secondary btn-sm" style="height:36px; padding:0 14px; font-weight:600; font-size:12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; margin:0">
-              <span>📁</span> <span id="detail-upload-btn-label">Chọn ảnh từ máy</span>
-            </label>
-            <input type="text" name="image_urls" placeholder="Hoặc dán URL ảnh bổ sung..." style="flex:1; min-width:200px; height:36px; padding:0 12px; font-size:12.5px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text)">
-            <button type="submit" class="btn btn-primary btn-sm" style="height:36px; padding:0 16px; font-weight:750; font-size:12.5px; border-radius:8px; white-space:nowrap">
-              + Thêm ảnh
-            </button>
-          </div>
-        </form>
       </div>
 
     </div>
@@ -401,10 +381,10 @@
           🧩 Chọn Workflow thực thi:
         </label>
         <select name="workflow_id" id="modal-workflow-id" style="width:100%;height:40px;padding:0 12px;font-size:13px;font-weight:600;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
-          <option value="preset_affiliate_daily" selected>⚡ [Mặc định] Video Giới Thiệu Sản Phẩm (Kling 3.0 &amp; Veo AI)</option>
+          <option value="preset_affiliate_showcase" selected>⚡ [Mặc định] Video Giới Thiệu Sản Phẩm (Muse AI &amp; Veo)</option>
           <option value="preset_viral_dance">⚡ Video Vũ Đạo &amp; Chuyển Động (Veo 3.1 &amp; Muse AI)</option>
           {{range .AvailableWorkflows}}
-          {{if and (ne .ID "preset_affiliate_daily") (ne .ID "preset_viral_dance")}}
+          {{if and (ne .ID "preset_affiliate_showcase") (ne .ID "preset_affiliate_daily") (ne .ID "preset_viral_dance")}}
           <option value="{{.ID}}">📁 {{.Title}} {{if .Category}}({{.Category}}){{end}}</option>
           {{end}}
           {{end}}
@@ -481,118 +461,137 @@ function openProductDetailModal(id) {
   var addImgId = document.getElementById('detail-add-img-product-id');
   if (addImgId) addImgId.value = id;
 
-  document.getElementById('detail-title').innerText = d.title || '';
-  document.getElementById('detail-sku').innerText = d.sku || 'N/A';
+  var titleEl = document.getElementById('detail-title');
+  if (titleEl) titleEl.innerText = d.title || '';
+  var skuEl = document.getElementById('detail-sku');
+  if (skuEl) skuEl.innerText = d.sku || 'N/A';
   
   var shopEl = document.getElementById('detail-shop');
-  if (d.shop) {
-    shopEl.innerText = '· ' + d.shop;
-    shopEl.style.display = 'inline';
-  } else {
-    shopEl.style.display = 'none';
+  if (shopEl) {
+    if (d.shop) {
+      shopEl.innerText = '· ' + d.shop;
+      shopEl.style.display = 'inline';
+    } else {
+      shopEl.style.display = 'none';
+    }
   }
   
   var catEl = document.getElementById('detail-category');
-  if (d.category) {
-    catEl.innerText = d.category;
-    catEl.style.display = 'inline';
-  } else {
-    catEl.style.display = 'none';
+  if (catEl) {
+    if (d.category) {
+      catEl.innerText = d.category;
+      catEl.style.display = 'inline';
+    } else {
+      catEl.style.display = 'none';
+    }
   }
   
   var platBadge = document.getElementById('detail-platform-badge');
-  var sku = d.sku || '';
-  if (sku.startsWith('TTS-')) {
-    platBadge.className = 'platform-pill platform-tiktok';
-    platBadge.innerText = '🎵 TikTok Shop';
-  } else if (sku.startsWith('SP-')) {
-    platBadge.className = 'platform-pill platform-shopee';
-    platBadge.innerText = '🧡 Shopee';
-  } else if (sku.startsWith('LZD-')) {
-    platBadge.className = 'platform-pill platform-lazada';
-    platBadge.innerText = '💙 Lazada';
-  } else if (sku.startsWith('TIKI-')) {
-    platBadge.className = 'platform-pill platform-tiki';
-    platBadge.innerText = '🔵 Tiki';
-  } else if (sku.startsWith('SENDO-')) {
-    platBadge.className = 'platform-pill platform-sendo';
-    platBadge.innerText = '🔴 Sendo';
-  } else {
-    platBadge.className = 'platform-pill platform-affiliate';
-    platBadge.innerText = '🛍️ Affiliate';
+  if (platBadge) {
+    var sku = d.sku || '';
+    if (sku.startsWith('TTS-')) {
+      platBadge.className = 'platform-pill platform-tiktok';
+      platBadge.innerText = '🎵 TikTok Shop';
+    } else if (sku.startsWith('SP-')) {
+      platBadge.className = 'platform-pill platform-shopee';
+      platBadge.innerText = '🧡 Shopee';
+    } else if (sku.startsWith('LZD-')) {
+      platBadge.className = 'platform-pill platform-lazada';
+      platBadge.innerText = '💙 Lazada';
+    } else if (sku.startsWith('TIKI-')) {
+      platBadge.className = 'platform-pill platform-tiki';
+      platBadge.innerText = '🔵 Tiki';
+    } else if (sku.startsWith('SENDO-')) {
+      platBadge.className = 'platform-pill platform-sendo';
+      platBadge.innerText = '🔴 Sendo';
+    } else {
+      platBadge.className = 'platform-pill platform-affiliate';
+      platBadge.innerText = '🛍️ Affiliate';
+    }
   }
   
   var priceText = d.price || '';
   if (d.pricemax && d.pricemax !== d.price) {
     priceText += ' – ' + d.pricemax;
   }
-  document.getElementById('detail-price').innerText = priceText;
+  var priceEl = document.getElementById('detail-price');
+  if (priceEl) priceEl.innerText = priceText;
   
   var origPriceEl = document.getElementById('detail-origprice');
-  if (d.origprice) {
-    origPriceEl.innerText = d.origprice;
-    origPriceEl.style.display = 'inline';
-  } else {
-    origPriceEl.style.display = 'none';
+  if (origPriceEl) {
+    if (d.origprice) {
+      origPriceEl.innerText = d.origprice;
+      origPriceEl.style.display = 'inline';
+    } else {
+      origPriceEl.style.display = 'none';
+    }
   }
   
   var commEl = document.getElementById('detail-commission');
-  if (d.commission) {
-    commEl.innerText = '💰 Hoa hồng: ' + d.commission;
-  } else {
-    commEl.innerText = 'Ước tính 10% hoa hồng';
+  if (commEl) {
+    if (d.commission) {
+      commEl.innerText = '💰 Hoa hồng: ' + d.commission;
+    } else {
+      commEl.innerText = 'Ước tính 10% hoa hồng';
+    }
   }
   
   var linkBox = document.getElementById('detail-link-box');
   var linkEl = document.getElementById('detail-link');
-  if (d.url) {
-    linkEl.href = d.url;
-    linkBox.style.display = 'block';
-  } else {
-    linkBox.style.display = 'none';
+  if (linkBox && linkEl) {
+    if (d.url) {
+      linkEl.href = d.url;
+      linkBox.style.display = 'block';
+    } else {
+      linkBox.style.display = 'none';
+    }
   }
   
   var mainImg = document.getElementById('detail-main-img');
-  mainImg.src = d.img || '';
+  if (mainImg) mainImg.src = d.img || '';
   
   var thumbsContainer = document.getElementById('detail-thumbs-container');
-  thumbsContainer.innerHTML = '';
-  var images = (d.images || '').split(',').filter(function(u) { return u.trim().length > 0; });
-  if (images.length > 1) {
-    images.forEach(function(u) {
-      var thumb = document.createElement('img');
-      thumb.src = u;
-      thumb.style.width = '44px';
-      thumb.style.height = '44px';
-      thumb.style.objectFit = 'cover';
-      thumb.style.borderRadius = '6px';
-      thumb.style.border = '1.5px solid var(--border)';
-      thumb.style.cursor = 'pointer';
-      thumb.style.flexShrink = '0';
-      thumb.onclick = function() {
-        mainImg.src = u;
-        thumbsContainer.querySelectorAll('img').forEach(function(t) { t.style.borderColor = 'var(--border)'; });
-        thumb.style.borderColor = 'var(--accent)';
-      };
-      thumbsContainer.appendChild(thumb);
-    });
-    thumbsContainer.style.display = 'flex';
-  } else {
-    thumbsContainer.style.display = 'none';
+  if (thumbsContainer) {
+    thumbsContainer.innerHTML = '';
+    var images = (d.images || '').split(',').filter(function(u) { return u.trim().length > 0; });
+    if (images.length > 1) {
+      images.forEach(function(u) {
+        var thumb = document.createElement('img');
+        thumb.src = u;
+        thumb.style.width = '44px';
+        thumb.style.height = '44px';
+        thumb.style.objectFit = 'cover';
+        thumb.style.borderRadius = '6px';
+        thumb.style.border = '1.5px solid var(--border)';
+        thumb.style.cursor = 'pointer';
+        thumb.style.flexShrink = '0';
+        thumb.onclick = function() {
+          if (mainImg) mainImg.src = u;
+          thumbsContainer.querySelectorAll('img').forEach(function(t) { t.style.borderColor = 'var(--border)'; });
+          thumb.style.borderColor = 'var(--accent)';
+        };
+        thumbsContainer.appendChild(thumb);
+      });
+      thumbsContainer.style.display = 'flex';
+    } else {
+      thumbsContainer.style.display = 'none';
+    }
   }
   
   var btnCreate = document.getElementById('detail-btn-create-video');
-  btnCreate.onclick = function() {
-    closeProductDetailModal();
-    openProductVideoModal({
-      dataset: {
-        productId: d.id,
-        productTitle: d.title,
-        productPrice: d.price,
-        productImg: d.img
-      }
-    });
-  };
+  if (btnCreate) {
+    btnCreate.onclick = function() {
+      closeProductDetailModal();
+      openProductVideoModal({
+        dataset: {
+          productId: d.id,
+          productTitle: d.title,
+          productPrice: d.price,
+          productImg: d.img
+        }
+      });
+    };
+  }
   
   var modal = document.getElementById('product-detail-modal');
   if (modal) modal.style.display = 'flex';
@@ -675,18 +674,6 @@ function updateSelectedPhotosCount(input) {
     hint.innerHTML = '<strong style="color:var(--accent,#2563eb)">✓ Đã chọn ' + input.files.length + ' ảnh nhân vật mới</strong>';
   } else {
     hint.innerText = 'Chọn một hoặc nhiều góc chụp để AI nhận diện khuôn mặt';
-  }
-}
-
-function updateProductAddImagesHint(input) {
-  var label = document.getElementById('detail-upload-btn-label');
-  var hint = document.getElementById('detail-upload-hint');
-  if (input.files && input.files.length > 0) {
-    if (label) label.innerText = '✓ ' + input.files.length + ' ảnh đã chọn';
-    if (hint) hint.innerHTML = '<span style="color:var(--accent,#2563eb);font-weight:700">✓ Đã chọn ' + input.files.length + ' file ảnh</span>';
-  } else {
-    if (label) label.innerText = 'Chọn ảnh từ máy';
-    if (hint) hint.innerText = 'Tải file từ máy hoặc dán link ảnh';
   }
 }
 </script>

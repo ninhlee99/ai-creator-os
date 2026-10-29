@@ -69,10 +69,6 @@ func TestOnboardGate(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / sau wizard = %d, want 200 OK", rec.Code)
 	}
-	rec = get(t, s, "/workflow/create")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /workflow/create sau wizard = %d, want 200", rec.Code)
-	}
 }
 
 // TestSettingsHeThongR2W7 — trang Hệ thống render đủ các khối mới của

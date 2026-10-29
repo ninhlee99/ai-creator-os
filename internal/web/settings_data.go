@@ -108,7 +108,29 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		}
 	}
 
+	schedEnabled, schedHours, schedLastRun := s.scheduleView()
+	schedNextRun := "Đang chờ lịch kích hoạt"
+	if schedEnabled {
+		if schedLastRun != "" {
+			if t, err := time.Parse(time.RFC3339, schedLastRun); err == nil {
+				next := t.Add(time.Duration(schedHours) * time.Hour)
+				if next.After(time.Now()) {
+					schedNextRun = next.Format("15:04 ngày 02/01/2006")
+				} else {
+					schedNextRun = "Sắp chạy ngay trong vài phút tới"
+				}
+			}
+		} else {
+			schedNextRun = "Sắp kích hoạt trong chu kỳ tiếp theo"
+		}
+	} else {
+		schedNextRun = "Tạm dừng (Lịch tự động đang tắt)"
+	}
+
 	return map[string]any{
+		"SchedEnabled":           schedEnabled,
+		"SchedHours":             schedHours,
+		"SchedNextRun":           schedNextRun,
 		"EnvStatus":              envs,
 		"CustomAPIModels":        customModels,
 		"TikTokRadarConfigured":  studio.TikTokRadarSourceConfigured(),

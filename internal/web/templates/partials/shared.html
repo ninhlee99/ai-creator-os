@@ -6,6 +6,8 @@ each page includes only what it uses. */}}
 {{define "modal-css"}}<style>
 .aicos-dialog-backdrop{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.48);backdrop-filter:blur(3px)}
 .aicos-dialog-backdrop[hidden],[hidden].aicos-dialog-backdrop{display:none}
+.modal-backdrop{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px)}
+.modal-backdrop[hidden],[hidden].modal-backdrop{display:none !important}
 .aicos-dialog{width:min(480px,calc(100vw - 32px));max-height:min(84vh,720px);overflow:auto;padding:24px;border:1px solid var(--border);border-radius:18px;background:var(--bg2);box-shadow:0 24px 70px rgba(15,23,42,.28);animation:aicosDialogEnter .16s ease-out}
 @keyframes aicosDialogEnter{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 .aicos-dialog-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
@@ -63,20 +65,20 @@ body.aicos-dialog-open{overflow:hidden}
 
 {{/* In-App Video Player Modal (Theatre mode & Quick Actions) */}}
 {{define "video-modal"}}
-<div class="modal-backdrop" id="video-modal" hidden style="background:rgba(0,0,0,0.85);z-index:200;">
-  <div class="modal" role="dialog" aria-modal="true" style="max-width:420px;width:95%;background:var(--bg2);border-radius:16px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
+<div class="modal-backdrop" id="video-modal" hidden style="position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px)">
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:440px;width:100%;max-height:92vh;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,0.6);margin:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
-      <div style="font-weight:700;font-size:16px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:85%" id="video-modal-title">Xem trước video</div>
-      <button type="button" class="btn btn-secondary btn-sm" id="video-modal-close" style="padding:4px 10px;font-size:16px;line-height:1">✕</button>
+      <div style="font-weight:750;font-size:15px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:85%" id="video-modal-title">Xem trước video</div>
+      <button type="button" class="btn btn-secondary btn-sm" id="video-modal-close" style="padding:4px 10px;font-size:16px;line-height:1;border-radius:8px;cursor:pointer">✕</button>
     </div>
-    <div id="video-modal-frame" style="display:flex;justify-content:center;background:#000;border-radius:12px;overflow:hidden;margin:0 auto 14px;width:100%;max-width:100%;aspect-ratio:16/9;max-height:72vh;box-shadow:0 10px 30px rgba(0,0,0,0.6)">
-      <video id="video-modal-player" controls preload="auto" style="width:100%;height:100%;object-fit:contain;display:block"></video>
+    <div id="video-modal-frame" style="display:flex;justify-content:center;align-items:center;background:#000;border-radius:12px;overflow:hidden;margin:0 auto 14px;width:100%;max-width:100%;aspect-ratio:9/16;max-height:68vh;box-shadow:0 10px 30px rgba(0,0,0,0.6)">
+      <video id="video-modal-player" controls preload="auto" playsinline style="width:100%;height:100%;object-fit:contain;display:block"></video>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <span class="badge badge-draft" id="video-modal-spec">Đang đọc thông số video…</span>
       <div style="display:flex;gap:8px">
-        <a id="video-modal-download" href="#" download class="btn btn-secondary btn-sm">⬇ Tải video</a>
-        <a id="video-modal-publish" href="/accounts" class="btn btn-primary btn-sm" title="Mở trang tải file video để tự đăng trong ứng dụng nền tảng">📤 Bàn giao</a>
+        <a id="video-modal-download" href="#" download class="btn btn-secondary btn-sm" style="font-weight:600;border-radius:8px">⬇ Tải video</a>
+        <a id="video-modal-publish" href="/accounts" class="btn btn-primary btn-sm" style="font-weight:700;border-radius:8px" title="Mở trang tải file video để tự đăng trong ứng dụng nền tảng">📤 Bàn giao</a>
       </div>
     </div>
   </div>
@@ -121,47 +123,81 @@ body.aicos-dialog-open{overflow:hidden}
 {{define "chain-card"}}
 {{$d := .}}
 {{$chain := .ChainName}}
-<div class="form-card" style="max-width:none">
+<div class="form-card" style="max-width:none; background:transparent; border:none; padding:0; box-shadow:none">
 <form method="post" action="/settings/chain?name={{$chain}}">
-  {{range $i, $p := $d.Chain.Order}}
-  <div class="provider-card">
-    <div class="provider-head">
-      <strong>{{$p.Name}}</strong>
-      <span class="provider-order">#{{$i}}</span>
-      <label class="provider-enabled"><input type="checkbox" name="enabled" value="{{$i}}" {{if $p.Enabled}}checked{{end}}> Bật</label>
+  <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:18px">
+    {{range $i, $p := $d.Chain.Order}}
+    <div class="provider-card" style="background:var(--bg2); border:1px solid var(--border); border-radius:14px; padding:18px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.03); transition:all 0.15s ease">
+      <div class="provider-head" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-size:11px; font-weight:800; background:var(--bg3); color:var(--muted); padding:3px 8px; border-radius:6px; border:1px solid var(--border)">
+            #{{$i}}
+          </span>
+          <strong style="font-size:15px; color:var(--text); letter-spacing:-0.2px">
+            {{if eq $p.Name "edge"}}Edge-TTS (Miễn phí)
+            {{else if eq $p.Name "gemini"}}Google Gemini API
+            {{else if eq $p.Name "openai"}}OpenAI
+            {{else if eq $p.Name "viettel"}}Viettel AI
+            {{else if eq $p.Name "fpt"}}FPT AI
+            {{else if eq $p.Name "zalo"}}Zalo AI
+            {{else if eq $p.Name "anthropic"}}Anthropic Claude
+            {{else}}{{$p.Name}}{{end}}
+          </strong>
+          {{if eq $p.Name "edge"}}
+          <span class="badge badge-ok" style="font-size:10.5px">Không cần API key</span>
+          {{end}}
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px">
+          <label class="provider-enabled" style="font-size:12.5px; font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:var(--bg3); padding:4px 10px; border-radius:8px; border:1px solid var(--border); margin:0">
+            <input type="checkbox" name="enabled" value="{{$i}}" {{if $p.Enabled}}checked{{end}} style="cursor:pointer"> Bật
+          </label>
+          <div style="display:inline-flex; gap:4px">
+            <button type="submit" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; border-radius:6px" formmethod="post" formaction="/settings/chain/move?name={{$chain}}&dir=up&i={{$i}}" title="Di chuyển lên">▲</button>
+            <button type="submit" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; border-radius:6px" formmethod="post" formaction="/settings/chain/move?name={{$chain}}&dir=down&i={{$i}}" title="Di chuyển xuống">▼</button>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" name="pname" value="{{$p.Name}}">
+      <div class="provider-grid" style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:14px; margin-bottom:12px">
+        {{if eq $p.Name "gemini"}}
+        <div class="field field-span" style="grid-column: 1 / -1; margin-bottom:0">
+          <label style="font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; display:block">API Keys <span class="label-hint" style="color:var(--muted); font-size:11.5px">— các key xoay vòng tự động</span></label>
+          <input type="hidden" name="apikey" value="">
+          {{template "keyring" (dict "Keys" $d.Keys "Chain" $chain)}}
+        </div>
+        {{else}}
+        <div class="field" style="margin-bottom:0">
+          <label style="font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; display:block">API Key</label>
+          <input type="password" name="apikey" value="{{$p.APIKey}}" placeholder="{{if eq $p.Name "edge"}}Không yêu cầu key{{else}}Dán API key...{{end}}" autocomplete="off" style="height:36px; font-size:12.5px; border-radius:8px; width:100%">
+        </div>
+        {{end}}
+        <div class="field" style="margin-bottom:0">
+          <label style="font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; display:block">Số lần thử lại</label>
+          <input type="number" name="retries" value="{{$p.Retries}}" min="0" style="height:36px; font-size:12.5px; border-radius:8px; width:100%">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label style="font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; display:block">Timeout (giây)</label>
+          <input type="number" name="timeout" value="{{$p.TimeoutSec}}" min="1" style="height:36px; font-size:12.5px; border-radius:8px; width:100%">
+        </div>
+      </div>
+
+      <div class="provider-actions" style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px dashed var(--border); margin-top:10px">
+        <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="{{$chain}}" data-provider="{{$p.Name}}" style="font-size:11.5px; padding:4px 10px; border-radius:6px">
+          🔍 Kiểm tra kết nối
+        </button>
+        <span class="health-result" aria-live="polite" style="font-size:12px; font-weight:600"></span>
+      </div>
     </div>
-    <input type="hidden" name="pname" value="{{$p.Name}}">
-    <div class="provider-grid">
-      {{if eq $p.Name "gemini"}}
-      <div class="field field-span">
-        <label>API keys <span class="label-hint">— cùng project dùng chung quota; thêm key không cộng quota</span></label>
-        <input type="hidden" name="apikey" value="">
-        {{template "keyring" (dict "Keys" $d.Keys "Chain" $chain)}}
-      </div>
-      {{else}}
-      <div class="field">
-        <label>API key</label>
-        <input type="password" name="apikey" value="{{$p.APIKey}}" placeholder="nếu cần" autocomplete="off">
-      </div>
-      {{end}}
-      <div class="field">
-        <label>Số lần thử lại</label>
-        <input type="number" name="retries" value="{{$p.Retries}}" min="0">
-      </div>
-      <div class="field">
-        <label>Chờ tối đa (giây)</label>
-        <input type="number" name="timeout" value="{{$p.TimeoutSec}}" min="1">
-      </div>
-    </div>
-    <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name={{$chain}}&dir=up&i={{$i}}">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name={{$chain}}&dir=down&i={{$i}}">↓ Xuống</button>
-      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="{{$chain}}" data-provider="{{$p.Name}}">Kiểm tra kết nối</button>
-      <span class="health-result" aria-live="polite"></span>
-    </div>
+    {{end}}
   </div>
-  {{end}}
-  <button type="submit" class="btn">{{$d.SaveLabel}}</button>
+
+  <div style="display:flex; justify-content:flex-end">
+    <button type="submit" class="btn btn-primary" style="font-weight:700; padding:10px 22px; border-radius:10px; box-shadow:0 4px 14px rgba(37,99,235,0.2)">
+      {{$d.SaveLabel}}
+    </button>
+  </div>
 </form>
 </div>
 {{end}}

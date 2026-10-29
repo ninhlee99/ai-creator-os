@@ -307,7 +307,7 @@
     if (videoModalFrame) {
       videoModalFrame.style.width = '';
       videoModalFrame.style.height = '';
-      videoModalFrame.style.aspectRatio = '16 / 9';
+      videoModalFrame.style.aspectRatio = '9 / 16';
     }
     p.src = src;
     if (d) d.href = src;
@@ -322,6 +322,7 @@
       }
     }
     m.hidden = false;
+    m.style.display = 'flex';
     p.play().catch(function () {});
   };
   (function () {
@@ -332,6 +333,7 @@
     function close() {
       if (p) { p.pause(); p.src = ''; }
       m.hidden = true;
+      m.style.display = 'none';
     }
     if (c) c.addEventListener('click', close);
     m.addEventListener('click', function (e) { if (e.target === m) close(); });

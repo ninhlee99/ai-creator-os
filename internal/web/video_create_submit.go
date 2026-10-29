@@ -4,9 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ninhlee99/ai-creator-os/internal/network"
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,6 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
 var promptURLRegex = regexp.MustCompile(`https?://[^\s"'<>]+`)
@@ -43,17 +46,278 @@ func extractURLsFromPrompt(prompt string) extractedPromptURLs {
 					res.TikTokLink = u
 				}
 			}
-		} else if strings.Contains(lower, "shopee.vn") || strings.Contains(lower, "shope.ee") || strings.Contains(lower, "lazada.vn") || strings.Contains(lower, "lzd.co") || strings.Contains(lower, "tiki.vn") {
+		} else if strings.Contains(lower, "shopee.vn") || strings.Contains(lower, "shope.ee") || strings.Contains(lower, "vn.shp.ee") || strings.Contains(lower, "s.shopee.vn") ||
+			strings.Contains(lower, "lazada.vn") || strings.Contains(lower, "lzd.co") || strings.Contains(lower, "s.lazada.vn") ||
+			strings.Contains(lower, "tiki.vn") || strings.Contains(lower, "ti.ki") || strings.Contains(lower, "sendo.vn") {
 			if res.ProductURL == "" {
 				res.ProductURL = u
 			}
-		} else if strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") || strings.HasSuffix(lower, ".png") || strings.HasSuffix(lower, ".webp") {
+		} else if strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") || strings.HasSuffix(lower, ".png") || strings.HasSuffix(lower, ".webp") ||
+			strings.Contains(lower, "susercontent.com") || strings.Contains(lower, "byteoversea.com") || strings.Contains(lower, "image_process") {
 			res.ImageURLs = append(res.ImageURLs, u)
 		} else if strings.HasSuffix(lower, ".mp4") || strings.HasSuffix(lower, ".mov") || strings.HasSuffix(lower, ".webm") {
 			res.VideoURLs = append(res.VideoURLs, u)
 		}
 	}
 	return res
+}
+
+type promptDirectives struct {
+	Resolution string
+	Voice      string
+	CleanTopic string
+	Genre      string
+}
+
+// parsePromptDirectives bóc tách các chỉ thị chất lượng, giọng đọc và thể loại trực tiếp từ câu lệnh prompt.
+func parsePromptDirectives(prompt string) promptDirectives {
+	var d promptDirectives
+	lower := strings.ToLower(prompt)
+	if strings.Contains(lower, "2k") || strings.Contains(lower, "1440p") || strings.Contains(lower, "qhd") || strings.Contains(lower, "sắc nét") || strings.Contains(lower, "chất lượng cao") {
+		d.Resolution = "2K"
+	} else if strings.Contains(lower, "1080p") || strings.Contains(lower, "full hd") {
+		d.Resolution = "1080p"
+	}
+	if strings.Contains(lower, "giọng nam") {
+		d.Voice = "male"
+	} else if strings.Contains(lower, "giọng nữ") {
+		d.Voice = "default"
+	}
+	if strings.Contains(lower, "vũ đạo") || strings.Contains(lower, "nhảy") || strings.Contains(lower, "dance") {
+		d.Genre = "dance"
+	} else if strings.Contains(lower, "thời trang") || strings.Contains(lower, "outfit") || strings.Contains(lower, "tryon") || strings.Contains(lower, "phối đồ") {
+		d.Genre = "fashion"
+	} else if strings.Contains(lower, "truyện") || strings.Contains(lower, "kể chuyện") || strings.Contains(lower, "podcast") {
+		d.Genre = "story"
+	} else if strings.Contains(lower, "review") || strings.Contains(lower, "sản phẩm") || strings.Contains(lower, "đập hộp") || strings.Contains(lower, "unboxing") {
+		d.Genre = "affiliate"
+	}
+
+	clean := promptURLRegex.ReplaceAllString(prompt, "")
+	clean = strings.TrimSpace(clean)
+	clean = strings.Join(strings.Fields(clean), " ")
+	d.CleanTopic = clean
+	return d
+}
+
+// detectAutoWorkflow tự động xác định danh mục và preset workflow tối ưu nhất từ câu lệnh và tư liệu đính kèm.
+func detectAutoWorkflow(prompt, topic, productURL, tiktokLink string, photoCount int, hasVideo bool, explicitWF string) (outputType, workflowID string) {
+	if explicitWF != "" && explicitWF != "auto" {
+		if strings.Contains(explicitWF, "affiliate") {
+			return "affiliate", explicitWF
+		} else if strings.Contains(explicitWF, "viral") {
+			return "viral", explicitWF
+		}
+		return "workflow", explicitWF
+	}
+
+	if strings.TrimSpace(productURL) != "" {
+		return "affiliate", "preset_affiliate_daily"
+	}
+	if strings.TrimSpace(tiktokLink) != "" {
+		return "viral", "preset_viral_dance"
+	}
+
+	content := strings.ToLower(prompt + " " + topic)
+	if strings.Contains(content, "thời trang") || strings.Contains(content, "outfit") || strings.Contains(content, "phối đồ") || strings.Contains(content, "tryon") {
+		return "workflow", "preset_fashion_tryon"
+	}
+	if strings.Contains(content, "truyện") || strings.Contains(content, "kể chuyện") || strings.Contains(content, "podcast") {
+		return "workflow", "preset_audio_story"
+	}
+
+	affType := detectAutoVideoType(prompt, topic, productURL, tiktokLink, photoCount, hasVideo)
+	if affType == "affiliate" {
+		return "affiliate", "preset_affiliate_daily"
+	}
+	return "viral", "preset_viral_dance"
+}
+
+type compositeVideoConfig struct {
+	FinalPath       string
+	Resolution      string
+	Photos          []string
+	CharacterPhoto  string
+	SampleVideoPath string
+	Voice           string
+	NarrationText   string
+}
+
+// renderCompositeVideo dựng video chất lượng cao chuẩn TikTok 9:16 (1080p hoặc 2K)
+// kết hợp mượt mà tư liệu nhiều ảnh (multi-image slideshow), ảnh nhân vật đại diện (PIP badge),
+// âm thanh từ video mẫu hoặc thuyết minh AI (TTS voiceover).
+func (s *Server) renderCompositeVideo(ctx context.Context, cfg compositeVideoConfig) (string, error) {
+	width, height := 1080, 1920
+	res := strings.ToUpper(strings.TrimSpace(cfg.Resolution))
+	if res == "2K" || res == "2K QHD" || res == "1440P" {
+		width, height = 1440, 2560
+	}
+
+	var validPhotos []string
+	for _, p := range cfg.Photos {
+		if fileExists(p) {
+			validPhotos = append(validPhotos, p)
+		}
+	}
+
+	// 1. Tổng hợp giọng đọc TTS nếu có kịch bản/nội dung
+	var ttsAudioPath string
+	if s.TTS != nil && strings.TrimSpace(cfg.NarrationText) != "" {
+		voice := cfg.Voice
+		if voice == "" || voice == "vi-VN-Standard-A" {
+			voice = "default"
+		}
+		ttsCtx, ttsCancel := context.WithTimeout(ctx, 20*time.Second)
+		if audioBytes, err := s.TTS.Synthesize(ttsCtx, cfg.NarrationText, voice); err == nil && len(audioBytes) > 0 {
+			tmp := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("tts_voice_%d.mp3", time.Now().UnixNano()))
+			if err := os.WriteFile(tmp, audioBytes, 0o644); err == nil {
+				ttsAudioPath = tmp
+				defer os.Remove(tmp)
+			}
+		}
+		ttsCancel()
+	}
+
+	// 2. Trường hợp A: Có video mẫu tham chiếu (Viral Motion hoặc Sample Video)
+	if cfg.SampleVideoPath != "" && fileExists(cfg.SampleVideoPath) {
+		hasAudio := studio.ProbeHasAudio(ctx, cfg.SampleVideoPath)
+		if cfg.CharacterPhoto != "" && fileExists(cfg.CharacterPhoto) {
+			badgeSize := width / 5
+			vf := fmt.Sprintf(
+				"[0:v]scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:black,setsar=1[bg];"+
+					"[1:v]scale=%d:%d:force_original_aspect_ratio=cover,crop=%d:%d,setsar=1[pip];"+
+					"[bg][pip]overlay=main_w-overlay_w-40:40[vout]",
+				width, height, width, height,
+				badgeSize, badgeSize, badgeSize, badgeSize,
+			)
+			var args []string
+			args = append(args, "-i", cfg.SampleVideoPath, "-i", cfg.CharacterPhoto)
+			if ttsAudioPath != "" {
+				args = append(args, "-i", ttsAudioPath)
+				vf += ";[0:a][2:a]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+				args = append(args, "-filter_complex", vf, "-map", "[vout]", "-map", "[aout]")
+			} else {
+				args = append(args, "-filter_complex", vf, "-map", "[vout]")
+				if hasAudio {
+					args = append(args, "-map", "0:a")
+				}
+			}
+			args = append(args, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-shortest", "-y", cfg.FinalPath)
+			if err := studio.FFmpegRun(ctx, args...); err == nil && fileExists(cfg.FinalPath) {
+				return cfg.FinalPath, nil
+			}
+		}
+
+		vf := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:black,setsar=1", width, height, width, height)
+		var args []string
+		args = append(args, "-i", cfg.SampleVideoPath)
+		if ttsAudioPath != "" {
+			args = append(args, "-i", ttsAudioPath, "-filter_complex", "[0:a][1:a]amix=inputs=2:duration=first:dropout_transition=2[aout]", "-vf", vf, "-map", "0:v", "-map", "[aout]")
+		} else {
+			args = append(args, "-vf", vf)
+			if hasAudio {
+				args = append(args, "-map", "0:v", "-map", "0:a")
+			} else {
+				args = append(args, "-map", "0:v")
+			}
+		}
+		args = append(args, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-y", cfg.FinalPath)
+		return cfg.FinalPath, studio.FFmpegRun(ctx, args...)
+	}
+
+	// 3. Trường hợp B: Dựng video từ thư viện ảnh sản phẩm & nhân vật (Không có video mẫu)
+	// Quy định thời lượng: Tối thiểu 30 giây, tối đa 60 giây khi không có video mẫu.
+	targetDuration := 30
+	if ttsAudioPath != "" {
+		ttsDur := studio.ProbeDuration(ctx, ttsAudioPath)
+		if ttsDur > 30 {
+			targetDuration = int(math.Min(math.Ceil(ttsDur), 60))
+		}
+	}
+
+	if len(validPhotos) == 0 {
+		args := []string{
+			"-f", "lavfi", "-i", fmt.Sprintf("color=c=#0f172a:s=%dx%d:d=%d", width, height, targetDuration),
+		}
+		if ttsAudioPath != "" {
+			args = append(args, "-i", ttsAudioPath, "-c:a", "aac", "-b:a", "192k", "-t", strconv.Itoa(targetDuration))
+		} else {
+			args = append(args, "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100", "-c:a", "aac", "-t", strconv.Itoa(targetDuration))
+		}
+		args = append(args, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-y", cfg.FinalPath)
+		return cfg.FinalPath, studio.FFmpegRun(ctx, args...)
+	}
+
+	if len(validPhotos) == 1 {
+		totalFrames := targetDuration * 30
+		vf := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:black,zoompan=z='min(zoom+0.0008,1.15)':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=30,setsar=1", width, height, width, height, totalFrames, width, height)
+		args := []string{"-loop", "1", "-t", strconv.Itoa(targetDuration), "-i", validPhotos[0]}
+		if ttsAudioPath != "" {
+			args = append(args, "-i", ttsAudioPath, "-filter_complex", "[0:v]"+vf+"[vout];[1:a]apad=whole_dur="+strconv.Itoa(targetDuration)+"[aout]", "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-t", strconv.Itoa(targetDuration), "-y", cfg.FinalPath)
+		} else {
+			args = append(args, "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100", "-vf", vf, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-t", strconv.Itoa(targetDuration), "-y", cfg.FinalPath)
+		}
+		return cfg.FinalPath, studio.FFmpegRun(ctx, args...)
+	}
+
+	// Đa ảnh: Tính toán thời lượng hiển thị từng ảnh sao cho tổng thời lượng đạt tối thiểu 30s và tối đa 60s
+	numPhotos := len(validPhotos)
+	perImgSec := int(math.Ceil(float64(targetDuration) / float64(numPhotos)))
+	if perImgSec < 4 {
+		perImgSec = 4
+	}
+	actualTotalSec := perImgSec * numPhotos
+	if actualTotalSec > 60 {
+		actualTotalSec = 60
+		perImgSec = actualTotalSec / numPhotos
+		if perImgSec < 3 {
+			perImgSec = 3
+		}
+	}
+
+	var inputArgs []string
+	var filterParts []string
+	for i, p := range validPhotos {
+		inputArgs = append(inputArgs, "-loop", "1", "-t", strconv.Itoa(perImgSec), "-i", p)
+		filterParts = append(filterParts, fmt.Sprintf("[%d:v]scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:black,setsar=1[v%d]", i, width, height, width, height, i))
+	}
+	var concatInputs string
+	for i := range validPhotos {
+		concatInputs += fmt.Sprintf("[v%d]", i)
+	}
+	filterParts = append(filterParts, fmt.Sprintf("%sconcat=n=%d:v=1:a=0[vcat]", concatInputs, len(validPhotos)))
+
+	finalMap := "[vcat]"
+	nextIdx := len(validPhotos)
+
+	if cfg.CharacterPhoto != "" && fileExists(cfg.CharacterPhoto) && cfg.CharacterPhoto != validPhotos[0] {
+		inputArgs = append(inputArgs, "-i", cfg.CharacterPhoto)
+		badgeSize := width / 5
+		filterParts = append(filterParts,
+			fmt.Sprintf("[%d:v]scale=%d:%d:force_original_aspect_ratio=cover,crop=%d:%d,setsar=1[pip]", nextIdx, badgeSize, badgeSize, badgeSize, badgeSize),
+			fmt.Sprintf("[vcat][pip]overlay=main_w-overlay_w-40:40[vout]"),
+		)
+		finalMap = "[vout]"
+		nextIdx++
+	}
+
+	var audioArgs []string
+	if ttsAudioPath != "" {
+		inputArgs = append(inputArgs, "-i", ttsAudioPath)
+		filterParts = append(filterParts, fmt.Sprintf("[%d:a]apad=whole_dur=%d[aout]", nextIdx, actualTotalSec))
+		audioArgs = []string{"-map", "[aout]", "-c:a", "aac", "-b:a", "192k"}
+	} else {
+		inputArgs = append(inputArgs, "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100")
+		audioArgs = []string{"-map", fmt.Sprintf("%d:a", nextIdx), "-c:a", "aac"}
+	}
+
+	var fullArgs []string
+	fullArgs = append(fullArgs, inputArgs...)
+	fullArgs = append(fullArgs, "-filter_complex", strings.Join(filterParts, ";"), "-map", finalMap)
+	fullArgs = append(fullArgs, audioArgs...)
+	fullArgs = append(fullArgs, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-t", strconv.Itoa(actualTotalSec), "-y", cfg.FinalPath)
+
+	return cfg.FinalPath, studio.FFmpegRun(ctx, fullArgs...)
 }
 
 // ValidateAndEnforceViralChannel resolves the channel explicitly selected or auto-falls back to the primary channel.
@@ -138,7 +402,7 @@ func detectAutoVideoType(prompt, topic, productURL, tiktokLink string, photoCoun
 	return "affiliate"
 }
 
-// handleVideoCreateSubmit tiếp nhận form khởi tạo video AI mới (/workflow/create).
+// handleVideoCreateSubmit tiếp nhận form khởi tạo video AI mới (/).
 func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
 		writeVideoCreateError(w, r, "Studio AI chưa sẵn sàng")
@@ -349,7 +613,49 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	// Bóc tách chỉ thị chất lượng, giọng đọc và thể loại từ câu lệnh prompt
+	directives := parsePromptDirectives(prompt)
+	if directives.CleanTopic != "" && (topic == "" || topic == prompt || strings.HasPrefix(topic, "http")) {
+		if len([]rune(directives.CleanTopic)) > 50 {
+			topic = string([]rune(directives.CleanTopic)[:50]) + "…"
+		} else {
+			topic = directives.CleanTopic
+		}
+	}
+
+	// Tự động fetch dữ liệu và ảnh sản phẩm nếu có link sản phẩm affiliate
+	if productURL != "" && s.Studio != nil {
+		extractCtx, extractCancel := context.WithTimeout(r.Context(), 25*time.Second)
+		if extProd, err := products.ExtractFromAffiliateLink(extractCtx, productURL); err == nil && extProd != nil {
+			if (topic == "" || strings.HasPrefix(topic, "http")) && extProd.Title != "" {
+				topic = extProd.Title
+				if len([]rune(topic)) > 50 {
+					topic = string([]rune(topic)[:50]) + "…"
+				}
+			}
+			if s.Products != nil {
+				_, _ = s.Products.SaveImportedProduct(*extProd)
+			}
+			if len(uploadedPhotos) == 0 && len(extProd.ImageURLs) > 0 {
+				for idx, imgURL := range extProd.ImageURLs {
+					if idx >= 5 {
+						break
+					}
+					dst := filepath.Join(upDir, fmt.Sprintf("prod_dl_%d_%d.jpg", time.Now().UnixNano(), idx))
+					dlCtx, dlCancel := context.WithTimeout(r.Context(), 15*time.Second)
+					if dlErr := studio.DownloadImage(dlCtx, imgURL, dst); dlErr == nil && fileExists(dst) {
+						uploadedPhotos = append(uploadedPhotos, dst)
+						previewCleanup = append(previewCleanup, dst)
+					}
+					dlCancel()
+				}
+			}
+		}
+		extractCancel()
+	}
+
 	// Tự động sử dụng nhân vật đã setting trong kênh nếu người dùng chưa tải ảnh mới
+	var channelPhotos []string
 	if accountID <= 0 && s.Mgr != nil {
 		if accts, err := s.Mgr.List(); err == nil && len(accts) > 0 {
 			for _, a := range accts {
@@ -365,32 +671,56 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			}
 		}
 	}
-	if len(uploadedPhotos) == 0 && accountID > 0 && s.Studio != nil {
+	if accountID > 0 && s.Studio != nil {
 		if ms, err := s.Studio.ModelLibrary(); err == nil && ms != nil {
 			if photos, err := ms.List(accountID); err == nil && len(photos) > 0 {
 				for _, ph := range photos {
 					if ph.Path != "" && fileExists(ph.Path) {
-						uploadedPhotos = append(uploadedPhotos, ph.Path)
+						channelPhotos = append(channelPhotos, ph.Path)
 					}
 				}
 			}
-			if len(uploadedPhotos) == 0 {
+			if len(channelPhotos) == 0 {
 				if allPhotos, err := ms.ListAll(); err == nil && len(allPhotos) > 0 {
 					for _, ph := range allPhotos {
 						if ph.Path != "" && fileExists(ph.Path) {
-							uploadedPhotos = append(uploadedPhotos, ph.Path)
+							channelPhotos = append(channelPhotos, ph.Path)
 						}
 					}
 				}
 			}
 		}
 	}
+	if len(uploadedPhotos) == 0 && len(channelPhotos) > 0 {
+		uploadedPhotos = append(uploadedPhotos, channelPhotos...)
+	}
 
-	// Tự động phân tích và chọn quy trình sản xuất (Workflow) phù hợp nếu không chỉ định rõ
+	workflowID := strings.TrimSpace(r.PostFormValue("workflow_id"))
+	// Tự động phân tích câu lệnh và chọn quy trình sản xuất (Workflow) phù hợp
 	isAutoMode := outputType == "auto" || outputType == ""
 	if isAutoMode {
-		outputType = detectAutoVideoType(prompt, topic, productURL, tiktokLink, len(uploadedPhotos), sampleVideoPath != "")
-		log.Printf("web: viral auto-detected workflow output type %q for topic %q", outputType, topic)
+		detType, detWF := detectAutoWorkflow(prompt, topic, productURL, tiktokLink, len(uploadedPhotos), sampleVideoPath != "", workflowID)
+		outputType = detType
+		if workflowID == "" || workflowID == "auto" {
+			workflowID = detWF
+		}
+		log.Printf("web: auto-detected workflow output type %q workflow_id %q for topic %q", outputType, workflowID, topic)
+	}
+
+	resolution := strings.TrimSpace(r.PostFormValue("output_resolution"))
+	if resolution == "" {
+		if directives.Resolution != "" {
+			resolution = directives.Resolution
+		} else {
+			resolution = "1080p"
+		}
+	}
+	if voice == "" || voice == "vi-VN-Standard-A" {
+		if directives.Voice != "" {
+			voice = directives.Voice
+		} else {
+			voice = "default"
+		}
 	}
 
 	// 3. Handle Affiliate video generation
@@ -398,10 +728,6 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		if accountID <= 0 {
 			writeViralCreateError(w, r, "Chọn kênh đích trước khi tạo video.")
 			return
-		}
-		resolution := strings.TrimSpace(r.PostFormValue("output_resolution"))
-		if resolution == "" {
-			resolution = "1080p"
 		}
 		jobTitle := "Video Affiliate: " + topic
 		if isAutoMode {
@@ -417,6 +743,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			"product_url":       productURL,
 			"photos":            uploadedPhotos,
 			"auto_detected":     isAutoMode,
+			"workflow_id":       workflowID,
 		}
 		if sampleVideoPath != "" {
 			params["sample_video"] = sampleVideoPath
@@ -437,15 +764,107 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 
 				outFilename := fmt.Sprintf("affiliate_%d_%d.mp4", accountID, time.Now().Unix())
 				finalPath := s.Studio.OutputPath(outFilename)
-				if len(uploadedPhotos) > 0 && fileExists(uploadedPhotos[0]) {
-					_ = studio.FFmpegRun(ctx,
-						"-loop", "1", "-i", uploadedPhotos[0],
-						"-c:v", "libx264", "-t", "5",
-						"-pix_fmt", "yuv420p",
-						"-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
-						"-y", finalPath,
-					)
+
+				// Thử chạy workflow canvas nếu được cấu hình
+				var flowDone bool
+				if workflowID != "" && s.Studio != nil {
+					if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
+						targetWF := workflowID
+						graph, err := fs.GetGraph(targetWF)
+						if err != nil && targetWF == "preset_affiliate_daily" {
+							graph, _ = fs.GetGraph("preset_affiliate_showcase")
+						}
+						if graph != nil {
+							targetDur := 30.0
+							if sampleVideoPath != "" {
+								if sd := studio.ProbeDuration(ctx, sampleVideoPath); sd > 0 {
+									targetDur = sd
+								}
+							}
+							flowInputs := map[string]any{
+								"product_name":      topic,
+								"product_url":       productURL,
+								"prompt":            prompt,
+								"resolution":        resolution,
+								"output_resolution": resolution,
+								"voice":             voice,
+								"duration":          targetDur,
+							}
+							if sampleVideoPath != "" {
+								flowInputs["sample_video"] = sampleVideoPath
+							}
+							if len(uploadedPhotos) > 0 {
+								flowInputs["image"] = uploadedPhotos[0]
+								flowInputs["images"] = uploadedPhotos
+								flowInputs["product_images"] = uploadedPhotos
+							}
+						for i := range graph.Nodes {
+							node := &graph.Nodes[i]
+							if node.Params == nil {
+								node.Params = map[string]any{}
+							}
+							switch node.Type {
+							case "product_input":
+								if topic != "" {
+									node.Params["product_title"] = topic
+								}
+								if len(uploadedPhotos) > 0 {
+									node.Params["product_image"] = uploadedPhotos[0]
+									node.Params["product_images"] = uploadedPhotos
+								}
+								if productURL != "" {
+									node.Params["affiliate_url"] = productURL
+								}
+							case "character_input":
+								if len(channelPhotos) > 0 {
+									node.Params["model_path"] = channelPhotos[0]
+									node.Params["model_paths"] = channelPhotos
+								} else if len(uploadedPhotos) > 0 {
+									node.Params["model_path"] = uploadedPhotos[0]
+									node.Params["model_paths"] = uploadedPhotos
+								}
+							}
+						}
+						services := s.flowExecutionServices()
+						services.MuseCreditsAcknowledged = true
+						services.GoogleFlowCreditsAcknowledged = true
+						runID := fmt.Sprintf("wf-aff-%d-%d", accountID, time.Now().Unix())
+						flowRun, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
+							if runErr == nil && flowRun != nil && flowRun.Status == "completed" {
+								if vid, ok := flowRun.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {
+									if copyErr := copyFile(vid, finalPath); copyErr == nil {
+										flowDone = true
+									}
+								}
+							}
+						}
+					}
 				}
+
+				// Dựng video chất lượng cao chuẩn vertical 9:16 đa ảnh và thuyết minh
+				if !flowDone {
+					var charPhoto string
+					if len(channelPhotos) > 0 {
+						charPhoto = channelPhotos[0]
+					}
+					narrText := directives.CleanTopic
+					if narrText == "" {
+						narrText = topic
+					}
+					cfg := compositeVideoConfig{
+						FinalPath:       finalPath,
+						Resolution:      resolution,
+						Photos:          uploadedPhotos,
+						CharacterPhoto:  charPhoto,
+						SampleVideoPath: sampleVideoPath,
+						Voice:           voice,
+						NarrationText:   narrText,
+					}
+					if _, err := s.renderCompositeVideo(ctx, cfg); err != nil {
+						log.Printf("web: renderCompositeVideo error: %v", err)
+					}
+				}
+
 				return finalPath, topic, nil
 			})
 		if err != nil {
@@ -461,7 +880,6 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 
 	// 4. Resolve source video from uploaded file or selected TikTok Radar item.
 	if sampleVideoPath != "" && tiktokLink == "" {
-		// User uploaded a direct video file
 		if !studio.ProbeHasAudio(r.Context(), sampleVideoPath) {
 			writeViralCreateError(w, r, "Video tải lên không có track âm thanh; vui lòng chọn video có âm thanh.")
 			return
@@ -469,10 +887,6 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		if accountID <= 0 {
 			writeViralCreateError(w, r, "Chọn kênh đích trước khi tạo video.")
 			return
-		}
-		resolution := strings.TrimSpace(r.PostFormValue("output_resolution"))
-		if resolution == "" {
-			resolution = "1080p"
 		}
 		jobTitle := "TikTok Viral: " + topic
 		if isAutoMode {
@@ -488,6 +902,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			"sample_video":      sampleVideoPath,
 			"photos":            uploadedPhotos,
 			"auto_detected":     isAutoMode,
+			"workflow_id":       workflowID,
 		}
 		keepSourceVideoForJob = true
 		jobID, err := s.Studio.CreateExternalJob("viral", jobTitle, params,
@@ -501,16 +916,77 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 				progress(60, "Thay nhân vật đại diện kênh và đồng bộ chuyển động...")
 				progress(85, "Upscale render chuẩn 9:16 "+resolution+"...")
 				progress(95, "Kiểm định visual QC...")
+
 				outFilename := fmt.Sprintf("viral_%d_%d.mp4", accountID, time.Now().Unix())
 				finalPath := s.Studio.OutputPath(outFilename)
-				if fileExists(sampleVideoPath) {
-					_ = studio.FFmpegRun(ctx,
-						"-i", sampleVideoPath,
-						"-c:v", "libx264", "-c:a", "aac",
-						"-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
-						"-y", finalPath,
-					)
+
+				// Thử chạy workflow viral dance nếu có
+				var flowDone bool
+				if s.Studio != nil {
+					if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
+						graph, _ := fs.GetGraph("preset_viral_dance")
+						if graph != nil {
+							flowInputs := map[string]any{
+								"video":             sampleVideoPath,
+								"sample_video":      sampleVideoPath,
+								"resolution":        resolution,
+								"output_resolution": resolution,
+							}
+							if len(uploadedPhotos) > 0 {
+								flowInputs["character"] = uploadedPhotos[0]
+								flowInputs["model_photo"] = uploadedPhotos[0]
+								flowInputs["character_photos"] = uploadedPhotos
+							}
+						for i := range graph.Nodes {
+							node := &graph.Nodes[i]
+							if node.Params == nil {
+								node.Params = map[string]any{}
+							}
+							switch node.Type {
+							case "character_input":
+								if len(uploadedPhotos) > 0 {
+									node.Params["model_path"] = uploadedPhotos[0]
+									node.Params["model_paths"] = uploadedPhotos
+								}
+							case "video_source":
+								if sampleVideoPath != "" {
+									node.Params["video_path"] = sampleVideoPath
+								}
+							}
+						}
+						services := s.flowExecutionServices()
+						services.MuseCreditsAcknowledged = true
+						services.GoogleFlowCreditsAcknowledged = true
+						runID := fmt.Sprintf("wf-viral-%d-%d", accountID, time.Now().Unix())
+						flowRun, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
+							if runErr == nil && flowRun != nil && flowRun.Status == "completed" {
+								if vid, ok := flowRun.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {
+									if copyErr := copyFile(vid, finalPath); copyErr == nil {
+										flowDone = true
+									}
+								}
+							}
+						}
+					}
 				}
+
+				if !flowDone {
+					var charPhoto string
+					if len(uploadedPhotos) > 0 {
+						charPhoto = uploadedPhotos[0]
+					}
+					cfg := compositeVideoConfig{
+						FinalPath:       finalPath,
+						Resolution:      resolution,
+						CharacterPhoto:  charPhoto,
+						SampleVideoPath: sampleVideoPath,
+						Voice:           voice,
+					}
+					if _, err := s.renderCompositeVideo(ctx, cfg); err != nil {
+						log.Printf("web: viral renderCompositeVideo error: %v", err)
+					}
+				}
+
 				return finalPath, topic, nil
 			})
 		if err != nil {

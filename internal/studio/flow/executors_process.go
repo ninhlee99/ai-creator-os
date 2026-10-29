@@ -801,28 +801,45 @@ func executeAudioMerge(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 func executeAudioMix(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	voicePath := inputString(inputs, "voice_in", "")
 	musicPath := inputString(inputs, "music_in", "")
+	if ctx.FFmpegRunner == nil {
+		return nil, fmt.Errorf("Audio Mix cần FFmpeg")
+	}
+
+	duration := flowInputFloat(inputs, "duration", 0)
+	if duration <= 0 {
+		if d := nodeParamFloat(node.Params, "duration", 0); d > 0 {
+			duration = d
+		}
+	}
+	if duration <= 0 {
+		path := voicePath
+		if path == "" {
+			path = musicPath
+		}
+		if path != "" {
+			duration, _ = probeFlowDuration(path)
+		}
+	}
+	if duration <= 0 {
+		duration = 30
+	}
+
 	if voicePath == "" && musicPath == "" {
-		return nil, fmt.Errorf("Audio Mix cần ít nhất một track audio")
+		outPath := filepath.Join(ctx.WorkDir, safeWorkflowPathPart(node.ID)+"_audio_mix.wav")
+		args := []string{"-y", "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100", "-t", fmt.Sprintf("%.2f", duration), "-c:a", "pcm_s16le", outPath}
+		if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
+			return nil, fmt.Errorf("không thể tạo audio đệm cho audio mix: %w", err)
+		}
+		ctx.Log(fmt.Sprintf("AudioMixNode: Đã tạo audio đệm (%.1fs) -> %s", duration, filepath.Base(outPath)))
+		return map[string]any{
+			"audio_out": outPath,
+		}, nil
 	}
 	if voicePath != "" && (!fileExists(voicePath) || !isAudioFile(voicePath)) {
 		return nil, fmt.Errorf("track chính không hợp lệ")
 	}
 	if musicPath != "" && (!fileExists(musicPath) || !isAudioFile(musicPath)) {
 		return nil, fmt.Errorf("track nhạc nền không hợp lệ")
-	}
-	if ctx.FFmpegRunner == nil {
-		return nil, fmt.Errorf("Audio Mix cần FFmpeg")
-	}
-	duration := flowInputFloat(inputs, "duration", 0)
-	if duration <= 0 {
-		path := voicePath
-		if path == "" {
-			path = musicPath
-		}
-		duration, _ = probeFlowDuration(path)
-	}
-	if duration <= 0 {
-		return nil, fmt.Errorf("không xác định được thời lượng audio đầu ra")
 	}
 
 	voiceVolume := nodeParamFloat(node.Params, "voice_volume", 1.0)

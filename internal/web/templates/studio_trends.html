@@ -650,7 +650,6 @@ document.addEventListener('keydown', function(e) {
         <h2 class="topics-title">
           Chủ đề theo dõi
         </h2>
-        <p class="topics-description">Xu hướng Việt Nam chỉ nhận video có bằng chứng vũ đạo. Chủ đề khác lọc theo nội dung. Radar phân tích và xếp Top 8 theo tốc độ tăng view, tương tác rồi tổng view.</p>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
         <span class="topics-count">{{len .Topics}} chủ đề</span>
@@ -718,9 +717,6 @@ document.addEventListener('keydown', function(e) {
       <h2 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--text);">
         Video hot nhất · “{{.Topic}}”
       </h2>
-      <p class="hint" style="margin: 2px 0 0; font-size: 12px;">
-        {{if .RankNote}}{{.RankNote}}{{else}}Top video thịnh hành nhất tại Việt Nam (xếp theo lượt xem cao nhất).{{end}}
-      </p>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <span class="badge badge-info" style="font-weight: 700; font-size: 11.5px; padding: 3px 8px; border-radius: 9999px;">
@@ -810,7 +806,7 @@ document.addEventListener('keydown', function(e) {
         <a href="/?tiktok_link={{urlquery .VideoURL}}&source_video_url={{urlquery .VideoURL}}&source_music_title={{urlquery .Music}}&topic={{urlquery .Title}}"
            class="btn btn-primary btn-sm"
            style="font-size:11.5px;font-weight:700;padding:7px 8px;border-radius:8px;text-align:center;background:linear-gradient(135deg, #2563eb, #7c3aed);border:none;box-shadow:0 2px 6px rgba(124,58,237,0.25);text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;"
-           title="Khởi tạo video AI từ mẫu này">
+           title="Khởi tạo video từ mẫu này">
           <span>⚡</span> Tạo video
         </a>
         <a href="/?workflow_id=preset_affiliate_daily&source_music_title={{urlquery .Music}}&source_music_video_url={{urlquery .VideoURL}}"
