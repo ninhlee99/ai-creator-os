@@ -24,6 +24,7 @@ const (
 	PlatformGrok       = "grok"
 	PlatformMuseAI     = "museai"
 	PlatformGoogleFlow = "googleflow"
+	PlatformTikTok     = "tiktok"
 )
 
 // Status constants for session connections.
@@ -105,6 +106,19 @@ func SupportedPlatforms() []PlatformInfo {
 			AuthGuide:   "Dùng cookie phiên Google Flow; quyền truy cập và credit tùy tài khoản",
 			Placeholder: "Kết nối tài khoản Flow để gọi web API",
 			Features:    nil,
+		},
+		{
+			ID:          PlatformTikTok,
+			Name:        "TikTok",
+			URL:         "https://www.tiktok.com",
+			LoginURL:    "https://www.tiktok.com/login",
+			Icon:        "🎵",
+			Color:       "#fe2c55",
+			Badge:       "Radar & Crawler",
+			Description: "Đăng nhập TikTok lấy cookie duyệt video xu hướng không bị chặn bot",
+			AuthGuide:   "Đăng nhập bằng mã QR hoặc tài khoản trên trình duyệt máy tính",
+			Placeholder: "Lưu cookie session TikTok cho Crawler",
+			Features:    []string{"Quét xu hướng TikTok Radar", "Vượt bảo vệ captcha / bot detection"},
 		},
 	}
 }

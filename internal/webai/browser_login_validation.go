@@ -29,10 +29,14 @@ func validateCapturedWebAuth(ctx context.Context, target WebLoginTarget, auth *C
 		return err
 	}
 	email := accountEmail(auth.Email)
-	if email == "" && target.Platform != PlatformMuseAI {
+	if email == "" && target.Platform != PlatformMuseAI && target.Platform != PlatformTikTok {
 		return fmt.Errorf("chưa xác định được email thật của tài khoản")
 	}
-	auth.Email = email
+	if email != "" {
+		auth.Email = email
+	} else if auth.Email == "" {
+		auth.Email = target.Name + " User"
+	}
 	return nil
 }
 

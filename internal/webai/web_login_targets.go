@@ -45,6 +45,7 @@ var webLoginAdapters = []webLoginAdapter{
 	}, cookieNames: []string{"sso", "sso-rw", "auth_token", "ct0", "twid", "x-anonid", "x-userid"}},
 	museLoginAdapter{},
 	googleFlowLoginAdapter{},
+	tikTokLoginAdapter{},
 }
 
 func webLoginAdapterFor(platform string) (webLoginAdapter, bool) {

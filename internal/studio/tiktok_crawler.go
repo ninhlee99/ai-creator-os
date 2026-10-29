@@ -21,6 +21,27 @@ import (
 
 const TikTokCrawlerSource = "TikTok Web Crawler"
 
+var (
+	tiktokCookieMu       sync.RWMutex
+	tiktokCookieProvider func() (string, []webai.BrowserCookie)
+)
+
+// SetTikTokCookieProvider sets a callback to supply TikTok session cookies to the crawler.
+func SetTikTokCookieProvider(provider func() (string, []webai.BrowserCookie)) {
+	tiktokCookieMu.Lock()
+	defer tiktokCookieMu.Unlock()
+	tiktokCookieProvider = provider
+}
+
+func getTikTokCrawlerCookies() (string, []webai.BrowserCookie) {
+	tiktokCookieMu.RLock()
+	defer tiktokCookieMu.RUnlock()
+	if tiktokCookieProvider != nil {
+		return tiktokCookieProvider()
+	}
+	return "", nil
+}
+
 // TikTokCrawlerConfigured reports whether a local browser binary (Edge, Chrome, Brave, Chromium)
 // is available to run the automated crawler.
 func TikTokCrawlerConfigured() bool {
@@ -162,15 +183,32 @@ func runTikTokCrawlerBrowserBatch(ctx context.Context, bin string, targetURLs []
 	_ = sendCDP(2, "Network.setBlockedURLs", map[string]any{
 		"urls": []string{"*.mp4", "*.webm", "*.woff*", "*.ttf", "*.otf", "*.gif"},
 	})
+	cookieHeader, cookieJar := getTikTokCrawlerCookies()
+	extraHeaders := map[string]string{
+		"Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8",
+	}
+	if cookieHeader != "" {
+		extraHeaders["Cookie"] = cookieHeader
+	}
 	_ = sendCDP(3, "Network.setExtraHTTPHeaders", map[string]any{
-		"headers": map[string]string{
-			"Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8",
-		},
+		"headers": extraHeaders,
 	})
-	if err := sendCDP(4, "Page.enable", map[string]any{}); err != nil {
+	if len(cookieJar) > 0 {
+		_ = sendCDP(4, "Network.setCookies", map[string]any{
+			"cookies": webai.BrowserCookieSetParams("tiktok", cookieJar),
+		})
+	} else if cookieHeader != "" {
+		parsed := webai.ParseCookieHeaderToBrowserCookies(cookieHeader, ".tiktok.com")
+		if len(parsed) > 0 {
+			_ = sendCDP(4, "Network.setCookies", map[string]any{
+				"cookies": webai.BrowserCookieSetParams("tiktok", parsed),
+			})
+		}
+	}
+	if err := sendCDP(5, "Page.enable", map[string]any{}); err != nil {
 		return nil, err
 	}
-	_ = sendCDP(5, "Page.addScriptToEvaluateOnNewDocument", map[string]any{
+	_ = sendCDP(6, "Page.addScriptToEvaluateOnNewDocument", map[string]any{
 		"source": `try{Object.defineProperty(navigator,'webdriver',{get:()=>undefined});}catch(_){}`,
 	})
 

@@ -104,7 +104,7 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 				return
 			}
 			email := strings.TrimSpace(auth.Email)
-			if email == "" && tgt.Platform != webai.PlatformMuseAI {
+			if email == "" && tgt.Platform != webai.PlatformMuseAI && tgt.Platform != webai.PlatformTikTok {
 				msg := "Đã xác thực phiên nhưng chưa xác minh được email thật; chưa lưu tài khoản."
 				mgr.UpdateSession(sess.ID, "failed", msg, "", msg)
 				return
@@ -112,7 +112,7 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 			accountName := tgt.Name
 			if email != "" {
 				accountName = fmt.Sprintf("%s (%s)", tgt.Name, email)
-			} else if tgt.Platform == webai.PlatformMuseAI {
+			} else if tgt.Platform == webai.PlatformMuseAI || tgt.Platform == webai.PlatformTikTok {
 				accountName = fmt.Sprintf("%s (phiên %s)", tgt.Name, time.Now().Format("02/01 15:04:05"))
 			}
 			id, err := s.WebAI.UpsertAccountSessionWithCookieJar(tgt.Platform, auth.SessionValue, auth.CookieHeader, auth.CookieJar, accountName, email, "unknown")

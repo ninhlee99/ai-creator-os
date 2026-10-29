@@ -104,6 +104,37 @@ func browserCookieSnapshotFromCDP(ctx context.Context, client *browserCDPClient)
 	return cookies, nil
 }
 
+// BrowserCookieSetParams formats browser cookies for Network.setCookies CDP call.
+func BrowserCookieSetParams(platform string, cookies []BrowserCookie) []map[string]any {
+	return browserCookieSetParams(platform, cookies)
+}
+
+// ParseCookieHeaderToBrowserCookies parses a raw Cookie header into BrowserCookie structs.
+func ParseCookieHeaderToBrowserCookies(header, defaultDomain string) []BrowserCookie {
+	var jar []BrowserCookie
+	parts := strings.Split(header, ";")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		eq := strings.Index(part, "=")
+		if eq <= 0 {
+			continue
+		}
+		name := strings.TrimSpace(part[:eq])
+		val := strings.TrimSpace(part[eq+1:])
+		jar = append(jar, BrowserCookie{
+			Name:   name,
+			Value:  val,
+			Domain: defaultDomain,
+			Path:   "/",
+			Secure: true,
+		})
+	}
+	return jar
+}
+
 func browserCookieSetParams(platform string, cookies []BrowserCookie) []map[string]any {
 	params := make([]map[string]any, 0, len(cookies))
 	for _, cookie := range normalizeCookieJar(cookies) {

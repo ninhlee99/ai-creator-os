@@ -31,6 +31,8 @@ func probeAccountSessionOutcome(ctx context.Context, acc *webai.Account, onCooki
 		return probeMuseAccountSession(ctx, acc, onCookieUpdate)
 	case "googleflow":
 		return probeGoogleFlowSession(ctx, acc, onCookieUpdate)
+	case "tiktok":
+		return probeTikTokAccountSession(ctx, acc)
 	}
 	if platform == webai.PlatformGemini && strings.HasPrefix(strings.TrimSpace(acc.SessionKey), "AIzaSy") {
 		return probeGeminiAPIKey(ctx, strings.TrimSpace(acc.SessionKey))
@@ -302,4 +304,15 @@ func (s *Server) handleWebAIAccountTest(w http.ResponseWriter, r *http.Request) 
 		"results":      results,
 		"message":      fmt.Sprintf("Đã kiểm tra %d tài khoản: %d còn sống ✓, %d hết hạn ⚠, %d chưa xác minh", len(results), aliveCount, expiredCount, unknownCount),
 	})
+}
+
+func probeTikTokAccountSession(ctx context.Context, acc *webai.Account) (accountProbeOutcome, string) {
+	if acc == nil || (strings.TrimSpace(acc.Cookie) == "" && len(acc.CookieJar) == 0) {
+		return accountProbeUnknown, "Tài khoản TikTok chưa có cookie phiên"
+	}
+	raw := acc.Cookie
+	if strings.Contains(raw, "sessionid=") || strings.Contains(raw, "sessionid_ss=") || strings.Contains(raw, "sid_guard=") {
+		return accountProbeAlive, "Phiên đăng nhập TikTok hợp lệ"
+	}
+	return accountProbeExpired, "Cookie TikTok thiếu sessionid hoặc đã hết hạn"
 }

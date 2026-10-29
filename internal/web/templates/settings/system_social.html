@@ -24,6 +24,63 @@
     </div>
   </div>
 
+  <!-- TikTok Cookie & Session Management -->
+  <div class="form-card mt-4 max-w-3xl space-y-4" style="border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); padding: 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:26px;">🎵</span>
+        <div>
+          <h3 style="margin:0; font-size:16px; font-weight:700;">Tài khoản &amp; Cookie TikTok (Web Session)</h3>
+          <p class="hint" style="margin:2px 0 0 0; font-size:12px;">Lưu cookie phiên đăng nhập TikTok giúp Radar và Crawler quét video xu hướng realtime không bị chặn bot hay Captcha.</p>
+        </div>
+      </div>
+      <div>
+        {{if .TikTokCookieActive}}
+          <span class="badge badge-ok">✓ Đã kết nối Cookie</span>
+        {{else}}
+          <span class="badge badge-warn">⚠ Chưa kết nối Cookie</span>
+        {{end}}
+      </div>
+    </div>
+
+    {{if .TikTokCookieActive}}
+    <div style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:12px 16px; font-size:13px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div>
+        <div style="font-weight:600; color:var(--text); display:flex; align-items:center; gap:8px;">
+          <span>Tài khoản:</span>
+          <span style="color:var(--primary, #4f46e5); font-weight:700;">{{.TikTokAccountName}}</span>
+        </div>
+        <div style="color:var(--muted); font-size:12px; margin-top:3px;">
+          Trạng thái: Cookie đang hoạt động ({{.TikTokCookieCount}} cookies lưu trong hệ thống)
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="startBrowserLogin('tiktok', 'TikTok')">🔄 Đăng nhập lại</button>
+        <form method="post" action="/settings/tiktok/cookie/delete" style="display:inline">
+          <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--err)" onclick="return confirm('Bạn có chắc muốn xóa cookie TikTok đã lưu?')">🗑 Xóa</button>
+        </form>
+      </div>
+    </div>
+    {{else}}
+    <div style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:18px; text-align:center;">
+      <p style="margin:0 0 12px 0; font-size:13px; color:var(--muted);">Bấm nút bên dưới để mở trình duyệt, bạn quét mã QR hoặc đăng nhập tài khoản TikTok. Hệ thống sẽ tự động bắt và lưu cookie phiên an toàn.</p>
+      <button type="button" class="btn btn-primary" onclick="startBrowserLogin('tiktok', 'TikTok')" style="font-weight:700; padding:9px 24px; font-size:14px; box-shadow:0 4px 12px rgba(79,70,229,0.25);">
+        🔑 Đăng nhập TikTok lấy Cookie
+      </button>
+    </div>
+    {{end}}
+
+    <details style="font-size:12px; color:var(--muted); margin-top:10px; border-top:1px dashed var(--border); padding-top:10px;">
+      <summary style="cursor:pointer; font-weight:600; color:var(--text);">Dán trực tiếp chuỗi Cookie TikTok thủ công (Tùy chọn)</summary>
+      <form method="post" action="/settings/tiktok/cookie/save" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+        <textarea name="cookie" rows="3" placeholder="Dán chuỗi cookie từ DevTools hoặc extension (ví dụ: sessionid=...; ttwid=...; msToken=...)" style="width:100%; font-family:monospace; font-size:12px; padding:8px 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); box-sizing:border-box;"></textarea>
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="submit" class="btn btn-secondary btn-sm">Lưu chuỗi Cookie</button>
+        </div>
+      </form>
+    </details>
+  </div>
+
   <div class="form-card mt-4 max-w-3xl space-y-3">
     <div class="flex items-center justify-between">
       <h3 class="m-0">TikTok Radar · Web Crawler tự động</h3>

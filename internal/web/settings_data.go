@@ -10,6 +10,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 	"log"
 	"net/http"
 	"net/url"
@@ -63,13 +64,39 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 	}
 	webAIViews, webAIConnected, webAIStudioReady := s.webAIPlatformViews()
 	customModels, _ := s.listCustomAPIModels()
+
+	var tikTokCookieActive bool
+	var tikTokAccountName string
+	var tikTokCookieCount int
+	if s.WebAI != nil {
+		if tikTokAccs, err := s.WebAI.GetAccounts(webai.PlatformTikTok); err == nil && len(tikTokAccs) > 0 {
+			for _, acc := range tikTokAccs {
+				if acc.Cookie != "" || len(acc.CookieJar) > 0 {
+					tikTokCookieActive = true
+					tikTokAccountName = acc.AccountName
+					if acc.Email != "" && acc.Email != "manual" && acc.Email != "TikTok User" {
+						tikTokAccountName = acc.Email
+					}
+					tikTokCookieCount = len(acc.CookieJar)
+					if tikTokCookieCount == 0 && acc.Cookie != "" {
+						tikTokCookieCount = strings.Count(acc.Cookie, ";") + 1
+					}
+					break
+				}
+			}
+		}
+	}
+
 	return map[string]any{
 		"EnvStatus":              envs,
 		"CustomAPIModels":        customModels,
-		"TikTokRadarConfigured": studio.TikTokRadarSourceConfigured(),
-		"WebAIPlatforms":   webAIViews,
-		"WebAIConnected":   webAIConnected,
-		"WebAIStudioReady": webAIStudioReady,
+		"TikTokRadarConfigured":  studio.TikTokRadarSourceConfigured(),
+		"TikTokCookieActive":     tikTokCookieActive,
+		"TikTokAccountName":      tikTokAccountName,
+		"TikTokCookieCount":      tikTokCookieCount,
+		"WebAIPlatforms":         webAIViews,
+		"WebAIConnected":         webAIConnected,
+		"WebAIStudioReady":       webAIStudioReady,
 		"EnvSaved":         r.URL.Query().Get("envsaved"),
 		"EnvErr":           r.URL.Query().Get("enverr"), // Đợt AA: lỗi validate biến
 		"Ok":               r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang system
