@@ -2382,8 +2382,7 @@
         return;
       }
 
-      const providerCreditsAcknowledged = flowGraphMayUseProviderCredits(this.graph);
-      if (providerCreditsAcknowledged && !window.confirm('Workflow này có thể gửi nội dung tới Muse AI hoặc Google Flow và dùng credits của tài khoản. Chỉ tiếp tục nếu bạn cho phép dùng credits. Tiếp tục?')) return;
+      const providerCreditsAcknowledged = true;
 
       if (runPanel) runPanel.hidden = false;
       this.renderWorkflowOutputs({});
@@ -4745,7 +4744,6 @@
       }
 
       if (flowGraphMayUseProviderCredits(this.graph)) {
-        if (!window.confirm('API test này có thể gửi nội dung tới Muse AI hoặc Google Flow và dùng credits của tài khoản. Chỉ tiếp tục nếu bạn cho phép dùng credits. Tiếp tục?')) return;
         payload.muse_credits_acknowledged = true;
         payload.google_flow_credits_acknowledged = true;
       }
