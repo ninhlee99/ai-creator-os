@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
@@ -129,5 +130,33 @@ func TestDetectAutoVideoType(t *testing.T) {
 	// Viral by prompt keywords
 	if got := detectAutoVideoType("Bắt trend vũ đạo biến hình nhảy triệu view hot tiktok", "Vũ đạo", "", "", 0, true); got != "viral" {
 		t.Errorf("viral keywords got %q, want viral", got)
+	}
+}
+
+func TestExtractURLsFromPrompt(t *testing.T) {
+	prompt := `Làm video review sản phẩm https://shopee.vn/product/123/456 kết hợp phong cách của video https://www.tiktok.com/@creator/video/9876543210 và dùng ảnh nhân vật https://example.com/face.jpg`
+	res := extractURLsFromPrompt(prompt)
+	if res.ProductURL != "https://shopee.vn/product/123/456" {
+		t.Errorf("ProductURL = %q, want shopee url", res.ProductURL)
+	}
+	if res.TikTokLink != "https://www.tiktok.com/@creator/video/9876543210" {
+		t.Errorf("TikTokLink = %q, want tiktok url", res.TikTokLink)
+	}
+	if len(res.ImageURLs) != 1 || res.ImageURLs[0] != "https://example.com/face.jpg" {
+		t.Errorf("ImageURLs = %v, want [https://example.com/face.jpg]", res.ImageURLs)
+	}
+}
+
+func TestValidateAndEnforceViralChannelFallback(t *testing.T) {
+	accounts := []*network.Account{
+		{ID: 10, Username: "Meow"},
+	}
+	// When requested account is empty, it should automatically fallback to the first account
+	user, id, errStr := ValidateAndEnforceViralChannel("Topic", "dance", "", accounts)
+	if errStr != "" {
+		t.Fatalf("unexpected error: %s", errStr)
+	}
+	if user != "Meow" || id != 10 {
+		t.Errorf("user=%q id=%d, want Meow 10", user, id)
 	}
 }

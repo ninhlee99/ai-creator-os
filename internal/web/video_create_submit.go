@@ -11,23 +11,70 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// ValidateAndEnforceViralChannel resolves only the channel explicitly selected by the operator.
+var promptURLRegex = regexp.MustCompile(`https?://[^\s"'<>]+`)
+
+type extractedPromptURLs struct {
+	TikTokLink string
+	ProductURL string
+	ImageURLs  []string
+	VideoURLs  []string
+}
+
+// extractURLsFromPrompt bóc tách link sản phẩm, video tham chiếu và ảnh nhân vật từ câu lệnh prompt.
+func extractURLsFromPrompt(prompt string) extractedPromptURLs {
+	var res extractedPromptURLs
+	matches := promptURLRegex.FindAllString(prompt, -1)
+	for _, raw := range matches {
+		u := strings.TrimRight(raw, ",.;:!?)")
+		lower := strings.ToLower(u)
+		if strings.Contains(lower, "tiktok.com") || strings.Contains(lower, "douyin.com") {
+			if strings.Contains(lower, "/view/product") || strings.Contains(lower, "shop.tiktok.com") {
+				if res.ProductURL == "" {
+					res.ProductURL = u
+				}
+			} else {
+				if res.TikTokLink == "" {
+					res.TikTokLink = u
+				}
+			}
+		} else if strings.Contains(lower, "shopee.vn") || strings.Contains(lower, "shope.ee") || strings.Contains(lower, "lazada.vn") || strings.Contains(lower, "lzd.co") || strings.Contains(lower, "tiki.vn") {
+			if res.ProductURL == "" {
+				res.ProductURL = u
+			}
+		} else if strings.HasSuffix(lower, ".jpg") || strings.HasSuffix(lower, ".jpeg") || strings.HasSuffix(lower, ".png") || strings.HasSuffix(lower, ".webp") {
+			res.ImageURLs = append(res.ImageURLs, u)
+		} else if strings.HasSuffix(lower, ".mp4") || strings.HasSuffix(lower, ".mov") || strings.HasSuffix(lower, ".webm") {
+			res.VideoURLs = append(res.VideoURLs, u)
+		}
+	}
+	return res
+}
+
+// ValidateAndEnforceViralChannel resolves the channel explicitly selected or auto-falls back to the primary channel.
 func ValidateAndEnforceViralChannel(topic, genre, requestedAccount string, accounts []*network.Account) (string, int64, string) {
 	_ = topic
 	_ = genre
 	requestedAccount = strings.TrimSpace(requestedAccount)
 	if requestedAccount == "" {
+		if len(accounts) > 0 && accounts[0] != nil {
+			return accounts[0].Username, accounts[0].ID, ""
+		}
 		return "", 0, "Chọn kênh đích trước khi tạo video."
 	}
 	for _, account := range accounts {
 		if account != nil && account.Username == requestedAccount {
 			return account.Username, account.ID, ""
 		}
+	}
+	// Fallback to first available account if requested doesn't match
+	if len(accounts) > 0 && accounts[0] != nil {
+		return accounts[0].Username, accounts[0].ID, ""
 	}
 	return requestedAccount, 0, "Kênh đã chọn không tồn tại; chọn lại kênh đích."
 }
@@ -279,6 +326,38 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		tiktokLink = strings.TrimSpace(r.PostFormValue("video_url"))
 	}
 
+	// Tự động bóc tách link sản phẩm, video TikTok tham chiếu hoặc ảnh nhân vật từ prompt
+	extracted := extractURLsFromPrompt(prompt)
+	if tiktokLink == "" && extracted.TikTokLink != "" {
+		tiktokLink = extracted.TikTokLink
+	}
+	if productURL == "" && extracted.ProductURL != "" {
+		productURL = extracted.ProductURL
+	}
+	if len(uploadedPhotos) == 0 && len(extracted.ImageURLs) > 0 && s.Studio != nil {
+		for i, imgURL := range extracted.ImageURLs {
+			if i >= 3 {
+				break
+			}
+			dst := filepath.Join(upDir, fmt.Sprintf("prompt_img_%d_%d.jpg", time.Now().UnixNano(), i))
+			dlCtx, dlCancel := context.WithTimeout(r.Context(), 15*time.Second)
+			if err := studio.DownloadImage(dlCtx, imgURL, dst); err == nil {
+				uploadedPhotos = append(uploadedPhotos, dst)
+				previewCleanup = append(previewCleanup, dst)
+			}
+			dlCancel()
+		}
+	}
+
+	// Tự động lấy ảnh nhân vật đã lưu trong kênh nếu người dùng chưa tải ảnh mới
+	if len(uploadedPhotos) == 0 && accountID > 0 && s.Studio != nil {
+		if ms, err := s.Studio.ModelLibrary(); err == nil && ms != nil {
+			if photos, err := ms.List(accountID); err == nil && len(photos) > 0 {
+				uploadedPhotos = append(uploadedPhotos, photos[0].Path)
+			}
+		}
+	}
+
 	// Tự động phân tích và chọn quy trình sản xuất (Workflow) phù hợp nếu không chỉ định rõ
 	isAutoMode := outputType == "auto" || outputType == ""
 	if isAutoMode {
@@ -348,7 +427,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		if s.Ledger != nil {
 			_ = s.Ledger.Decide("human", "affiliate_create", nil, fmt.Sprintf("Tạo video affiliate job=%s: %s", jobID, topic), nil)
 		}
-		seeOther(w, r, "/studio/jobs?msg=created&id="+url.QueryEscape(jobID))
+		seeOther(w, r, "/workflow/create?msg=created&job_id="+url.QueryEscape(jobID)+"#chat-feed")
 		return
 	}
 
@@ -413,7 +492,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		if s.Ledger != nil {
 			_ = s.Ledger.Decide("human", "viral_source_replace", nil, fmt.Sprintf("Tạo video viral job=%s: %s", jobID, topic), nil)
 		}
-		seeOther(w, r, "/studio/jobs?msg=created&id="+url.QueryEscape(jobID))
+		seeOther(w, r, "/workflow/create?msg=created&job_id="+url.QueryEscape(jobID)+"#chat-feed")
 		return
 	}
 
@@ -527,7 +606,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		msg = "Đã thêm video TikTok vào hàng đợi (đang chờ các job trước hoàn thành)!"
 	}
 
-	http.Redirect(w, r, "/studio/jobs?msg="+url.QueryEscape(msg)+"&job_id="+url.QueryEscape(jobID)+"#job-"+url.QueryEscape(jobID), http.StatusSeeOther)
+	http.Redirect(w, r, "/workflow/create?msg="+url.QueryEscape(msg)+"&job_id="+url.QueryEscape(jobID)+"#chat-feed", http.StatusSeeOther)
 }
 
 // handleViralCreate giữ tương thích ngược cho route cũ.

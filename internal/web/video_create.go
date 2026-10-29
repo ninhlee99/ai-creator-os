@@ -220,11 +220,13 @@ func (s *Server) handleVideoCreate(w http.ResponseWriter, r *http.Request) {
 	// Source video comes from a TikTok Radar link or an operator-uploaded file.
 
 	if s.Studio != nil {
-		jobs := s.Studio.ListViralJobs(40)
+		jobs := s.Studio.ListJobs(30)
 		v.TotalCount = len(jobs)
 		for _, j := range jobs {
 			var p studio.ViralParams
-			_ = studioUnmarshalJSON(j.Params, &p)
+			if j.Params != "" {
+				_ = studioUnmarshalJSON(j.Params, &p)
+			}
 
 			var mediaURL string
 			var srtURL string
@@ -247,12 +249,17 @@ func (s *Server) handleVideoCreate(w http.ResponseWriter, r *http.Request) {
 				tail = lines[len(lines)-1]
 			}
 
+			genre := p.Genre
+			if genre == "" {
+				genre = j.Kind
+			}
+
 			jv := viralJobView{
 				ID:         j.ID,
 				Title:      j.Title,
 				Topic:      topic,
-				Genre:      p.Genre,
-				GenreVN:    viralGenreVN(p.Genre),
+				Genre:      genre,
+				GenreVN:    viralGenreVN(genre),
 				Status:     j.Status,
 				StatusVN:   viralStatusVN(j.Status),
 				Progress:   j.Progress,
