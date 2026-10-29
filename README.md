@@ -1,15 +1,18 @@
-# MiuNova
+# MiuNova (AI Creator OS)
 
-MiuNova hiện tập trung vào hai flow TikTok:
+Hệ thống sản xuất nội dung video AI tự động hóa linh hoạt theo quy trình (Workflow):
 
-1. Video affiliate TikTok.
-2. Video viral TikTok.
+1. **Sản phẩm Affiliate**: Thêm sản phẩm nhanh chỉ từ 1 link (Shopee, TikTok Shop, Lazada...) → Hệ thống tự động phân tích lấy ảnh, tên, giá → Khởi chạy workflow tạo video 1-click.
+2. **Universal Video Studio (`/workflow/create`)**: Tạo đa dạng thể loại video (TikTok Viral Dance, TikTok Affiliate Review, Custom Workflow) điều khiển trực quan theo từng workflow AI.
+3. **Workflow Canvas**: Kéo-thả trực quan, hỗ trợ Web AI Tools, Prompt Custom, TTS, và Upscale hình ảnh/video tối đa 2K.
 
-Truyện audio là roadmap, không nằm trong flow hiện tại. Radar dùng Web Crawler cục bộ và AI phân tích video/caption; tab mặc định lọc vũ đạo, topic khác lọc theo nội dung. Dùng audio từ tab mặc định vẫn cần người vận hành xác nhận vũ đạo. Xem [TikTok Web Crawler](docs/features/tiktok-web-crawler.md) để biết nguồn, giới hạn và trạng thái hiện tại.
+## Cấu trúc Menu Điều hướng
 
-## Luồng đang ưu tiên
-
-Kết nối kênh TikTok → Radar thu thập video viral/nhảy → chọn video nguồn → chọn sản phẩm hoặc tạo video viral → kiểm tra video và âm thanh → gửi TikTok Draft để người dùng duyệt.
+- **Tổng quan**: Dashboard trực quan hóa số liệu (`/`).
+- **TikTok**: Xu hướng video & âm thanh hot (`/studio/trends`).
+- **Affiliate**: Quản lý sản phẩm & kệ hàng (`/products`).
+- **Workflow**: Canvas kéo-thả (`/workflow`), Tạo video đa thể loại (`/workflow/create`), Lịch sử tác vụ (`/studio/jobs`).
+- **Hệ thống**: Phân tích tăng trưởng (`/growth`), Kênh TikTok & nhân vật (`/accounts`), Cài đặt (`/settings`).
 
 ## Hiện trạng
 

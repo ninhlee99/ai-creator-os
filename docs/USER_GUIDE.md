@@ -1,48 +1,40 @@
-# Hướng dẫn vận hành
+# Hướng dẫn Vận hành Hệ thống
 
-Hướng dẫn vận hành quy trình TikTok đang được hoàn thiện và workflow canvas.
+Hướng dẫn sử dụng các chức năng thực tế của AI Creator OS.
 
-## Chuẩn bị
+## 1. Chuẩn bị
 
-1. Chạy app trên máy có FFmpeg.
-2. Tạo kênh TikTok trong trang Kênh.
-3. Kết nối TikTok tại trang Publisher bằng OAuth.
-4. Cấu hình AccessTrade trong Cài đặt nếu dùng video affiliate.
-5. Nếu Studio cần Web AI, mở Cài đặt → Hệ thống → Tài khoản AI và bấm Đăng nhập trên desktop. Tài khoản AI đang kết nối không chứng minh có credits miễn phí.
+1. Đảm bảo hệ thống đã cài đặt FFmpeg cho tác vụ render media.
+2. Thêm kênh TikTok đích tại menu **Kênh** (`/accounts`) và tải lên ảnh nhân vật đại diện.
+3. Nếu sử dụng các node Web AI miễn phí, vào **Cài đặt → Hệ thống** (`/settings/system`) bấm Đăng nhập phiên tài khoản trên browser desktop.
 
-## Video affiliate TikTok
+## 2. Thêm Sản phẩm Affiliate & Tạo Video
 
-1. Mở Sản phẩm & hoa hồng; tải/cập nhật offer từ nguồn đã kết nối.
-2. Kiểm tra commission và thông tin offer. Không dựa vào số bán/rating nếu nguồn không cung cấp.
-3. Mở từng video trong TikTok Radar. Chỉ tick xác nhận nếu đã xem và nội dung thực sự có vũ đạo; bỏ xác nhận nếu video không phù hợp.
-4. Tạo video affiliate trong Studio. Xác nhận sản phẩm, audio nguồn, preview và QC.
-5. Xem lại preview, xác nhận tài khoản đích và đồng ý gửi TikTok Draft; mở TikTok để kiểm tra/gắn sản phẩm rồi hoàn tất đăng.
+1. Vào menu **Sản phẩm** (`/products`).
+2. Dán link affiliate sản phẩm từ Shopee, TikTok Shop, Lazada... vào ô nhập và bấm **Phân tích & Lưu sản phẩm**.
+3. Hệ thống tự động lấy ảnh, tên, giá và lưu vào danh sách Kệ hàng.
+4. Tại dòng sản phẩm muốn tạo video, bấm **`⚡ Tạo video`**.
+5. Chọn kênh TikTok đích, chọn workflow thực thi (mặc định: `preset_affiliate_daily`), chọn ảnh nhân vật (hoặc tải thêm nhiều góc ảnh mới) rồi bấm **Khởi chạy Workflow**.
 
-## Video viral TikTok
+## 3. Tạo Video AI Đa Thể loại (Universal Studio)
 
-1. Mở TikTok Radar và cập nhật feed. Cách chuẩn bị browser và giới hạn dữ liệu: [TikTok Web Crawler](features/tiktok-web-crawler.md).
-2. Mở video xem nội dung thật rồi xác nhận vũ đạo trên card. Chỉ video đã xác nhận mới có hành động dùng làm nguồn.
-3. Tạo video từ nguồn đã chọn.
-4. Kiểm tra audio, hình ảnh, preview và QC.
-5. Xem lại preview, xác nhận tài khoản đích và đồng ý gửi TikTok Draft; hoàn tất đăng trong TikTok.
+1. Vào menu **Tạo video** (`/workflow/create`).
+2. **Chọn Workflow**: Chọn loại video bạn muốn sản xuất:
+   - *TikTok Viral Dance*: Tái hiện điệu nhảy hot trend với nhân vật đại diện của kênh.
+   - *TikTok Affiliate Review*: Video bán hàng, review sản phẩm affiliate.
+   - *Custom Workflow*: Các workflow tự tạo theo ý muốn.
+3. **Nhập dữ liệu**: Giao diện tự thích ứng theo workflow (link video nguồn, link sản phẩm, hoặc chủ đề/prompt).
+4. **Nhân vật đại diện**: Chọn các góc ảnh có sẵn hoặc upload nhiều góc ảnh nhân vật mới.
+5. **Thiết lập render**: Chọn 1080p hoặc 2K, bấm **`🚀 Khởi chạy Workflow Tạo Video`**. Tác vụ sẽ tự động được đưa vào hàng đợi xử lý.
 
-## Workflow truyện audio
+## 4. Quản lý Workflow Canvas
 
-1. Mở Workflow và chọn preset **Truyện audio · Viết & kể**. Preset hệ thống chỉ đọc; nhân bản để sửa prompt hoặc cấu hình.
-2. Bấm Chạy workflow. Nhập ý tưởng, chọn phong cách giọng đọc và tải nhạc nền tùy chọn cho lần chạy này.
-3. Xem lại node **Viết truyện audio** nếu cần đổi cách viết; node **Tổng hợp giọng kể** dùng chuỗi TTS trong Cài đặt. Persona giọng phụ thuộc provider; macOS Say hiện dùng giọng Linh.
-4. Node cân bằng âm thanh tự giảm nhạc khi có lời, lặp nhạc tới hết track chính và chuẩn hóa đầu ra. Không tải nhạc thì node truyền nguyên lời kể. Kết quả gồm kịch bản văn bản và file WAV trong thư mục output.
+1. Vào menu **Workflow** (`/workflow`).
+2. Xem, chỉnh sửa, thêm bớt node hoặc tự tạo workflow mới:
+   - Thư viện node: Web AI Tools, Prompt Custom, Image Gen, Audio TTS, Video Render, Upscale (hỗ trợ tối đa 2K).
+   - Với workflow hệ thống: Bấm nút **Nhân bản** để tạo bản sao và tự do tùy biến.
 
-## Lặp workflow con qua danh sách
+## 5. Theo dõi Lịch sử & Thành phẩm
 
-1. Tạo workflow con, thêm node **Đầu vào workflow** cho một phần tử và node **Đầu ra workflow** cho kết quả; nối các node xử lý giữa hai cổng rồi lưu.
-2. Trong workflow cha, nối danh sách vào **Lặp qua danh sách (Workflow Map)**. Chọn workflow con, input nhận từng phần tử và output muốn thu về; có thể chọn thêm input kiểu số để nhận thứ tự phần tử.
-3. Input bắt buộc khác trong workflow con phải có giá trị mặc định. Kết quả giữ nguyên thứ tự đầu vào; mặc định xử lý tối đa 20 phần tử, cấu hình được từ 1 đến 100.
-4. Để ghép video, nối `results` vào cổng **Danh sách phân cảnh** của **Ghép nối phân cảnh**. Không nối đồng thời cổng danh sách và các cổng `scene_1`–`scene_3`.
-
-## Khi flow dừng
-
-- Chưa xác định video có vũ đạo: không dùng làm nguồn âm thanh; mở video để kiểm tra rồi xác nhận hoặc chọn video khác.
-- Không tải/tách được audio: không thay bằng sound bất kỳ; chọn nguồn khác.
-- Offer thiếu dữ liệu: chỉ xem dữ liệu provider thực trả về, không coi là bán chạy.
-- TikTok trả lỗi hoặc timeout sau submit: kiểm tra trạng thái Draft trước khi gửi lại.
+1. Vào menu **Lịch sử** (`/studio/jobs`).
+2. Theo dõi tiến độ từng job đang chạy, xem log chi tiết, tải video thành phẩm hoặc gửi bản nháp sang TikTok.

@@ -1,23 +1,19 @@
 # Tính năng cốt lõi
 
-Chỉ hai flow TikTok đang triển khai. Truyện audio để phase sau.
+AI Creator OS tập trung vào tự động hóa sáng tạo nội dung video và affiliate qua Workflow trực quan:
 
-| Flow | Các bước | Spec |
+| Phân hệ | Tính năng chính | Tài liệu chi tiết |
 |---|---|---|
-| TikTok affiliate | Product Radar → evidence/evaluation → duyệt hoặc loại → campaign/video → TikTok Draft → order/commission feedback | [Affiliate](affiliate-video-production.md), [Products](products.md) |
-| TikTok viral | Radar theo topic → phân tích → tạo video mới → TikTok Draft → metrics/feedback | [Video viral](video-viral.md) |
+| **TikTok** | Khám phá xu hướng thịnh hành, phân tích âm thanh/video | [Xu hướng TikTok](tiktok-web-crawler.md) |
+| **Affiliate** | Thêm sản phẩm từ 1 link, tự bóc tách ảnh/giá, tạo video 1-click | [Sản phẩm & Kệ hàng](products.md) |
+| **Workflow** | Canvas trực quan kéo-thả, Universal Video Studio, Lịch sử tác vụ | [Workflow Canvas](studio-ai.md), [Tạo Video AI](video-viral.md) |
+| **Hệ thống** | Quản lý kênh, tăng trưởng, tài khoản Web AI, chuỗi provider & an toàn | [Kênh](accounts.md), [Tăng trưởng](channel-growth.md), [Cài đặt](settings.md) |
 
 ## Hạ tầng dùng chung
 
-- [TikTok Web Crawler cho Radar](tiktok-web-crawler.md)
-
-- [Kênh TikTok](accounts.md)
-- [AccessTrade](accesstrade.md)
-- [Studio, audio Radar và QC](studio-ai.md)
-- [Web AI providers](web-ai.md)
-- [TikTok performance feedback](channel-growth.md)
-- [Cài đặt](settings.md)
-- [Backup](backup-restore.md)
-- [TikTok automation](automation-tiktok.md)
-
-Không mô tả hoặc expose feature ngoài hai flow trong UI và tài liệu sản phẩm.
+- [Quản lý Kênh TikTok](accounts.md)
+- [Universal Workflow Studio](video-viral.md)
+- [Web AI providers & Session manager](web-ai.md)
+- [Cài đặt hệ thống](settings.md)
+- [Backup & Restore](backup-restore.md)
+- [Kill switch & Dry-run an toàn](kill-switch-dry-run-master.md)
