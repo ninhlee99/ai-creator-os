@@ -1,6 +1,29 @@
 {{define "title"}}Tạo video AI{{end}}
 {{define "content"}}
 
+<style>
+#video-prompt, #video-prompt:focus, #video-prompt:focus-visible {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  background: transparent !important;
+}
+#ai-chat-box {
+  border: 1.5px solid var(--border);
+  border-radius: 22px;
+  background: var(--bg2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+  padding: 16px 18px 12px;
+  position: relative;
+  transition: border-color 0.2s ease;
+}
+#ai-chat-box:focus-within {
+  border-color: rgba(99, 102, 241, 0.45);
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
+
 <div style="max-width:860px;margin:0 auto;padding:16px 0 60px">
 
   {{if .Viral.Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:12px 16px;border-radius:12px;color:#10b981;border:1px solid rgba(16,185,129,0.25);margin-bottom:16px;font-weight:600">✓ {{.Viral.Notice}}</p>{{end}}
@@ -14,7 +37,7 @@
     <input type="hidden" name="output_resolution" value="1080p">
     <input type="hidden" name="voice" value="vi-VN-Standard-A">
 
-    <div id="ai-chat-box" style="border:1.5px solid var(--border);border-radius:22px;background:var(--bg2);box-shadow:0 6px 24px rgba(0,0,0,0.05);transition:all 0.2s ease;padding:16px 18px 12px;position:relative">
+    <div id="ai-chat-box">
       
       <!-- ATTACHED MEDIA PREVIEWS (TRONG KHUNG CHAT) -->
       <div id="attached-media-bar" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
@@ -26,33 +49,31 @@
         </div>
       </div>
 
-      <!-- MAIN PROMPT TEXTAREA -->
+      <!-- MAIN PROMPT TEXTAREA (KHÔNG BORDER OUTLINE KHI FOCUS) -->
       <textarea name="prompt" id="video-prompt" rows="3" required
         oninput="onPromptInput(this.value)"
-        onfocus="document.getElementById('ai-chat-box').style.borderColor='#4f46e5';document.getElementById('ai-chat-box').style.boxShadow='0 8px 30px rgba(79,70,229,0.12)'"
-        onblur="document.getElementById('ai-chat-box').style.borderColor='var(--border)';document.getElementById('ai-chat-box').style.boxShadow='0 6px 24px rgba(0,0,0,0.05)'"
         placeholder="Nhập mô tả ý tưởng video, dán link sản phẩm (Shopee, TikTok Shop) hoặc link video TikTok tham chiếu... (AI sẽ tự động nhận diện và tạo video)"
         style="width:100%;border:none;outline:none;background:transparent;font-size:15px;line-height:1.6;color:var(--text);resize:none;min-height:75px;font-family:inherit;padding:0;box-sizing:border-box">{{.Viral.Prompt}}</textarea>
 
       <!-- BOTTOM CONTROL TOOLBAR (BÊN TRONG KHUNG PROMPT) -->
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
         
-        <!-- LEFT TOOLS: ATTACHMENTS -->
+        <!-- LEFT TOOLS: ATTACHMENTS (UPLOAD TRỰC TIẾP TỪ MÁY TÍNH) -->
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
           
-          <!-- ATTACH PHOTO BUTTON -->
-          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--text);transition:background 0.15s" title="Đính kèm ảnh sản phẩm hoặc nhân vật">
+          <!-- UPLOAD ẢNH NHÂN VẬT / SẢN PHẨM -->
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--text);transition:background 0.15s" title="Upload ảnh sản phẩm hoặc nhân vật từ máy tính">
             <span>📷</span>
             <span id="label-photo-btn">Thêm ảnh</span>
             <input type="file" name="character_photos" id="input-photos" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(this.files)">
           </label>
 
-          <!-- ATTACH VIDEO BUTTON -->
-          <button type="button" onclick="toggleVideoAttachPopover()" id="btn-video-attach"
-            style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--text);transition:background 0.15s" title="Đính kèm video mẫu hoặc dán link TikTok">
+          <!-- UPLOAD VIDEO MẪU TRỰC TIẾP (BẤM LÀ CHỌN FILE UPLOAD) -->
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--text);transition:background 0.15s" title="Upload file video mẫu từ máy tính">
             <span>🎬</span>
-            <span id="label-video-btn">Video mẫu</span>
-          </button>
+            <span id="label-video-btn">Thêm mẫu</span>
+            <input type="file" name="video_file" id="input-video-file" accept="video/*" style="display:none" onchange="handleVideoSelect(this.files)">
+          </label>
 
           <span id="detected-link-hint" style="display:none;font-size:11.5px;color:var(--accent,#2563eb);font-weight:600;background:rgba(37,99,235,0.08);padding:3px 10px;border-radius:12px"></span>
         </div>
@@ -68,29 +89,6 @@
           </button>
         </div>
 
-      </div>
-
-      <!-- VIDEO ATTACH POPOVER -->
-      <div id="video-attach-popover" style="display:none;position:absolute;bottom:56px;left:18px;width:340px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:0 12px 35px rgba(0,0,0,0.18);z-index:50">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <strong style="font-size:13px;color:var(--text)">Đính kèm Video Mẫu</strong>
-          <button type="button" onclick="toggleVideoAttachPopover()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted)">×</button>
-        </div>
-        
-        <!-- File Picker -->
-        <label style="display:block;cursor:pointer;border:1px dashed var(--border);border-radius:8px;padding:10px;text-align:center;background:var(--bg3);margin-bottom:10px">
-          <span style="font-size:12px;font-weight:600;color:var(--accent,#2563eb)">Chọn file video mẫu (MP4, MOV)</span>
-          <input type="file" name="video_file" id="input-video-file" accept="video/*" style="display:none" onchange="handleVideoSelect(this.files)">
-        </label>
-
-        <!-- TikTok URL -->
-        <label style="font-size:11.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Hoặc dán Link video TikTok:</label>
-        <div style="display:flex;gap:6px">
-          <input type="url" name="tiktok_link" id="viral-tiktok-link" value="{{.Viral.SourceVideoURL}}"
-            oninput="onTikTokLinkInput(this.value)" placeholder="https://www.tiktok.com/@.../video/..."
-            style="flex:1;height:32px;padding:0 8px;font-size:11.5px;border-radius:6px;border:1px solid var(--border);background:var(--bg)">
-          <a href="/studio/trends" class="btn btn-secondary btn-sm" style="font-size:11px;padding:0 8px;height:32px;display:inline-flex;align-items:center" title="Mở Feed Xu hướng">Feed</a>
-        </div>
       </div>
 
     </div>
@@ -114,6 +112,7 @@
       <span>2K QHD</span>
       <input type="text" name="topic" id="viral-topic" value="{{.Viral.Topic}}">
       <input type="url" name="product_url" id="field-product-url" value="">
+      <input type="url" name="tiktok_link" id="viral-tiktok-link" value="{{.Viral.SourceVideoURL}}">
       <input type="hidden" name="model_id" id="viral-model-id" value="{{.Viral.SelectedModelID}}">
       <select name="output_type" id="field-output-type">
         <option value="auto" {{if and (ne .Viral.OutputType "viral") (ne .Viral.OutputType "affiliate")}}selected{{end}}>⚡ Tự Động (Auto)</option>
@@ -306,10 +305,6 @@
 
 </div>
 
-<style>
-@keyframes spin { 100% { transform: rotate(360deg); } }
-</style>
-
 <script>
 function onPromptInput(val) {
   var counter = document.getElementById('prompt-counter');
@@ -330,7 +325,7 @@ function onPromptInput(val) {
     if (urls.length > 0) {
       var first = urls[0].toLowerCase();
       if (first.includes('tiktok.com') || first.includes('douyin.com')) {
-        hint.textContent = '🔗 Phát hiện link TikTok tham chiếu';
+        hint.textContent = '🔗 Phát hiện link video tham chiếu';
         hint.style.display = 'inline-block';
       } else if (first.includes('shopee') || first.includes('lazada') || first.includes('tiki')) {
         hint.textContent = '🛒 Phát hiện link sản phẩm Affiliate';
@@ -391,42 +386,16 @@ function handleVideoSelect(files) {
   if (bar) bar.style.display = 'flex';
   if (badge) badge.style.display = 'inline-flex';
   if (text) text.textContent = file.name;
-  if (label) label.textContent = 'Đã chọn video';
-  toggleVideoAttachPopover(false);
-}
-
-function onTikTokLinkInput(val) {
-  if (val && val.trim().length > 10) {
-    var bar = document.getElementById('attached-media-bar');
-    var badge = document.getElementById('video-preview-badge');
-    var text = document.getElementById('video-preview-text');
-    var label = document.getElementById('label-video-btn');
-    if (bar) bar.style.display = 'flex';
-    if (badge) badge.style.display = 'inline-flex';
-    if (text) text.textContent = 'Link TikTok';
-    if (label) label.textContent = 'Link TikTok';
-  }
+  if (label) label.textContent = 'Đã chọn mẫu';
 }
 
 function clearVideoAttachment() {
   var badge = document.getElementById('video-preview-badge');
   var fileInput = document.getElementById('input-video-file');
-  var linkInput = document.getElementById('viral-tiktok-link');
   var label = document.getElementById('label-video-btn');
   if (badge) badge.style.display = 'none';
   if (fileInput) fileInput.value = '';
-  if (linkInput) linkInput.value = '';
-  if (label) label.textContent = 'Video mẫu';
-}
-
-function toggleVideoAttachPopover(force) {
-  var pop = document.getElementById('video-attach-popover');
-  if (!pop) return;
-  if (typeof force === 'boolean') {
-    pop.style.display = force ? 'block' : 'none';
-  } else {
-    pop.style.display = pop.style.display === 'block' ? 'none' : 'block';
-  }
+  if (label) label.textContent = 'Thêm mẫu';
 }
 
 function copyMediaLink(url) {
