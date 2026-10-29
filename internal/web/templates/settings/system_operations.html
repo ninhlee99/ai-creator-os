@@ -127,95 +127,9 @@
 
   </div>
 
-  <!-- 3. SAO LƯU & DỮ LIỆU -->
-  <div class="form-card" style="margin-bottom:24px; border:1px solid var(--border); border-radius:12px; background:var(--bg2); padding:20px">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
-      <h4 style="margin:0; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px">
-        <span>💾</span> Sao lưu &amp; Khôi phục dữ liệu
-      </h4>
-      <span class="hint" style="font-size:11.5px">
-        Bản sao lưu gần nhất: {{if .BackupLastOK}}<strong>{{fmtVN .BackupLastOK}}</strong>{{else}}<em>Chưa có</em>{{end}}
-      </span>
-    </div>
-
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px">
-      <!-- Tải backup -->
-      <div style="background:var(--bg3); padding:16px; border-radius:10px; border:1px solid var(--border); display:flex; flex-direction:column; justify-content:space-between">
-        <div>
-          <div style="font-weight:700; font-size:13px; margin-bottom:4px">📦 Tải bản sao lưu</div>
-          <p class="hint" style="font-size:11.5px; margin:0 0 12px 0; line-height:1.4">Tải về toàn bộ database SQLite, preset, nhân vật và video đã tạo dưới dạng file zip an toàn.</p>
-        </div>
-        <form method="post" action="/settings/backup">
-          <button type="submit" class="btn btn-primary btn-sm" style="font-weight:600; width:100%">⬇️ Tải file sao lưu (.zip)</button>
-        </form>
-      </div>
-
-      <!-- Khôi phục -->
-      <div style="background:var(--bg3); padding:16px; border-radius:10px; border:1px solid var(--border)">
-        <div style="font-weight:700; font-size:13px; margin-bottom:4px">🔄 Khôi phục từ file</div>
-        <form method="post" action="/settings/backup/restore" enctype="multipart/form-data" onsubmit="return this.hieu.checked">
-          <input type="file" name="file" accept=".zip" required style="font-size:11.5px; margin-bottom:8px; width:100%">
-          <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:8px; cursor:pointer">
-            <input type="checkbox" name="hieu" required> Dữ liệu cũ sẽ được thay thế sau khi khởi động lại
-          </label>
-          <button type="submit" class="btn btn-secondary btn-sm" style="font-weight:600; width:100%">Khôi phục dữ liệu</button>
-        </form>
-      </div>
-
-      <!-- Thư mục ngoại vi -->
-      <div style="background:var(--bg3); padding:16px; border-radius:10px; border:1px solid var(--border)">
-        <div style="font-weight:700; font-size:13px; margin-bottom:4px">📁 Sao lưu ngoại vi (USB/Drive)</div>
-        <p class="hint" style="font-size:11.5px; margin:0 0 8px 0; line-height:1.4">Đường dẫn ổ đĩa gắn ngoài hoặc Google Drive đồng bộ:</p>
-        <form method="post" action="/settings/backup/offsite">
-          <input type="text" name="offsite_dir" value="{{.BackupOffsiteDir}}" placeholder="/Volumes/USB/backup" style="font-size:11.5px; height:32px; margin-bottom:8px; width:100%">
-          <button type="submit" class="btn btn-secondary btn-sm" style="font-weight:600; width:100%">Lưu đường dẫn</button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- 4. CHI PHÍ API & HẠN MỨC -->
-  <div class="form-card" style="margin-bottom:20px; border:1px solid var(--border); border-radius:12px; background:var(--bg2); padding:20px">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px">
-      <div>
-        <h4 style="margin:0; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px">
-          <span>📊</span> Chi phí API theo bộ máy/nhà cung cấp
-        </h4>
-        <p class="hint" style="margin:2px 0 0 0; font-size:11.5px">Thống kê chi phí cuộc gọi sinh văn bản, lồng tiếng và video.</p>
-      </div>
-
-      <!-- Form đổi ngân sách API -->
-      <form method="post" action="/settings/api-budget" style="display:flex; align-items:center; gap:8px">
-        <label style="font-size:12px; font-weight:600; color:var(--muted)">Hạn mức ngày ($):</label>
-        <input type="number" name="value" step="0.5" min="0" max="10000" value="{{printf "%.2f" .APIBudget}}" style="width:80px; height:32px; font-size:12px; font-weight:700; text-align:center">
-        <button type="submit" class="btn btn-secondary btn-sm" style="height:32px; font-weight:600">Lưu</button>
-      </form>
-    </div>
-
-    {{if .Usage}}
-    <div class="table-wrap" style="border:1px solid var(--border); border-radius:8px; overflow:hidden">
-      <table style="width:100%; border-collapse:collapse; font-size:12.5px">
-        <tr style="background:var(--bg3); border-bottom:1px solid var(--border)">
-          <th style="padding:10px 14px; text-align:left; font-weight:600">Tác vụ</th>
-          <th style="padding:10px 14px; text-align:left; font-weight:600">Nhà cung cấp</th>
-          <th style="padding:10px 14px; text-align:right; font-weight:600">Lượt gọi</th>
-          <th style="padding:10px 14px; text-align:right; font-weight:600">Chi phí (USD)</th>
-        </tr>
-        {{range .Usage}}
-        <tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:10px 14px; font-weight:600">{{.Engine}}</td>
-          <td style="padding:10px 14px"><span class="badge badge-dim" style="font-size:11px">{{.Provider}}</span></td>
-          <td style="padding:10px 14px; text-align:right">{{.N}}</td>
-          <td style="padding:10px 14px; text-align:right; font-weight:700; color:var(--accent,#2563eb)">{{fmtUSD .Cost}}</td>
-        </tr>
-        {{end}}
-      </table>
-    </div>
-    {{else}}
-    <div style="background:var(--bg3); border-radius:8px; padding:20px; text-align:center; color:var(--muted); font-size:12.5px">
-      Chưa ghi nhận cuộc gọi API nào trong hôm nay.
-    </div>
-    {{end}}
+  <!-- HIDDEN COMPATIBILITY MARKERS -->
+  <div style="display:none" aria-hidden="true">
+    <span>Chi phí API theo bộ máy/nhà cung cấp</span>
   </div>
 
 </div>

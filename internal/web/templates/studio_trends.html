@@ -638,8 +638,8 @@ function openRadarPlayer(videoId, title, music, videoUrl, author, views, likes, 
 
   iframe.src = 'https://www.tiktok.com/player/v1/' + videoId + '?controls=1&autoplay=1&description=1&music_info=1';
 
-  soundBtn.href = '/workflow/create?workflow_id=preset_affiliate_daily&source_music_title=' + encodeURIComponent(safeMusic) + '&source_music_video_url=' + encodeURIComponent(videoUrl);
-  viralBtn.href = '/workflow/create?source_video_url=' + encodeURIComponent(videoUrl) + '&source_music_title=' + encodeURIComponent(safeMusic) + '&topic=' + encodeURIComponent(safeTitle);
+  soundBtn.href = '/?workflow_id=preset_affiliate_daily&source_music_title=' + encodeURIComponent(safeMusic) + '&source_music_video_url=' + encodeURIComponent(videoUrl);
+  viralBtn.href = '/?source_video_url=' + encodeURIComponent(videoUrl) + '&source_music_title=' + encodeURIComponent(safeMusic) + '&topic=' + encodeURIComponent(safeTitle);
   ttBtn.href = videoUrl;
 
   modal.style.display = 'flex';
@@ -732,21 +732,6 @@ document.addEventListener('keydown', function(e) {
          hx-get="/studio/trends?topic={{urlquery .Topic}}"
          hx-trigger="{{if .CoveragePending}}load delay:2s, every 4s{{else}}every 15m{{end}}"
          hx-target="this" hx-swap="outerHTML">
-  {{if .TrendErr}}
-  <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 12px 16px; color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px;">
-    <div style="font-size: 13px; display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 16px;">📡</span>
-      <div>
-        <strong>Đang đồng bộ dữ liệu xu hướng:</strong>
-        <span style="color: var(--muted); font-size: 12px;">Đang kết nối trình duyệt thu thập danh sách video mới nhất cho chủ đề "{{.Topic}}".</span>
-      </div>
-    </div>
-    <form method="post" action="/studio/trends/refresh" style="margin: 0;">
-      <input type="hidden" name="topic" value="{{.Topic}}">
-      <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 8px; font-weight: 700; font-size: 12px; white-space: nowrap;">↻ Thử lại</button>
-    </form>
-  </div>
-  {{end}}
 
   <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
     <div>
@@ -842,7 +827,7 @@ document.addEventListener('keydown', function(e) {
 
       <!-- 4. Nút hành động trực tiếp -->
       <div style="margin-top:auto;padding-top:8px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);">
-        <a href="/workflow/create?tiktok_link={{urlquery .VideoURL}}&source_video_url={{urlquery .VideoURL}}&source_music_title={{urlquery .Music}}&topic={{urlquery .Title}}"
+        <a href="/?tiktok_link={{urlquery .VideoURL}}&source_video_url={{urlquery .VideoURL}}&source_music_title={{urlquery .Music}}&topic={{urlquery .Title}}"
            class="btn btn-primary"
            style="width:100%;font-size:12px;font-weight:700;padding:8px 10px;border-radius:8px;text-align:center;background:linear-gradient(135deg, #2563eb, #7c3aed);border:none;box-shadow:0 2px 8px rgba(124,58,237,0.3);text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
           <span>⚡</span> Tạo video theo trend
@@ -851,7 +836,7 @@ document.addEventListener('keydown', function(e) {
           <button type="button" class="btn btn-secondary btn-sm" onclick="openRadarPlayerFromCard(this)" style="font-size:11px;font-weight:600;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:4px;">
             <span>▶</span> Xem trước
           </button>
-          <a href="/workflow/create?workflow_id=preset_affiliate_daily&source_music_title={{urlquery .Music}}&source_music_video_url={{urlquery .VideoURL}}" class="btn btn-secondary btn-sm" style="font-size:11px;font-weight:600;padding:6px;border-radius:6px;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;" title="Dùng sound cho video Affiliate">
+          <a href="/?workflow_id=preset_affiliate_daily&source_music_title={{urlquery .Music}}&source_music_video_url={{urlquery .VideoURL}}" class="btn btn-secondary btn-sm" style="font-size:11px;font-weight:600;padding:6px;border-radius:6px;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;" title="Dùng sound cho video Affiliate">
             <span>♫</span> Dùng sound
           </a>
         </div>

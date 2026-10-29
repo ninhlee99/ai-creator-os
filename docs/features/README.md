@@ -15,5 +15,4 @@ AI Creator OS tập trung vào tự động hóa sáng tạo nội dung video v�
 - [Universal Workflow Studio](video-create.md)
 - [Web AI providers & Session manager](web-ai.md)
 - [Cài đặt hệ thống](settings.md)
-- [Backup & Restore](backup-restore.md)
 - [Kill switch & Dry-run an toàn](kill-switch-dry-run-master.md)

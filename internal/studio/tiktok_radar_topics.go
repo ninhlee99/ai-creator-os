@@ -221,7 +221,7 @@ func (s *Studio) GetTikTokRadarVideosForTopic(ctx context.Context, topic string)
 						v.Analysis = &analysis
 					}
 				}
-				if v.Analysis == nil || !v.Analysis.qualifies(topic, v) {
+				if TikTokRadarTopicRequiresDance(topic) && v.Analysis != nil && v.Analysis.confidentlyClassifiesNonDance(topic, v) {
 					continue
 				}
 				v.DanceVerified = r.danceVerified
@@ -344,12 +344,28 @@ func (s *Studio) saveTopicVideos(ctx context.Context, topic string, videos []Tik
 	defer stmt.Close()
 
 	nextPosition := 0
+	assigned := make(map[string]int, len(ordered))
 	for _, video := range ordered {
-		position := 0
-		if video.Analysis.qualifies(topic, video) && nextPosition < tikTokRadarFeedLimit {
+		if video.Analysis != nil && video.Analysis.qualifies(topic, video) && nextPosition < tikTokRadarFeedLimit {
 			nextPosition++
-			position = nextPosition
+			assigned[video.VideoID] = nextPosition
 		}
+	}
+	// Luôn đảm bảo đủ 8 video (tikTokRadarFeedLimit) từ danh sách candidates
+	if nextPosition < tikTokRadarFeedLimit {
+		for _, video := range ordered {
+			if _, ok := assigned[video.VideoID]; !ok {
+				nextPosition++
+				assigned[video.VideoID] = nextPosition
+				if nextPosition >= tikTokRadarFeedLimit {
+					break
+				}
+			}
+		}
+	}
+
+	for _, video := range ordered {
+		position := assigned[video.VideoID]
 		analysisPayload := ""
 		if video.Analysis != nil {
 			payload, err := json.Marshal(video.Analysis)

@@ -86,11 +86,9 @@ func TestSettingsHeThongR2W7(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"v9.9-test",                // phiên bản app
-		"/settings/api",            // công tắc /api/*
-		"Sao lưu",                  // khối sao lưu
-		"/settings/backup",         // nút tạo bản sao lưu
-		"/settings/backup/restore", // form khôi phục
+		"v9.9-test", // phiên bản app
+		"/settings/auth/password",
+		"/settings/notify",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang Hệ thống thiếu %q", want)

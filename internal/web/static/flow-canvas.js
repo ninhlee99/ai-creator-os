@@ -3777,20 +3777,20 @@
       topicSelect.className = 'form-control';
       const topicPlaceholder = document.createElement('option');
       topicPlaceholder.value = '';
-      topicPlaceholder.textContent = 'Chủ đề Radar…';
+      topicPlaceholder.textContent = 'Chủ đề xu hướng…';
       topicSelect.appendChild(topicPlaceholder);
 
       const select = document.createElement('select');
       select.className = 'form-control';
       const placeholder = document.createElement('option');
       placeholder.value = '';
-      placeholder.textContent = 'Chọn video từ Radar…';
+      placeholder.textContent = 'Chọn video từ Feed xu hướng…';
       select.appendChild(placeholder);
       const current = String(node.params?.video_url || '');
       select.value = current;
       const hint = document.createElement('small');
       hint.className = 'text-muted';
-      hint.innerHTML = 'Video chưa được xác thực sẽ không chạy ở workflow yêu cầu vũ đạo. <a href="/studio/trends" target="_blank" rel="noopener">Mở Radar để xem và xác nhận</a>.';
+      hint.innerHTML = 'Video xu hướng TikTok. <a href="/studio/trends" target="_blank" rel="noopener">Mở Feed xu hướng để xem</a>.';
       select.addEventListener('change', () => {
         if (!select.value) return;
         if (!node.params) node.params = {};
