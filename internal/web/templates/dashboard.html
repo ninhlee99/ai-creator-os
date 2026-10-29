@@ -1,223 +1,172 @@
-{{define "title"}}Dashboard · Điều hành Video AI{{end}}
+{{define "title"}}Dashboard · Điều hành nội dung & Video AI{{end}}
 {{define "content"}}
 
-{{if .Notice}}<div class="notice" style="border-radius:10px;margin-bottom:18px;padding:12px 16px;font-size:13.5px;background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.25)">✓ {{.Notice}}</div>{{end}}
-{{if .Warning}}<div class="notice notice-warn" role="status" style="margin-bottom:18px;border-radius:10px">{{.Warning}}</div>{{end}}
-{{if .Error}}<div class="err" style="border-radius:10px;margin-bottom:18px;padding:12px 16px;font-size:13.5px">{{.Error}}</div>{{end}}
+{{if .Notice}}<div class="notice" style="border-radius:10px;margin-bottom:16px;padding:10px 14px;font-size:13px;background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.25)">✓ {{.Notice}}</div>{{end}}
+{{if .Warning}}<div class="notice notice-warn" role="status" style="margin-bottom:16px;border-radius:10px;padding:10px 14px;font-size:13px">{{.Warning}}</div>{{end}}
+{{if .Error}}<div class="err" style="border-radius:10px;margin-bottom:16px;padding:10px 14px;font-size:13px">{{.Error}}</div>{{end}}
 
-<!-- HERO BANNER TRỰC QUAN -->
-<div class="dashboard-visual-hero" style="background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(139,92,246,0.08) 100%);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:22px 26px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px">
+<!-- HEADER ĐIỀU HÀNH TINH GỌN (CLEAN TOP COCKPIT) -->
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:18px">
   <div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <span style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#4f46e5;background:rgba(79,70,229,0.12);padding:3px 8px;border-radius:6px">AI CREATOR OS · 2026</span>
-      <span class="badge badge-ok" style="font-size:11px">Hệ thống sẵn sàng</span>
-    </div>
-    <h1 style="margin:0 0 6px 0;font-size:24px;font-weight:800;color:var(--text)">Điều hành nội dung &amp; Video AI</h1>
-    <p style="margin:0;font-size:13px;color:var(--muted)">Theo dõi sản xuất video TikTok, chiến dịch Affiliate và kiểm định chất lượng AI.</p>
+    <h1 style="margin:0 0 4px 0;font-size:22px;font-weight:800;color:var(--text);letter-spacing:-0.3px">
+      Điều hành nội dung &amp; Giám sát hệ thống
+    </h1>
+    <p style="margin:0;font-size:12.5px;color:var(--muted)">
+      Theo dõi tiến độ sản xuất video TikTok, tải tài nguyên máy và doanh thu đối soát.
+    </p>
   </div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap">
-    <a href="/workflow/create" class="btn btn-primary" style="font-weight:700;display:flex;align-items:center;gap:6px">⚡ Tạo video AI</a>
-    <a href="/products" class="btn btn-secondary" style="font-weight:700;display:flex;align-items:center;gap:6px">🛒 Sản phẩm Affiliate</a>
-    <a href="/workflow" class="btn btn-secondary" style="font-weight:700;display:flex;align-items:center;gap:6px">🧩 Workflow Canvas</a>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/workflow/create" class="btn btn-primary btn-sm" style="font-weight:700;display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px">⚡ Tạo video</a>
+    <a href="/products" class="btn btn-secondary btn-sm" style="font-weight:700;display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px">🛒 Sản phẩm</a>
+    <a href="/workflow" class="btn btn-secondary btn-sm" style="font-weight:700;display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px">🧩 Workflow Canvas</a>
   </div>
 </div>
 
-<!-- 4 STAT KPI CARDS TRỰC QUAN -->
-<div class="stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-bottom:24px">
+<!-- ========================================================================= -->
+<!-- BẢNG GIÁM SÁT TÀI NGUYÊN & WORKFLOW (LIVE AUTO-POLL 3S)                   -->
+<!-- ========================================================================= -->
+{{template "system-metrics-panel" .}}
+
+<!-- ========================================================================= -->
+<!-- 4 STAT KPI CARDS TRỰC QUAN (CONCISE & VISUAL)                             -->
+<!-- ========================================================================= -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-bottom:20px">
   
   <!-- STAT 1: JOBS RENDER -->
-  <div class="card" style="padding:18px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);position:relative;overflow:hidden">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Video đang xử lý</span>
-        <div style="font-size:30px;font-weight:900;margin:6px 0 2px 0;color:var(--text)">
-          {{if .JobsKnown}}{{if .NJobs}}{{.NJobs}}{{else}}0{{end}}{{else}}0{{end}}
-        </div>
-      </div>
-      <div style="width:42px;height:42px;border-radius:10px;background:rgba(37,99,235,0.12);color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:20px">
-        🎬
-      </div>
+  <div class="card" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;justify-content:space-between">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Video đang xử lý</span>
+      <span style="width:32px;height:32px;border-radius:8px;background:rgba(37,99,235,0.1);color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:16px">🎬</span>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px">
+    <div style="font-size:26px;font-weight:900;color:var(--text);margin:8px 0 4px">
+      {{if .JobsKnown}}{{if .NJobs}}{{.NJobs}}{{else}}0{{end}}{{else}}0{{end}}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px">
       <span style="color:#10b981;font-weight:600">● Đang hoạt động</span>
       <a href="/studio/jobs" style="color:var(--accent);font-weight:600">Lịch sử job ↗</a>
     </div>
   </div>
 
   <!-- STAT 2: KÊNH TIKTOK -->
-  <div class="card" style="padding:18px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);position:relative;overflow:hidden">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Kênh kết nối</span>
-        <div style="font-size:30px;font-weight:900;margin:6px 0 2px 0;color:var(--text)">
-          {{len .Accounts}}
-        </div>
-      </div>
-      <div style="width:42px;height:42px;border-radius:10px;background:rgba(16,185,129,0.12);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:20px">
-        📱
-      </div>
+  <div class="card" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;justify-content:space-between">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Kênh kết nối</span>
+      <span style="width:32px;height:32px;border-radius:8px;background:rgba(16,185,129,0.1);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:16px">📱</span>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px">
+    <div style="font-size:26px;font-weight:900;color:var(--text);margin:8px 0 4px">
+      {{len .Accounts}}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px">
       <span style="color:var(--muted)">Nhân vật đã đồng bộ</span>
       <a href="/accounts" style="color:var(--accent);font-weight:600">Quản lý kênh ↗</a>
     </div>
   </div>
 
   <!-- STAT 3: HOA HỒNG ACCESSTRADE -->
-  <div class="card" style="padding:18px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);position:relative;overflow:hidden">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Hoa hồng Accesstrade đã duyệt</span>
-        <div style="font-size:26px;font-weight:900;margin:6px 0 2px 0;color:#10b981">
-          {{if .ATOrders.Synced}}{{fmtVND .ATOrders.Stats.ApprovedTotal}}{{else}}—{{end}}
-        </div>
-      </div>
-      <div style="width:42px;height:42px;border-radius:10px;background:rgba(245,158,11,0.12);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:20px">
-        💰
-      </div>
+  <div class="card" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;justify-content:space-between">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Hoa hồng Accesstrade đã duyệt</span>
+      <span style="width:32px;height:32px;border-radius:8px;background:rgba(245,158,11,0.1);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:16px">💰</span>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px">
+    <div style="font-size:24px;font-weight:900;color:#10b981;margin:8px 0 4px">
+      {{if .ATOrders.Synced}}{{fmtVND .ATOrders.Stats.ApprovedTotal}}{{else}}—{{end}}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px">
       <span style="color:var(--muted)">{{if .ATOrders.Synced}}{{.ATOrders.Stats.ApprovedCount}} đơn đã duyệt · {{.ATOrders.Stats.PendingCount}} chờ duyệt · {{fmtVN .ATOrders.SyncedAt}} UTC{{else}}Chưa có dữ liệu đơn{{end}}</span>
       <a href="/products?tab=affiliate" style="color:var(--accent);font-weight:600">Đối soát ↗</a>
     </div>
   </div>
 
   <!-- STAT 4: QC PASS RATE -->
-  <div class="card" style="padding:18px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);position:relative;overflow:hidden">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Chất lượng Video QC</span>
-        <div style="font-size:30px;font-weight:900;margin:6px 0 2px 0;color:#8b5cf6">
-          98.5%
-        </div>
-      </div>
-      <div style="width:42px;height:42px;border-radius:10px;background:rgba(139,92,246,0.12);color:#8b5cf6;display:flex;align-items:center;justify-content:center;font-size:20px">
-        ✨
-      </div>
+  <div class="card" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;justify-content:space-between">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Chất lượng Video QC</span>
+      <span style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,0.1);color:#8b5cf6;display:flex;align-items:center;justify-content:center;font-size:16px">✨</span>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px">
-      <span style="color:#10b981;font-weight:600">Đạt chuẩn TikTok</span>
+    <div style="font-size:26px;font-weight:900;color:#8b5cf6;margin:8px 0 4px">
+      98.5%
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px">
+      <span style="color:#10b981;font-weight:600">Chuẩn nét 1080p / 2K</span>
       <a href="/studio/jobs" style="color:var(--accent);font-weight:600">Chi tiết QC ↗</a>
     </div>
   </div>
 
 </div>
 
-<!-- PIPELINE SẢN XUẤT VIDEO TRỰC QUAN -->
-<div class="card" style="padding:20px 24px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);margin-bottom:24px">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
-      <span>🔄</span> Quy trình Sản xuất Video Tự động (End-to-End Pipeline)
-    </h3>
-    <span class="badge badge-info" style="font-size:11px">Chuẩn hoá 2026</span>
-  </div>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;align-items:stretch">
-    
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;color:#2563eb;margin-bottom:4px">BƯỚC 1</div>
-      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Radar Xu hướng</div>
-      <div style="font-size:11.5px;color:var(--muted)">Quét video TikTok viral & sản phẩm affiliate hot.</div>
-    </div>
-
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;color:#8b5cf6;margin-bottom:4px">BƯỚC 2</div>
-      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Nhân vật & Bóc tách</div>
-      <div style="font-size:11.5px;color:var(--muted)">Khoá khuôn mặt góc cạnh & tách nền sản phẩm.</div>
-    </div>
-
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;color:#ec4899;margin-bottom:4px">BƯỚC 3</div>
-      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Workflow AI Render</div>
-      <div style="font-size:11.5px;color:var(--muted)">Chạy Veo / Muse AI / Web AI / API Key đa luồng.</div>
-    </div>
-
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:4px">BƯỚC 4</div>
-      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Kiểm định Video QC</div>
-      <div style="font-size:11.5px;color:var(--muted)">Thẩm định độ nét, đồng bộ âm thanh & chấm điểm.</div>
-    </div>
-
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;color:#10b981;margin-bottom:4px">BƯỚC 5</div>
-      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Xuất Thành phẩm</div>
-      <div style="font-size:11.5px;color:var(--muted)">Xuất video MP4 4K sẵn sàng đăng TikTok/Reels.</div>
-    </div>
-
-  </div>
-</div>
-
-<!-- HAI CỘT TRỰC QUAN: CẦN XỬ LÝ & TỰ ĐỘNG HÓA -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:20px;margin-bottom:24px">
+<!-- ========================================================================= -->
+<!-- 3 KHỐI VẬN HÀNH TINH GỌN: HÀNG ĐỢI, TỰ ĐỘNG HÓA & TRẠNG THÁI KIẾM TIỀN   -->
+<!-- ========================================================================= -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-bottom:24px">
 
   <!-- CỘT 1: HÀNG ĐỢI & CẦN XỬ LÝ -->
-  <div class="card" style="padding:20px;border-radius:14px;border:1px solid var(--border);background:var(--bg2)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
-      <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
-        <span>📋</span> Hàng đợi &amp; Cần xử lý
+  <div class="card" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:var(--bg2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:8px">
+      <h3 style="margin:0;font-size:13.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
+        <span>📋</span> Hàng đợi &amp; Cần chú ý
       </h3>
-      <a href="/studio/jobs" style="font-size:12px;font-weight:600;color:var(--accent)">Xem tất cả ↗</a>
+      <a href="/studio/jobs" style="font-size:11px;font-weight:600;color:var(--accent)">Tất cả ↗</a>
     </div>
 
     {{if .AttentionItems}}
-    <div style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;flex-direction:column;gap:6px">
       {{range .AttentionItems}}
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px">
         <div>
           <div style="display:flex;align-items:center;gap:6px">
-            <span class="badge badge-{{.Class}}" style="font-size:10px">{{.Source}}</span>
-            <strong style="font-size:12.5px;color:var(--text)">{{.Title}}</strong>
+            <span class="badge badge-{{.Class}}" style="font-size:9.5px">{{.Source}}</span>
+            <strong style="font-size:11.5px;color:var(--text)">{{.Title}}</strong>
           </div>
-          {{if .Detail}}<div style="font-size:11.5px;color:var(--muted);margin-top:2px">{{.Detail}}</div>{{end}}
+          {{if .Detail}}<div style="font-size:10.5px;color:var(--muted);margin-top:1px">{{.Detail}}</div>{{end}}
         </div>
-        <a href="{{.Href}}" class="btn btn-secondary btn-sm" style="font-size:11px;font-weight:700;white-space:nowrap">Mở ↗</a>
+        <a href="{{.Href}}" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px;font-weight:700;white-space:nowrap">Mở ↗</a>
       </div>
       {{end}}
     </div>
     {{else if .GrowthQueue}}
-    <div style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;flex-direction:column;gap:6px">
       {{range .GrowthQueue}}
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px">
         <div>
           <div style="display:flex;align-items:center;gap:6px">
-            <strong style="font-size:12.5px;color:var(--text)">@{{.Username}}</strong>
-            <span class="badge badge-info" style="font-size:10px">{{.DashboardStatus}}</span>
+            <strong style="font-size:11.5px;color:var(--text)">@{{.Username}}</strong>
+            <span class="badge badge-info" style="font-size:9.5px">{{.DashboardStatus}}</span>
           </div>
-          <div style="font-size:11.5px;color:var(--muted);margin-top:2px">{{.Topic}}</div>
+          <div style="font-size:10.5px;color:var(--muted);margin-top:1px">{{.Topic}}</div>
         </div>
-        {{if .StudioJobID}}<a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}" class="btn btn-secondary btn-sm" style="font-size:11px;white-space:nowrap">Job ↗</a>{{end}}
+        {{if .StudioJobID}}<a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px;white-space:nowrap">Job ↗</a>{{end}}
       </div>
       {{end}}
     </div>
     {{else}}
-    <div style="text-align:center;padding:24px 10px;color:var(--muted);font-size:12.5px">
-      ✓ Không có sự cố hoặc hàng đợi cần xử lý khẩn cấp.
+    <div style="text-align:center;padding:20px 10px;color:var(--muted);font-size:11.5px">
+      ✓ Không có sự cố hoặc hàng đợi cần xử lý.
     </div>
     {{end}}
   </div>
 
-  <!-- CỘT 2: TỰ ĐỘNG HÓA HỆ THỐNG -->
-  <div class="card" style="padding:20px;border-radius:14px;border:1px solid var(--border);background:var(--bg2)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
-      <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+  <!-- CỘT 2: TỰ ĐỘNG HÓA VẬN HÀNH -->
+  <div class="card" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:var(--bg2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:8px">
+      <h3 style="margin:0;font-size:13.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
         <span>⚙️</span> Tự động hóa Vận hành
       </h3>
-      <a href="/settings" style="font-size:12px;font-weight:600;color:var(--accent)">Cài đặt ↗</a>
+      <a href="/settings" style="font-size:11px;font-weight:600;color:var(--accent)">Cài đặt ↗</a>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;flex-direction:column;gap:6px">
       {{range .AutoSwitches}}
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center">
         <div>
-          <strong style="font-size:12.5px;color:var(--text)">{{.Label}}</strong>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">{{.Hint}}</div>
+          <strong style="font-size:11.5px;color:var(--text)">{{.Label}}</strong>
+          <div style="font-size:10px;color:var(--muted)">{{.Hint}}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="badge {{if .On}}badge-ok{{else}}badge-no{{end}}" style="font-size:10.5px">{{if .On}}Bật{{else}}Tắt{{end}}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge {{if .On}}badge-ok{{else}}badge-no{{end}}" style="font-size:9.5px">{{if .On}}Bật{{else}}Tắt{{end}}</span>
           <form method="post" action="/automation/switch" style="display:inline">
             <input type="hidden" name="key" value="{{.Key}}">
             <input type="hidden" name="on" value="{{if .On}}0{{else}}1{{end}}">
-            <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px">{{if .On}}Tắt{{else}}Bật{{end}}</button>
+            <button type="submit" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px">{{if .On}}Tắt{{else}}Bật{{end}}</button>
           </form>
         </div>
       </div>
@@ -226,24 +175,24 @@
   </div>
 
   <!-- CỘT 3: TRẠNG THÁI KIẾM TIỀN -->
-  <div class="card" style="padding:20px;border-radius:14px;border:1px solid var(--border);background:var(--bg2)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
-      <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+  <div class="card" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:var(--bg2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:8px">
+      <h3 style="margin:0;font-size:13.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
         <span>💰</span> Trạng thái kiếm tiền
       </h3>
-      <a href="/accounts" style="font-size:12px;font-weight:600;color:var(--accent)">Kênh ↗</a>
+      <a href="/accounts" style="font-size:11px;font-weight:600;color:var(--accent)">Kênh ↗</a>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;flex-direction:column;gap:6px">
       {{range .MoneyReadiness}}
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center">
         <div>
-          <strong style="font-size:12.5px;color:var(--text)">{{.Name}}</strong>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">{{.State}}</div>
+          <strong style="font-size:11.5px;color:var(--text)">{{.Name}}</strong>
+          <div style="font-size:10.5px;color:var(--muted)">{{.State}}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="badge {{if eq .Level "ok"}}badge-ok{{else if eq .Level "no"}}badge-no{{else}}badge-warn{{end}}" style="font-size:10px">{{if eq .Level "ok"}}Sẵn sàng{{else if eq .Level "no"}}Chưa nối{{else}}Thiếu bước{{end}}</span>
-          {{if .Link}}<a href="{{.Link}}" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 7px">Nối ↗</a>{{end}}
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge {{if eq .Level "ok"}}badge-ok{{else if eq .Level "no"}}badge-no{{else}}badge-warn{{end}}" style="font-size:9.5px">{{if eq .Level "ok"}}Sẵn sàng{{else if eq .Level "no"}}Chưa nối{{else}}Thiếu bước{{end}}</span>
+          {{if .Link}}<a href="{{.Link}}" class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 6px">Nối ↗</a>{{end}}
         </div>
       </div>
       {{end}}
@@ -252,4 +201,171 @@
 
 </div>
 
+{{end}}
+
+<!-- ========================================================================= -->
+<!-- SUB-TEMPLATE: COCKPIT GIÁM SÁT TÀI NGUYÊN & WORKFLOW (TINH GỌN & HIỆN ĐẠI)-->
+<!-- ========================================================================= -->
+{{define "system-metrics-panel"}}
+<div id="system-metrics-panel" hx-get="/api/system/metrics" hx-trigger="every 3s" hx-swap="outerHTML" style="margin-bottom:20px">
+
+  <!-- CẢNH BÁO TẢI CAO / OOM (CHỈ HIỆN KHI CẦN THIẾT) -->
+  {{if eq .Metrics.OverallStatus "danger"}}
+  <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:18px">🚨</span>
+      <span style="color:#ef4444;font-size:12.5px;font-weight:700">
+        CẢNH BÁO OOM: {{.Metrics.StatusMessage}}
+      </span>
+    </div>
+    <span class="badge badge-no" style="font-size:10px">NGUY CƠ TRÀN RAM</span>
+  </div>
+  {{else if eq .Metrics.OverallStatus "warn"}}
+  <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">⚠️</span>
+      <span style="color:#f59e0b;font-size:12.5px;font-weight:700">
+        TẢI HỆ THỐNG CAO: {{.Metrics.StatusMessage}}
+      </span>
+    </div>
+    <span class="badge badge-warn" style="font-size:10px">CHÚ Ý TẢI</span>
+  </div>
+  {{end}}
+
+  <!-- BẢNG ĐIỀU KHIỂN COCKPIT 2 CỘT CÂN ĐỐI (HARDWARE METERS VS WORKFLOW ACTIVITY) -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:14px">
+
+    <!-- CỘT 1: PHẦN CỨNG & BỘ NHỚ (HARDWARE GAUGES) -->
+    <div class="card" style="padding:16px 18px;border-radius:12px;border:1px solid var(--border);background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:{{if eq .Metrics.OverallStatus "danger"}}#ef4444{{else if eq .Metrics.OverallStatus "warn"}}#f59e0b{{else}}#10b981{{end}};box-shadow:0 0 6px {{if eq .Metrics.OverallStatus "danger"}}#ef4444{{else if eq .Metrics.OverallStatus "warn"}}#f59e0b{{else}}#10b981{{end}}"></span>
+          <span style="font-size:12.5px;font-weight:800;color:var(--text);letter-spacing:0.3px">Tài nguyên Máy tính</span>
+        </div>
+        <span style="font-size:10.5px;color:var(--muted)">Tự làm mới (3s)</span>
+      </div>
+
+      <!-- RAM GAUGE -->
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
+          <span style="font-weight:700;color:var(--text)">RAM Hệ Thống</span>
+          <span style="font-weight:800;color:{{if eq .Metrics.RAMStatus "danger"}}#ef4444{{else if eq .Metrics.RAMStatus "warn"}}#f59e0b{{else}}var(--text){{end}}">
+            {{fmtMB .Metrics.UsedRAMMB}} <span style="font-weight:500;color:var(--muted)">/ {{fmtMB .Metrics.TotalRAMMB}}</span> ({{fmtFloat1 .Metrics.RAMPercent}}%)
+          </span>
+        </div>
+        <div style="width:100%;height:7px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="width:{{fmtFloat1 .Metrics.RAMPercent}}%;height:100%;background:{{if eq .Metrics.RAMStatus "danger"}}#ef4444{{else if eq .Metrics.RAMStatus "warn"}}#f59e0b{{else}}#10b981{{end}};transition:width 0.3s ease"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:3px">
+          <span>Còn trống: <strong style="color:var(--text)">{{fmtMB .Metrics.FreeRAMMB}}</strong></span>
+          <span>{{if eq .Metrics.RAMStatus "danger"}}Nguy cơ tràn RAM!{{else if eq .Metrics.RAMStatus "warn"}}Mức cao{{else}}Mức an toàn{{end}}</span>
+        </div>
+      </div>
+
+      <!-- CPU GAUGE -->
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
+          <span style="font-weight:700;color:var(--text)">CPU Load Avg ({{.Metrics.CPUCores}} Cores)</span>
+          <span style="font-weight:800;color:{{if eq .Metrics.CPUStatus "danger"}}#ef4444{{else if eq .Metrics.CPUStatus "warn"}}#f59e0b{{else}}var(--text){{end}}">
+            {{fmtFloat1 .Metrics.CPULoad1m}} (1m) · {{fmtFloat1 .Metrics.CPULoad5m}} (5m)
+          </span>
+        </div>
+        <div style="width:100%;height:7px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="width:{{if gt .Metrics.CPUPercent 100.0}}100{{else}}{{fmtFloat1 .Metrics.CPUPercent}}{{end}}%;height:100%;background:{{if eq .Metrics.CPUStatus "danger"}}#ef4444{{else if eq .Metrics.CPUStatus "warn"}}#f59e0b{{else}}#3b82f6{{end}};transition:width 0.3s ease"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:3px">
+          <span>Tải vi xử lý: <strong style="color:var(--text)">{{fmtFloat1 .Metrics.CPUPercent}}%</strong></span>
+          <span>{{if eq .Metrics.CPUStatus "danger"}}Quá tải{{else if eq .Metrics.CPUStatus "warn"}}Đang bận{{else}}Ổn định{{end}}</span>
+        </div>
+      </div>
+
+      <!-- FOOTER APP TIẾN TRÌNH NHỎ GỌN -->
+      <div style="padding-top:8px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted)">
+        <span>App PID: <strong style="color:var(--text)">{{.Metrics.AppPID}}</strong> · RSS: <strong style="color:var(--text)">{{fmtMB .Metrics.AppRSSMB}}</strong></span>
+        <span>✓ {{.Metrics.AppGoroutines}} Goroutines (On-demand)</span>
+      </div>
+    </div>
+
+    <!-- CỘT 2: WORKFLOW & TIẾN TRÌNH NẶNG (WORKFLOW & PROCESS WATCHDOG) -->
+    <div class="card" style="padding:16px 18px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;justify-content:space-between">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:12.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px">
+            <span>⚡</span> Workflow Node &amp; Tiến Trình
+          </div>
+          <a href="/workflow" style="font-size:11px;color:var(--accent);font-weight:700">Canvas ↗</a>
+        </div>
+
+        <!-- TRẠNG THÁI NODE WORKFLOW -->
+        {{if .Metrics.ActiveNodes}}
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">
+          {{range .Metrics.ActiveNodes}}
+          <div style="background:var(--bg3);border:1px solid {{if eq .ResourceTier "danger"}}rgba(239,68,68,0.4){{else if eq .ResourceTier "warn"}}rgba(245,158,11,0.4){{else}}var(--border){{end}};border-radius:8px;padding:8px 10px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <strong style="font-size:12px;color:var(--text)">{{.NodeTitle}}</strong>
+                <span style="font-size:10.5px;color:var(--muted);margin-left:4px">({{.NodeType}})</span>
+              </div>
+              <span style="font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;{{if eq .ResourceTier "danger"}}background:rgba(239,68,68,0.15);color:#ef4444{{else if eq .ResourceTier "warn"}}background:rgba(245,158,11,0.15);color:#f59e0b{{else}}background:rgba(16,185,129,0.15);color:#10b981{{end}}">
+                {{.TierLabel}}
+              </span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--muted);margin-top:4px">
+              <span>Workflow: <strong style="color:var(--text)">{{if .WorkflowName}}{{.WorkflowName}}{{else}}Mặc định{{end}}</strong></span>
+              <span style="color:var(--accent);font-weight:700">⏱ {{.ElapsedSec}}s</span>
+            </div>
+          </div>
+          {{end}}
+        </div>
+        {{else}}
+        <div style="padding:10px 12px;border-radius:8px;background:rgba(16,185,129,0.05);border:1px dashed rgba(16,185,129,0.25);margin-bottom:10px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px">🟢</span>
+          <div style="font-size:11.5px;color:var(--text)">
+            <strong style="color:#10b981">Hệ thống sẵn sàng (Idle)</strong> — Không có node nặng nào đang chạy.
+          </div>
+        </div>
+        {{end}}
+      </div>
+
+      <!-- TIẾN TRÌNH NẶNG & ZOMBIE KILLER (CHỈ HIỆN DANH SÁCH GỌN HOẶC CHIP GỌN) -->
+      <div>
+        {{if .Metrics.HeavyProcesses}}
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between">
+            <span>Tiến trình Media / AI đang chạy:</span>
+            <span>{{len .Metrics.HeavyProcesses}} tiến trình</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;max-height:110px;overflow-y:auto">
+            {{range .Metrics.HeavyProcesses}}
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;background:var(--bg2);padding:4px 8px;border-radius:6px;border:1px solid var(--border)">
+              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">
+                <strong style="color:var(--text)">{{.Name}}</strong> (PID: {{.PID}}) · <span style="color:var(--muted)">{{fmtFloatMB .MemoryMB}}</span>
+              </div>
+              <div>
+                {{if .IsKillable}}
+                <form method="post" action="/api/system/kill-process" hx-post="/api/system/kill-process" hx-target="#system-metrics-panel" hx-swap="outerHTML" hx-confirm="Dừng tiến trình PID {{.PID}} ({{.Name}})?" style="display:inline">
+                  <input type="hidden" name="pid" value="{{.PID}}">
+                  <button type="submit" class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:2px 6px;font-size:10px;font-weight:700;border-radius:4px;cursor:pointer">Dừng ✕</button>
+                </form>
+                {{else}}
+                <span style="font-size:10px;color:var(--muted)">Chính</span>
+                {{end}}
+              </div>
+            </div>
+            {{end}}
+          </div>
+        </div>
+        {{else}}
+        <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px">
+          <span>✓</span>
+          <span>Không có tiến trình ngầm (zombie) tồn đọng.</span>
+        </div>
+        {{end}}
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
 {{end}}

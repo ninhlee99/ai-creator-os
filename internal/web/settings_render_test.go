@@ -52,7 +52,7 @@ func TestSettingsTemplateRenders(t *testing.T) {
 	}
 	// Sidebar: no live schedule; /team đã định nghĩa lại ở Đợt H2
 	// (Đội ngũ — 3 pipeline) nên được phép xuất hiện.
-	body = get(t, s, "/").Body.String()
+	body = get(t, s, "/workflow").Body.String()
 	for _, gone := range []string{"/schedule", "Lịch live", "Agent Team"} {
 		if strings.Contains(body, gone) {
 			t.Errorf("sidebar still references %q", gone)

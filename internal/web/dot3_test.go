@@ -204,7 +204,7 @@ func TestDashboardUsesSyncedAccesstradeStats(t *testing.T) {
 	if _, err := s.Ledger.RecordCommission("2026-10", 999000, "legacy-source"); err != nil {
 		t.Fatalf("record legacy commission: %v", err)
 	}
-	beforeSync := get(t, s, "/")
+	beforeSync := get(t, s, "/dashboard")
 	if beforeSync.Code != http.StatusOK {
 		t.Fatalf("GET / before order sync = %d, want 200", beforeSync.Code)
 	}
@@ -226,7 +226,7 @@ func TestDashboardUsesSyncedAccesstradeStats(t *testing.T) {
 	if err := s.AT.SetSyncState("orders.until", "2026-10-23T05:00:00Z"); err != nil {
 		t.Fatalf("save sync marker: %v", err)
 	}
-	rec := get(t, s, "/")
+	rec := get(t, s, "/dashboard")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}

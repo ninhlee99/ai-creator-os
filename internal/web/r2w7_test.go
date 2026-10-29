@@ -66,8 +66,12 @@ func TestOnboardGate(t *testing.T) {
 		t.Fatal("dryrun=1 phải bật dry-run")
 	}
 	rec = get(t, s, "/")
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/workflow" {
+		t.Fatalf("GET / sau wizard = %d -> %q, want 303 -> /workflow", rec.Code, rec.Header().Get("Location"))
+	}
+	rec = get(t, s, "/workflow")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET / sau wizard = %d, want 200", rec.Code)
+		t.Fatalf("GET /workflow sau wizard = %d, want 200", rec.Code)
 	}
 }
 

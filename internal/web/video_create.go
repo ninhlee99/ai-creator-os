@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-// viralJobView là dữ liệu hiển thị của một tác vụ dựng video viral 9:16.
-type viralJobView struct {
+// videoJobView là dữ liệu hiển thị của một tác vụ dựng video AI.
+type videoJobView struct {
 	ID         string
 	Title      string
 	Topic      string
@@ -26,10 +26,12 @@ type viralJobView struct {
 	FinishedAt string
 }
 
-// viralView là mô hình dữ liệu chính cho trang /viral.
-type viralView struct {
+type viralJobView = videoJobView
+
+// videoCreateView là mô hình dữ liệu chính cho trang tạo video AI (/workflow/create).
+type videoCreateView struct {
 	StudioOK              bool
-	Jobs                  []viralJobView
+	Jobs                  []videoJobView
 	AccountNames          []string
 	AccountOptions        []*network.Account
 	SelectedAccountID     int64
@@ -47,9 +49,13 @@ type viralView struct {
 	SourceVideoURL        string
 	SourceMusicTitle      string
 	Topic                 string
+	Prompt                string
+	OutputType            string
 	AvailableWorkflows    []WorkflowOption
 	SelectedWorkflowID    string
 }
+
+type viralView = videoCreateView
 
 // WorkflowOption chứa thông tin tóm tắt của workflow để lựa chọn tại các màn hình tạo video.
 type WorkflowOption struct {
@@ -93,25 +99,47 @@ func viralStatusVN(st string) string {
 	}
 }
 
-func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleVideoCreate(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	srcURL := strings.TrimSpace(q.Get("tiktok_link"))
 	if srcURL == "" {
 		srcURL = strings.TrimSpace(q.Get("source_video_url"))
 	}
-	v := viralView{
-		StudioOK:         s.Studio != nil,
-		Error:            q.Get("err"),
-		Notice:           q.Get("notice"),
-		Warning:          q.Get("warn"),
-		AvailableModels:  s.listModelPhotoCards(),
-		SourceVideoURL:   srcURL,
-		SourceMusicTitle: strings.TrimSpace(q.Get("source_music_title")),
-		Topic:            strings.TrimSpace(q.Get("topic")),
-		SelectedWorkflowID: q.Get("workflow_id"),
+	outputType := strings.TrimSpace(q.Get("type"))
+	if outputType == "" {
+		outputType = strings.TrimSpace(q.Get("output_type"))
 	}
-	if v.SelectedWorkflowID == "" {
-		v.SelectedWorkflowID = "preset_viral_dance"
+	wfID := strings.TrimSpace(q.Get("workflow_id"))
+	if outputType == "" {
+		if strings.Contains(wfID, "affiliate") {
+			outputType = "affiliate"
+		} else if strings.Contains(wfID, "viral") || srcURL != "" {
+			outputType = "viral"
+		} else {
+			outputType = "auto"
+		}
+	}
+	if wfID == "" {
+		if outputType == "affiliate" {
+			wfID = "preset_affiliate_daily"
+		} else if outputType == "viral" {
+			wfID = "preset_viral_dance"
+		} else {
+			wfID = "auto"
+		}
+	}
+	v := viralView{
+		StudioOK:           s.Studio != nil,
+		Error:              q.Get("err"),
+		Notice:             q.Get("notice"),
+		Warning:            q.Get("warn"),
+		AvailableModels:    s.listModelPhotoCards(),
+		SourceVideoURL:     srcURL,
+		SourceMusicTitle:   strings.TrimSpace(q.Get("source_music_title")),
+		Topic:              strings.TrimSpace(q.Get("topic")),
+		Prompt:             strings.TrimSpace(q.Get("prompt")),
+		OutputType:         outputType,
+		SelectedWorkflowID: wfID,
 	}
 	if s.Studio != nil {
 		v.CharacterEditorReady, v.CharacterEditorStatus = s.Studio.ViralCharacterEditorStatus(r.Context())
@@ -244,5 +272,10 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.render(w, "viral", s.ctx("Viral", v))
+	s.render(w, "video_create", s.ctx("VideoCreate", v, "Viral", v))
+}
+
+// handleViral giữ tương thích cho router cũ.
+func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
+	s.handleVideoCreate(w, r)
 }

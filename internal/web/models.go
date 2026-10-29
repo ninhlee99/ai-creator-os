@@ -71,7 +71,7 @@ func (s *Server) listModelPhotoCards() []modelPhotoCardView {
 			FileSize:    sizeStr,
 			FileExists:  exists,
 			FaceStatus:  faceStatus,
-			ViralURL:    fmt.Sprintf("/viral?model_id=%d", p.ID),
+			ViralURL:    fmt.Sprintf("/workflow/create?model_id=%d", p.ID),
 			StudioURL:   fmt.Sprintf("/studio?model_id=%d", p.ID),
 		})
 	}

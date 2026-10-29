@@ -49,39 +49,23 @@ var videoEncoder = sync.OnceValue(func() []string {
 // dùng chung cho reup transform (Đợt E) để không copy logic chọn encoder.
 func VideoEncoderArgs() []string { return videoEncoder() }
 
-var videoEncoder4K = sync.OnceValue(func() []string {
+var videoEncoder2K = sync.OnceValue(func() []string {
 	if videoToolboxH264Available() {
-		return []string{"-c:v", "h264_videotoolbox", "-b:v", "35M", "-maxrate", "45M"}
+		return []string{"-c:v", "h264_videotoolbox", "-b:v", "20M", "-maxrate", "26M"}
 	}
-	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "16", "-b:v", "35M"}
+	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "18", "-b:v", "20M"}
 })
 
-var videoEncoder8K = sync.OnceValue(func() []string {
-	if videoToolboxHEVCAvailable() {
-		return []string{"-c:v", "hevc_videotoolbox", "-b:v", "85M", "-maxrate", "110M"}
-	}
-	if softwareHEVCAvailable() {
-		return []string{"-c:v", "libx265", "-preset", "medium", "-crf", "17", "-tag:v", "hvc1"}
-	}
-	if videoToolboxH264Available() {
-		return []string{"-c:v", "h264_videotoolbox", "-b:v", "100M", "-maxrate", "125M"}
-	}
-	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "15", "-b:v", "100M"}
-})
+// VideoEncoderArgs2K trả về args encoder H.264 chất lượng Master 2K QHD với bitrate 20M.
+func VideoEncoderArgs2K() []string { return videoEncoder2K() }
 
-// VideoEncoderArgs4K trả về args encoder H.264 chất lượng Master 4K UHD với bitrate 35M.
-func VideoEncoderArgs4K() []string { return videoEncoder4K() }
-
-// VideoEncoderArgs8K prefers hardware HEVC, then software HEVC, for 8K masters.
-func VideoEncoderArgs8K() []string { return videoEncoder8K() }
-
-// Master4KFilter trả về chuỗi bộ lọc FFmpeg 2 tầng chống vỡ hình và chống nhòe khi nâng lên 4K:
+// Master2KFilter trả về chuỗi bộ lọc FFmpeg 2 tầng chống vỡ hình và chống nhòe khi nâng lên 2K:
 // Khử nhiễu nén (hqdn3d) + Phóng to đa thùy Lanczos 3-lobe chuẩn xác + Tái tạo tương phản vi mô (unsharp).
-func Master4KFilter(outW, outH int) string {
-	return fmt.Sprintf("hqdn3d=1.5:1.5:4:4,scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos+accurate_rnd,crop=%d:%d,unsharp=5:5:0.8:5:5:0.2,setsar=1", outW, outH, outW, outH)
+func Master2KFilter(outW, outH int) string {
+	return fmt.Sprintf("hqdn3d=1.0:1.0:3:3,scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos+accurate_rnd,crop=%d:%d,unsharp=5:5:0.6:5:5:0.2,setsar=1", outW, outH, outW, outH)
 }
 
-// UpscaleVideoTo4K keeps the legacy 4K entry point for callers outside Studio.
-func UpscaleVideoTo4K(ctx context.Context, srcVideo, dstVideo, aspect string) error {
-	return UpscaleVideo(ctx, srcVideo, dstVideo, aspect, VideoOutput4K)
+// UpscaleVideoTo2K nâng cấp video lên chuẩn 2K.
+func UpscaleVideoTo2K(ctx context.Context, srcVideo, dstVideo, aspect string) error {
+	return UpscaleVideo(ctx, srcVideo, dstVideo, aspect, VideoOutput2K)
 }

@@ -57,7 +57,7 @@ Unknown values stay null/unknown. Old snapshots remain immutable. Repeated syncs
 
 ## Automation boundaries
 
-- Scheduled Radar/search and metric sync may run automatically under operator-configured limits.
+- Radar/search và đồng bộ metric thực thi on-demand theo lệnh của operator; không có daemon hay worker chạy ngầm tự động khi khởi động.
 - Product verdict may auto-approve only after hard gates, freshness and configured confidence pass; otherwise `needs_review`.
 - Rejected products remain inspectable and re-evaluable.
 - Studio generation may proceed only from approved product or selected TikTok Radar source.

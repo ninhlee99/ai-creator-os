@@ -172,46 +172,46 @@ func TestPickSingleStockClipAndTrim(t *testing.T) {
 	}
 }
 
-func TestMaster4KArchitecture(t *testing.T) {
-	// 1. Kiểm tra tỷ lệ 4K UHD 9:16 và 16:9
-	w916, h916 := AspectDims4K("9:16")
-	if w916 != 2160 || h916 != 3840 {
-		t.Errorf("expected 2160x3840, got %dx%d", w916, h916)
+func TestMaster2KArchitecture(t *testing.T) {
+	// 1. Kiểm tra tỷ lệ 2K QHD 9:16 và 16:9
+	w916, h916 := AspectDims2K("9:16")
+	if w916 != 1440 || h916 != 2560 {
+		t.Errorf("expected 1440x2560, got %dx%d", w916, h916)
 	}
 
-	w169, h169 := AspectDims4K("16:9")
-	if w169 != 3840 || h169 != 2160 {
-		t.Errorf("expected 3840x2160, got %dx%d", w169, h169)
+	w169, h169 := AspectDims2K("16:9")
+	if w169 != 2560 || h169 != 1440 {
+		t.Errorf("expected 2560x1440, got %dx%d", w169, h169)
 	}
 
 	// 2. Kiểm tra bộ lọc 2 tầng chống vỡ hình (hqdn3d + lanczos + unsharp)
-	f := Master4KFilter(2160, 3840)
+	f := Master2KFilter(1440, 2560)
 	if !strings.Contains(f, "hqdn3d") {
-		t.Errorf("Master4KFilter must contain hqdn3d denoiser")
+		t.Errorf("Master2KFilter must contain hqdn3d denoiser")
 	}
-	if !strings.Contains(f, "scale=2160:3840") {
-		t.Errorf("Master4KFilter must scale to 2160:3840")
+	if !strings.Contains(f, "scale=1440:2560") {
+		t.Errorf("Master2KFilter must scale to 1440:2560")
 	}
 	if !strings.Contains(f, "lanczos+accurate_rnd") {
-		t.Errorf("Master4KFilter must use lanczos+accurate_rnd")
+		t.Errorf("Master2KFilter must use lanczos+accurate_rnd")
 	}
 	if !strings.Contains(f, "unsharp") {
-		t.Errorf("Master4KFilter must use unsharp micro-contrast mask")
+		t.Errorf("Master2KFilter must use unsharp micro-contrast mask")
 	}
 
-	// 3. Kiểm tra encoder args 4K bitrate
-	args := VideoEncoderArgs4K()
+	// 3. Kiểm tra encoder args 2K bitrate
+	args := VideoEncoderArgs2K()
 	if len(args) == 0 {
-		t.Errorf("VideoEncoderArgs4K cannot be empty")
+		t.Errorf("VideoEncoderArgs2K cannot be empty")
 	}
 	foundBitrate := false
 	for _, a := range args {
-		if a == "35M" {
+		if a == "20M" {
 			foundBitrate = true
 			break
 		}
 	}
 	if !foundBitrate {
-		t.Errorf("VideoEncoderArgs4K must specify 35M bitrate for 4K mastering")
+		t.Errorf("VideoEncoderArgs2K must specify 20M bitrate for 2K mastering")
 	}
 }

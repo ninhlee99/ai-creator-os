@@ -30,11 +30,11 @@
 
   <div class="cards" style="margin-bottom:24px">
     <div class="card">
-      <div class="label">Công tắc daemon mạng</div>
-      <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">{{if .MasterOn}}Cho phép daemon mạng chạy qua các gate hiện hành{{else}}Daemon mạng tự động bị chặn; scheduler khác có gate riêng{{end}}</div>
+      <div class="label">Công tắc tự động mạng</div>
+      <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">{{if .MasterOn}}Cho phép tác vụ mạng chạy qua các gate hiện hành{{else}}Tác vụ mạng tự động bị chặn; các cổng khác có gate riêng{{end}}</div>
       <form method="post" action="/settings/master">
         <input type="hidden" name="value" value="{{if .MasterOn}}0{{else}}1{{end}}">
-        <button type="submit" class="btn {{if .MasterOn}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .MasterOn}} data-confirm="Tắt công tắc daemon mạng?"{{end}}>{{if .MasterOn}}Tắt daemon mạng{{else}}Bật daemon mạng{{end}}</button>
+        <button type="submit" class="btn {{if .MasterOn}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .MasterOn}} data-confirm="Tắt công tắc tự động mạng?"{{end}}>{{if .MasterOn}}Tắt tự động mạng{{else}}Bật tự động mạng{{end}}</button>
       </form>
     </div>
     <div class="card">

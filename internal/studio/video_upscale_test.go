@@ -13,12 +13,9 @@ func TestVideoOutputDims(t *testing.T) {
 		aspect, resolution string
 		width, height      int
 	}{
-		{"9:16", VideoOutput4K, 2160, 3840},
-		{"16:9", VideoOutput4K, 3840, 2160},
-		{"1:1", VideoOutput4K, 3840, 3840},
-		{"9:16", VideoOutput8K, 4320, 7680},
-		{"16:9", VideoOutput8K, 7680, 4320},
-		{"1:1", VideoOutput8K, 7680, 7680},
+		{"9:16", VideoOutput2K, 1440, 2560},
+		{"16:9", VideoOutput2K, 2560, 1440},
+		{"1:1", VideoOutput2K, 2560, 2560},
 		{"9:16", VideoOutput1080P, 1080, 1920},
 		{"16:9", VideoOutput1080P, 1920, 1080},
 		{"1:1", VideoOutput1080P, 1080, 1080},
@@ -30,6 +27,11 @@ func TestVideoOutputDims(t *testing.T) {
 	}
 	if got, err := NormalizeVideoOutputResolution(""); err != nil || got != VideoOutput1080P {
 		t.Errorf("empty resolution = %q, %v; want default %q", got, err, VideoOutput1080P)
+	}
+	for _, invalid := range []string{"4k", "8k", "2160p", "4320p", "unknown"} {
+		if _, err := NormalizeVideoOutputResolution(invalid); err == nil {
+			t.Errorf("expected error for unsupported resolution %q", invalid)
+		}
 	}
 }
 
@@ -72,12 +74,12 @@ func TestUpscaleVideoPreservesOutputGeometryAndDuration(t *testing.T) {
 
 	ctx := context.Background()
 	sourceDuration := probeDuration(ctx, source)
-	if err := UpscaleVideo(ctx, source, output, "9:16", VideoOutput4K); err != nil {
+	if err := UpscaleVideo(ctx, source, output, "9:16", VideoOutput2K); err != nil {
 		t.Fatalf("UpscaleVideo: %v", err)
 	}
 	w, h := ProbeDims(ctx, output)
-	if w != 2160 || h != 3840 {
-		t.Fatalf("master = %dx%d; want 2160x3840", w, h)
+	if w != 1440 || h != 2560 {
+		t.Fatalf("master = %dx%d; want 1440x2560", w, h)
 	}
 	if outputDuration := probeDuration(ctx, output); outputDuration <= 0 || absFloat(outputDuration-sourceDuration) > 0.15 {
 		t.Fatalf("master duration = %.3fs; source = %.3fs", outputDuration, sourceDuration)
@@ -102,12 +104,12 @@ func TestConcatClipsToMasterUpscalesSourcesOnce(t *testing.T) {
 		}
 	}
 	master := filepath.Join(dir, "master.mp4")
-	if err := ConcatClipsToMaster(context.Background(), clips, []float64{0.5, 0.5}, "9:16", VideoOutput4K, master, false); err != nil {
+	if err := ConcatClipsToMaster(context.Background(), clips, []float64{0.5, 0.5}, "9:16", VideoOutput2K, master, false); err != nil {
 		t.Fatalf("ConcatClipsToMaster: %v", err)
 	}
 	w, h := ProbeDims(context.Background(), master)
-	if w != 2160 || h != 3840 {
-		t.Fatalf("master = %dx%d; want 2160x3840", w, h)
+	if w != 1440 || h != 2560 {
+		t.Fatalf("master = %dx%d; want 1440x2560", w, h)
 	}
 	if duration := probeDuration(context.Background(), master); duration <= 0 || absFloat(duration-1.0) > 0.25 {
 		t.Fatalf("master duration = %.3fs; want 1s", duration)
@@ -134,7 +136,7 @@ func TestConcatClipsToMasterPreservesAudio(t *testing.T) {
 		}
 	}
 	master := filepath.Join(dir, "master-with-audio.mp4")
-	if err := ConcatClipsToMaster(context.Background(), clips, []float64{0.5, 0.5}, "9:16", VideoOutput4K, master, true); err != nil {
+	if err := ConcatClipsToMaster(context.Background(), clips, []float64{0.5, 0.5}, "9:16", VideoOutput2K, master, true); err != nil {
 		t.Fatalf("ConcatClipsToMaster with audio: %v", err)
 	}
 	if !ProbeHasAudio(context.Background(), master) {

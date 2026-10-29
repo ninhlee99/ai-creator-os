@@ -16,16 +16,7 @@ import (
 )
 
 func startWorkersAndServe(ctx context.Context, cancel context.CancelFunc, addr string, srv *web.Server, settings automation.LedgerSettings, tickSup *ticksup.Supervisor, autopilotArmed bool, studioInst *studio.Studio) {
-	if err := automation.SeedMasterSwitch(settings, getenvBool("MASTER_SWITCH", false)); err != nil {
-		log.Printf("settings: seed master switch: %v", err)
-	}
-	ticksup.ArmLoops(ctx, tickSup, ticksup.Deps{
-		NewService: srv.AutomationService,
-		Autopilot:  autopilotArmed,
-		Growth:     srv.Growth != nil,
-		AT:         srv.AT != nil,
-		Studio:     srv.Studio != nil,
-	})
+	log.Printf("daemon: đã tắt toàn bộ tiến trình daemon ngầm lúc khởi động (hệ thống hoạt động on-demand)")
 
 	httpSrv := &http.Server{
 		Addr:              addr,

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # postprod.sh — hậu kỳ thủ công cho video affiliate (ngoài app aicos).
 #
-#   scripts/postprod.sh latest                 # video mới nhất + job + ảnh 4K + caption
+#   scripts/postprod.sh latest                 # video mới nhất + job + ảnh + caption
 #   scripts/postprod.sh qc FILE.mp4 [--final]  # QC kỹ thuật (ffprobe/ffmpeg)
 #   scripts/postprod.sh pack --product "Túi kem quilted" --final edit.mp4 \
 #        [--video data/output/studio-<job>.mp4] [--sound "Tên sound"] \

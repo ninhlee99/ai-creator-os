@@ -44,9 +44,8 @@ const (
 	AffiliateVideoEngineGoogleFlow = "googleflow" // Legacy alias; normalized to Muse AI.
 	AffiliateVideoEngineMuseAI     = "museai"
 	AffiliateVideoEngineManual     = "manual" // Legacy alias; normalized to Muse AI.
-	VideoOutput4K                  = "4k"
 	VideoOutput1080P               = "1080p"
-	VideoOutput8K                  = "8k"
+	VideoOutput2K                  = "2k"
 	ViralModeFullCharacterEdit     = "full_character_edit"
 )
 
@@ -89,7 +88,7 @@ type AffiliateParams struct {
 	SourceMusicCollectedAt   string `json:"source_music_collected_at,omitempty"`
 	VideoEngine              string `json:"video_engine,omitempty"` // museai; legacy values are normalized to Muse AI
 	FlowCreditsAcknowledged  bool   `json:"flow_credits_acknowledged,omitempty"`
-	OutputResolution         string `json:"output_resolution,omitempty"` // 1080p | 4k | 8k
+	OutputResolution         string `json:"output_resolution,omitempty"` // 1080p | 2k
 	AutoGenerateProductPhoto bool   `json:"auto_generate_product_photo,omitempty"`
 	// AffLink: link affiliate Accesstrade của sản phẩm (đợt Q). "" = không
 	// có — video vẫn đăng được, chỉ thiếu link kiếm tiền trong mô tả.
@@ -122,31 +121,20 @@ func (p AffiliateParams) HasClips() bool {
 	return false
 }
 
-// IsMasterQuality4K checks whether 4K mastering is globally enabled or requested.
-func IsMasterQuality4K() bool {
-	return os.Getenv("MASTER_QUALITY_4K") == "1"
+// IsMasterQuality2K checks whether 2K mastering is globally enabled or requested.
+func IsMasterQuality2K() bool {
+	return os.Getenv("MASTER_QUALITY_2K") == "1"
 }
 
-// AspectDims4K maps a job aspect to full 4K UHD output dimensions (2160x3840 for 9:16, 3840x2160 for 16:9).
-func AspectDims4K(aspect string) (w, h int) {
+// AspectDims2K maps a job aspect to 2K QHD output dimensions (1440x2560 for 9:16, 2560x1440 for 16:9, 2560x2560 for 1:1).
+func AspectDims2K(aspect string) (w, h int) {
 	if aspect == "16:9" {
-		return 3840, 2160
+		return 2560, 1440
 	}
 	if aspect == "1:1" {
-		return 3840, 3840
+		return 2560, 2560
 	}
-	return 2160, 3840
-}
-
-// AspectDims8K returns 8K masters for vertical and horizontal video.
-func AspectDims8K(aspect string) (w, h int) {
-	if aspect == "16:9" {
-		return 7680, 4320
-	}
-	if aspect == "1:1" {
-		return 7680, 7680
-	}
-	return 4320, 7680
+	return 1440, 2560
 }
 
 // AspectDims maps a job aspect to ffmpeg output dimensions. Unknown or

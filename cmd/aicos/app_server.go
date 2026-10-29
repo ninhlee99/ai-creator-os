@@ -70,10 +70,9 @@ func initializeWeb(ctx context.Context, l *ledger.Ledger, dataDir, dbPath string
 	}
 	server.OutDir = outDir
 
-	// OAuth tokens live under the app data directory; the worker refreshes them in the background.
+	// OAuth tokens live under the app data directory. Không chạy token worker daemon nền khi khởi động.
 	publishers.SetTokenDir(filepath.Join(dataDir, "tokens"))
 	publishers.MigrateTokensFromCWD()
-	publishers.StartTokenWorker(ctx, 30*time.Minute)
 	publishers.SetOnTokenAlert(func(rep publishers.TokenHealthReport) {
 		msg := fmt.Sprintf("⚠️ [Cảnh báo Token] Kênh %s (%s) bị gián đoạn: %s. Vui lòng kết nối lại trong Cài đặt.", rep.Username, rep.Platform, rep.Message)
 		bot, _, _ := l.GetSetting(automation.KeyNotifyTelegramBot)

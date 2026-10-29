@@ -10,7 +10,7 @@ import (
 // chối khóa lạ (không cho ghi setting tùy ý qua form).
 func TestAutoPanelToggle(t *testing.T) {
 	s := newTestServer(t)
-	body := get(t, s, "/").Body.String()
+	body := get(t, s, "/dashboard").Body.String()
 	if !strings.Contains(body, "Tự động hóa") || !strings.Contains(body, "Quét sản phẩm Accesstrade") {
 		t.Fatal("Trang chủ thiếu bảng tự động hóa")
 	}
@@ -40,7 +40,7 @@ func TestMoneyReadinessHonest(t *testing.T) {
 			t.Fatalf("%s thiếu bước tiếp theo", m.Name)
 		}
 	}
-	if !strings.Contains(get(t, s, "/").Body.String(), "Trạng thái kiếm tiền") {
+	if !strings.Contains(get(t, s, "/dashboard").Body.String(), "Trạng thái kiếm tiền") {
 		t.Fatal("Trang chủ thiếu bảng kiếm tiền")
 	}
 }

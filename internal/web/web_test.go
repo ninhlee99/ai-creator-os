@@ -70,11 +70,11 @@ func serveLocalTestRoute(s *Server, w http.ResponseWriter, r *http.Request) {
 func TestDashboard(t *testing.T) {
 	s := newTestServer(t)
 	rec := get(t, s, "/")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("GET / = %d, want 200", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("GET / = %d, want 303 See Other", rec.Code)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "Điều hành nội dung") {
-		t.Fatalf("dashboard body missing title; got %d bytes", len(body))
+	if loc := rec.Header().Get("Location"); loc != "/workflow" {
+		t.Fatalf("GET / redirect location = %q, want /workflow", loc)
 	}
 }
 
@@ -250,7 +250,7 @@ func TestAllPagesRender(t *testing.T) {
 	}
 
 	pages := map[string]string{
-		"/":                           "MiuNova",
+		"/dashboard":                  "MiuNova",
 		"/accounts":                   "Kênh",
 		"/accounts/new":               "kênh",
 		"/accounts/1":                 "sample_acct",
@@ -278,6 +278,11 @@ func TestAllPagesRender(t *testing.T) {
 		if body := rec.Body.String(); !strings.Contains(body, marker) {
 			t.Errorf("GET %s: body missing %q", path, marker)
 		}
+	}
+
+	// / redirects 303 to /workflow.
+	if rec := get(t, s, "/"); rec.Code != http.StatusSeeOther {
+		t.Errorf("GET / = %d, want 303", rec.Code)
 	}
 
 	// /settings redirects 303 to the first sub-page (system).
@@ -416,7 +421,7 @@ func TestMergedPagesRedirects(t *testing.T) {
 	}
 
 	// sidebar no longer links to the three dissolved pages
-	home := get(t, s, "/").Body.String()
+	home := get(t, s, "/workflow").Body.String()
 	for _, dead := range []string{`href="/content"`, `href="/shop"`, `href="/analytics"`} {
 		if strings.Contains(home, dead) {
 			t.Errorf("sidebar still links %s", dead)

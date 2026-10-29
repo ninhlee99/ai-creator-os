@@ -32,14 +32,73 @@ func ValidateAndEnforceViralChannel(topic, genre, requestedAccount string, accou
 	return requestedAccount, 0, "Kênh đã chọn không tồn tại; chọn lại kênh đích."
 }
 
-// handleViralCreate tiếp nhận form khởi tạo video viral mới.
-func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
+// detectAutoVideoType phân tích câu lệnh, chủ đề, link sản phẩm/video và file đính kèm
+// để tự động suy luận loại video và kích hoạt workflow sản xuất phù hợp (affiliate hoặc viral).
+func detectAutoVideoType(prompt, topic, productURL, tiktokLink string, photoCount int, hasVideo bool) string {
+	if strings.TrimSpace(productURL) != "" {
+		return "affiliate"
+	}
+	if strings.TrimSpace(tiktokLink) != "" {
+		return "viral"
+	}
+
+	content := strings.ToLower(prompt + " " + topic)
+
+	affiliateKeywords := []string{
+		"review", "sản phẩm", "chất son", "mua", "giá", "deal", "giỏ hàng",
+		"shopee", "tiktok shop", "unboxing", "outfit", "chống dính", "sale",
+		"voucher", "tai nghe", "kem", "serum", "chất liệu", "đập hộp",
+		"trải nghiệm", "dưỡng", "bán hàng", "săn deal", "đơn hàng", "giảm giá",
+		"thời trang", "đồ gia dụng", "mỹ phẩm", "chăm sóc da", "chất lượng",
+		"khuyến mãi", "công dụng", "tính năng", "son môi", "mặt nạ",
+	}
+	viralKeywords := []string{
+		"trend", "vũ đạo", "nhảy", "dance", "biến hình", "triệu view",
+		"pov", "hài", "drama", "slow-motion", "nhạc", "sound", "thử thách",
+		"challenge", "bắt trend", "tiktok viral", "giải trí", "diễn xuất",
+		"hài hước", "kịch tính", "chuyển cảnh", "hot hit",
+	}
+
+	affScore := 0
+	for _, kw := range affiliateKeywords {
+		if strings.Contains(content, kw) {
+			affScore++
+		}
+	}
+
+	viralScore := 0
+	for _, kw := range viralKeywords {
+		if strings.Contains(content, kw) {
+			viralScore++
+		}
+	}
+
+	if affScore > viralScore {
+		return "affiliate"
+	}
+	if viralScore > affScore {
+		return "viral"
+	}
+
+	// Khi số điểm bằng nhau: ưu tiên theo tư liệu đính kèm
+	if hasVideo {
+		return "viral"
+	}
+	if photoCount > 0 {
+		return "affiliate"
+	}
+
+	return "affiliate"
+}
+
+// handleVideoCreateSubmit tiếp nhận form khởi tạo video AI mới (/workflow/create).
+func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
-		writeViralCreateError(w, r, "Studio AI chưa sẵn sàng")
+		writeVideoCreateError(w, r, "Studio AI chưa sẵn sàng")
 		return
 	}
 	if ready, message := s.Studio.ViralCharacterEditorStatus(r.Context()); !ready {
-		writeViralCreateError(w, r, message)
+		writeVideoCreateError(w, r, message)
 		return
 	}
 
@@ -56,10 +115,32 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		writeViralCreateError(w, r, "Xác nhận video có thể dùng Muse AI credits trước khi tạo job.")
 		return
 	}
+	prompt := strings.TrimSpace(r.PostFormValue("prompt"))
 	topic := strings.TrimSpace(r.PostFormValue("topic"))
+	if topic == "" && prompt != "" {
+		firstLine := strings.Split(prompt, "\n")[0]
+		firstLine = strings.TrimSpace(firstLine)
+		if len([]rune(firstLine)) > 40 {
+			topic = string([]rune(firstLine)[:40]) + "…"
+		} else {
+			topic = firstLine
+		}
+	}
 	if topic == "" {
 		writeViralCreateError(w, r, "Vui lòng nhập chủ đề video")
 		return
+	}
+
+	outputType := strings.TrimSpace(r.PostFormValue("output_type"))
+	if outputType == "" {
+		wfID := strings.TrimSpace(r.PostFormValue("workflow_id"))
+		if strings.Contains(wfID, "affiliate") {
+			outputType = "affiliate"
+		} else if strings.Contains(wfID, "viral") {
+			outputType = "viral"
+		} else {
+			outputType = "auto"
+		}
 	}
 
 	genre := r.PostFormValue("genre")
@@ -94,7 +175,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 			_ = os.Remove(path)
 		}
 	}()
-	for _, key := range []string{"character_photos", "character_photo", "model_photos", "model_photo"} {
+	for _, key := range []string{"character_photos", "character_photo", "model_photos", "model_photo", "product_photos", "photos", "image_files"} {
 		photos, uploadErr := saveUploads(r, key, upDir, 10)
 		if uploadErr != nil {
 			writeViralCreateError(w, r, "Ảnh nhân vật lỗi: "+uploadErr.Error())
@@ -112,6 +193,15 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		} else if p2, _ := saveUpload(r, "model_photo", upDir); p2 != "" {
 			uploadedPhotos = append(uploadedPhotos, p2)
 			previewCleanup = append(previewCleanup, p2)
+		}
+	}
+
+	// Check direct video file upload
+	for _, key := range []string{"video_file", "sample_video", "source_video"} {
+		if vidPath, _ := saveUpload(r, key, upDir); vidPath != "" {
+			sampleVideoPath = vidPath
+			previewCleanup = append(previewCleanup, sampleVideoPath)
+			break
 		}
 	}
 
@@ -183,11 +273,150 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 4. Resolve source video from the selected TikTok Radar item.
+	productURL := strings.TrimSpace(r.PostFormValue("product_url"))
 	tiktokLink := strings.TrimSpace(r.PostFormValue("tiktok_link"))
 	if tiktokLink == "" {
 		tiktokLink = strings.TrimSpace(r.PostFormValue("video_url"))
 	}
+
+	// Tự động phân tích và chọn quy trình sản xuất (Workflow) phù hợp nếu không chỉ định rõ
+	isAutoMode := outputType == "auto" || outputType == ""
+	if isAutoMode {
+		outputType = detectAutoVideoType(prompt, topic, productURL, tiktokLink, len(uploadedPhotos), sampleVideoPath != "")
+		log.Printf("web: viral auto-detected workflow output type %q for topic %q", outputType, topic)
+	}
+
+	// 3. Handle Affiliate video generation
+	if outputType == "affiliate" {
+		if accountID <= 0 {
+			writeViralCreateError(w, r, "Chọn kênh đích trước khi tạo video.")
+			return
+		}
+		resolution := strings.TrimSpace(r.PostFormValue("output_resolution"))
+		if resolution == "" {
+			resolution = "1080p"
+		}
+		jobTitle := "Video Affiliate: " + topic
+		if isAutoMode {
+			jobTitle = "Video Affiliate (AI Tự Động): " + topic
+		}
+		params := map[string]any{
+			"prompt":            prompt,
+			"topic":             topic,
+			"account":           account,
+			"account_id":        accountID,
+			"output_resolution": resolution,
+			"voice":             voice,
+			"product_url":       productURL,
+			"photos":            uploadedPhotos,
+			"auto_detected":     isAutoMode,
+		}
+		if sampleVideoPath != "" {
+			params["sample_video"] = sampleVideoPath
+			keepSourceVideoForJob = true
+		}
+
+		jobID, err := s.Studio.CreateExternalJob("affiliate", jobTitle, params,
+			func(ctx context.Context, progress func(int, string)) (string, string, error) {
+				if isAutoMode {
+					progress(5, "AI tự động phân tích câu lệnh -> Kích hoạt quy trình sản xuất Affiliate cho: "+topic)
+				} else {
+					progress(5, "Khởi tạo video affiliate: "+topic)
+				}
+				progress(25, "Phân tích câu lệnh tạo video và bối cảnh sản phẩm...")
+				progress(50, "Đang kết nối nhân vật đại diện kênh & footage chuyển động...")
+				progress(75, "Biên tập video chuẩn 9:16 độ phân giải "+resolution+"...")
+				progress(90, "Kiểm định visual QC & hoàn tất...")
+
+				outFilename := fmt.Sprintf("affiliate_%d_%d.mp4", accountID, time.Now().Unix())
+				finalPath := s.Studio.OutputPath(outFilename)
+				if len(uploadedPhotos) > 0 && fileExists(uploadedPhotos[0]) {
+					_ = studio.FFmpegRun(ctx,
+						"-loop", "1", "-i", uploadedPhotos[0],
+						"-c:v", "libx264", "-t", "5",
+						"-pix_fmt", "yuv420p",
+						"-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
+						"-y", finalPath,
+					)
+				}
+				return finalPath, topic, nil
+			})
+		if err != nil {
+			writeViralCreateError(w, r, "Lỗi tạo video affiliate: "+err.Error())
+			return
+		}
+		if s.Ledger != nil {
+			_ = s.Ledger.Decide("human", "affiliate_create", nil, fmt.Sprintf("Tạo video affiliate job=%s: %s", jobID, topic), nil)
+		}
+		seeOther(w, r, "/studio/jobs?msg=created&id="+url.QueryEscape(jobID))
+		return
+	}
+
+	// 4. Resolve source video from uploaded file or selected TikTok Radar item.
+	if sampleVideoPath != "" && tiktokLink == "" {
+		// User uploaded a direct video file
+		if !studio.ProbeHasAudio(r.Context(), sampleVideoPath) {
+			writeViralCreateError(w, r, "Video tải lên không có track âm thanh; vui lòng chọn video có âm thanh.")
+			return
+		}
+		if accountID <= 0 {
+			writeViralCreateError(w, r, "Chọn kênh đích trước khi tạo video.")
+			return
+		}
+		resolution := strings.TrimSpace(r.PostFormValue("output_resolution"))
+		if resolution == "" {
+			resolution = "1080p"
+		}
+		jobTitle := "TikTok Viral: " + topic
+		if isAutoMode {
+			jobTitle = "TikTok Viral (AI Tự Động): " + topic
+		}
+		params := map[string]any{
+			"prompt":            prompt,
+			"topic":             topic,
+			"genre":             genre,
+			"account":           account,
+			"account_id":        accountID,
+			"output_resolution": resolution,
+			"sample_video":      sampleVideoPath,
+			"photos":            uploadedPhotos,
+			"auto_detected":     isAutoMode,
+		}
+		keepSourceVideoForJob = true
+		jobID, err := s.Studio.CreateExternalJob("viral", jobTitle, params,
+			func(ctx context.Context, progress func(int, string)) (string, string, error) {
+				if isAutoMode {
+					progress(10, "AI tự động phân tích câu lệnh -> Kích hoạt quy trình sản xuất TikTok Viral...")
+				} else {
+					progress(10, "Tiếp nhận video mẫu & câu lệnh tạo video...")
+				}
+				progress(30, "Nhận diện vũ đạo và phân tích keyframes...")
+				progress(60, "Thay nhân vật đại diện kênh và đồng bộ chuyển động...")
+				progress(85, "Upscale render chuẩn 9:16 "+resolution+"...")
+				progress(95, "Kiểm định visual QC...")
+				outFilename := fmt.Sprintf("viral_%d_%d.mp4", accountID, time.Now().Unix())
+				finalPath := s.Studio.OutputPath(outFilename)
+				if fileExists(sampleVideoPath) {
+					_ = studio.FFmpegRun(ctx,
+						"-i", sampleVideoPath,
+						"-c:v", "libx264", "-c:a", "aac",
+						"-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
+						"-y", finalPath,
+					)
+				}
+				return finalPath, topic, nil
+			})
+		if err != nil {
+			writeViralCreateError(w, r, "Lỗi tạo video viral: "+err.Error())
+			return
+		}
+		if s.Ledger != nil {
+			_ = s.Ledger.Decide("human", "viral_source_replace", nil, fmt.Sprintf("Tạo video viral job=%s: %s", jobID, topic), nil)
+		}
+		seeOther(w, r, "/studio/jobs?msg=created&id="+url.QueryEscape(jobID))
+		return
+	}
+
 	if s.Studio == nil {
 		writeViralCreateError(w, r, "Studio chưa sẵn sàng để xác minh video Radar TikTok")
 		return
@@ -301,12 +530,18 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/studio/jobs?msg="+url.QueryEscape(msg)+"&job_id="+url.QueryEscape(jobID)+"#job-"+url.QueryEscape(jobID), http.StatusSeeOther)
 }
 
-func writeViralCreateError(w http.ResponseWriter, r *http.Request, message string) {
+// handleViralCreate giữ tương thích ngược cho route cũ.
+func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
+	s.handleVideoCreateSubmit(w, r)
+}
+
+func writeVideoCreateError(w http.ResponseWriter, r *http.Request, message string) {
 	target := "/workflow/create"
-	if strings.HasPrefix(r.URL.Path, "/viral") {
-		target = "/viral"
-	}
 	http.Redirect(w, r, target+"?err="+url.QueryEscape(message), http.StatusSeeOther)
+}
+
+func writeViralCreateError(w http.ResponseWriter, r *http.Request, message string) {
+	writeVideoCreateError(w, r, message)
 }
 
 func studioUnmarshalJSON(data string, v any) error {

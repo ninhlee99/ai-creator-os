@@ -144,16 +144,16 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 		log("Face lock hoàn tất.")
 	}
 
-	// CHUẨN HOÁ HÌNH HỌC VÀ REMASTER 4K UHD (Lanczos + Micro-Contrast Unsharp Mask + Denoise)
+	// CHUẨN HOÁ HÌNH HỌC VÀ REMASTER 2K QHD (Lanczos + Micro-Contrast Unsharp Mask + Denoise)
 	targetW, targetH := AspectDims(opts.AspectRatio)
 	var vf string
 	var encArgs []string
 
-	if targetW >= 2160 || targetH >= 2160 || IsMasterQuality4K() {
-		targetW, targetH = AspectDims4K(opts.AspectRatio)
+	if targetW >= 1440 || targetH >= 1440 || IsMasterQuality2K() {
+		targetW, targetH = AspectDims2K(opts.AspectRatio)
 		vf = VideoMasterFilter(targetW, targetH)
-		encArgs = VideoEncoderArgs4K()
-		log(fmt.Sprintf("✨ Remaster 4K UHD VideoToolbox: Nâng cấp độ phân giải lên %dx%d (35 Mbps) khử nhòe & sắc nét vi mô...", targetW, targetH))
+		encArgs = VideoEncoderArgs2K()
+		log(fmt.Sprintf("✨ Remaster 2K QHD VideoToolbox: Nâng cấp độ phân giải lên %dx%d (20 Mbps) khử nhòe & sắc nét vi mô...", targetW, targetH))
 	} else {
 		vf = fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease:flags=lanczos,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1", targetW, targetH, targetW, targetH)
 		encArgs = VideoEncoderArgs()

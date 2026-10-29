@@ -28,11 +28,6 @@ func initializeWebAI(srv *web.Server, dataDir string) *webai.Store {
 	}
 	srv.WebAI = store
 	srv.WireStudioWebAI()
-	if srv.Studio != nil {
-		if resumed := srv.Studio.ResumeTikTokRadarRefreshJobs(); resumed > 0 {
-			log.Printf("studio: resumed %d TikTok Radar refresh job(s)", resumed)
-		}
-	}
 	log.Printf("webai: store opened (%d accounts marked connected; provider access not checked)", store.CountConnected())
 	return store
 }

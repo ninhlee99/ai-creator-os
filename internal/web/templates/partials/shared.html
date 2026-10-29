@@ -165,3 +165,72 @@ body.aicos-dialog-open{overflow:hidden}
 </form>
 </div>
 {{end}}
+
+{{/* Mini RAM/CPU monitoring block at the bottom of the sidebar across all screens */}}
+{{define "sidebar-sysmon"}}
+<div class="sidebar-footer" id="sidebar-sysmon" hx-get="/api/system/sidebar-metrics" hx-trigger="every 4s" hx-swap="outerHTML" style="margin-top:auto;border-top:1px solid var(--sidebar-border);padding:10px 12px 8px;background:var(--bg3);border-radius:10px;margin:8px 8px 0 8px">
+  
+  <!-- HEADER: TRẠNG THÁI HỆ THỐNG -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:{{if eq .Metrics.OverallStatus "danger"}}#ef4444{{else if eq .Metrics.OverallStatus "warn"}}#f59e0b{{else}}#10b981{{end}};box-shadow:0 0 5px {{if eq .Metrics.OverallStatus "danger"}}#ef4444{{else if eq .Metrics.OverallStatus "warn"}}#f59e0b{{else}}#10b981{{end}}"></span>
+      <span style="font-size:10.5px;font-weight:800;letter-spacing:0.5px;color:var(--text);text-transform:uppercase">Tài nguyên</span>
+    </div>
+    <span style="font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:4px;{{if eq .Metrics.OverallStatus "danger"}}background:rgba(239,68,68,0.15);color:#ef4444{{else if eq .Metrics.OverallStatus "warn"}}background:rgba(245,158,11,0.15);color:#f59e0b{{else}}background:rgba(16,185,129,0.15);color:#10b981{{end}}">
+      {{if eq .Metrics.OverallStatus "danger"}}OOM NGUY CƠ{{else if eq .Metrics.OverallStatus "warn"}}TẢI CAO{{else}}ỔN ĐỊNH{{end}}
+    </span>
+  </div>
+
+  <!-- RAM METER -->
+  <div style="margin-bottom:5px">
+    <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:2px">
+      <span style="font-weight:600">RAM</span>
+      <span style="font-weight:700;color:var(--text)">{{if .Metrics}}{{fmtMB .Metrics.UsedRAMMB}} / {{fmtMB .Metrics.TotalRAMMB}} ({{fmtFloat1 .Metrics.RAMPercent}}%){{else}}—{{end}}</span>
+    </div>
+    <div style="width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+      <div style="width:{{if .Metrics}}{{fmtFloat1 .Metrics.RAMPercent}}{{else}}0{{end}}%;height:100%;background:{{if eq .Metrics.RAMStatus "danger"}}#ef4444{{else if eq .Metrics.RAMStatus "warn"}}#f59e0b{{else}}#10b981{{end}};transition:width 0.3s ease"></div>
+    </div>
+  </div>
+
+  <!-- CPU METER -->
+  <div style="margin-bottom:6px">
+    <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:2px">
+      <span style="font-weight:600">CPU ({{if .Metrics}}{{.Metrics.CPUCores}}C{{else}}—{{end}})</span>
+      <span style="font-weight:700;color:var(--text)">{{if .Metrics}}{{fmtFloat1 .Metrics.CPULoad1m}} ({{fmtFloat1 .Metrics.CPUPercent}}%){{else}}—{{end}}</span>
+    </div>
+    <div style="width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+      <div style="width:{{if .Metrics}}{{if gt .Metrics.CPUPercent 100.0}}100{{else}}{{fmtFloat1 .Metrics.CPUPercent}}{{end}}{{else}}0{{end}}%;height:100%;background:{{if eq .Metrics.CPUStatus "danger"}}#ef4444{{else if eq .Metrics.CPUStatus "warn"}}#f59e0b{{else}}#3b82f6{{end}};transition:width 0.3s ease"></div>
+    </div>
+  </div>
+
+  <!-- ACTIVE WORKFLOW / NODE HOẶC PROCESS STATUS -->
+  <div style="font-size:10.5px;padding:3px 6px;border-radius:6px;background:var(--bg2);border:1px solid var(--border)">
+    {{if and .Metrics .Metrics.ActiveNodes}}
+      {{$first := index .Metrics.ActiveNodes 0}}
+      <div style="display:flex;align-items:center;gap:4px;color:{{if eq $first.ResourceTier "danger"}}#ef4444{{else if eq $first.ResourceTier "warn"}}#f59e0b{{else}}#10b981{{end}};font-weight:700" title="{{$first.NodeTitle}} ({{$first.NodeType}})">
+        <span style="font-size:11px">⚡</span>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:125px">{{$first.NodeTitle}}</span>
+        <span style="font-size:9.5px;color:var(--muted);margin-left:auto">{{$first.ElapsedSec}}s</span>
+      </div>
+    {{else if and .Metrics .Metrics.HeavyProcesses}}
+      {{$heavyCount := len .Metrics.HeavyProcesses}}
+      <div style="display:flex;align-items:center;gap:4px;color:var(--muted)">
+        <span>⚙️</span>
+        <span>{{$heavyCount}} tiến trình nặng</span>
+      </div>
+    {{else}}
+      <div style="display:flex;align-items:center;gap:4px;color:#10b981;font-weight:600">
+        <span>✓</span>
+        <span>Hệ thống rảnh rỗi</span>
+      </div>
+    {{end}}
+  </div>
+
+  <!-- LINK XEM WORKFLOW CANVAS -->
+  <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:9.5px;color:var(--muted)">Cập nhật 4s</span>
+    <a href="/workflow" style="font-size:10px;color:var(--accent);font-weight:600;text-decoration:none">Workflow ↗</a>
+  </div>
+
+</div>
+{{end}}

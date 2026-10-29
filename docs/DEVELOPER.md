@@ -25,7 +25,7 @@
 ## Ranh giới sửa đổi
 
 - Sửa đúng layer và giữ nguồn dữ liệu gắn provenance.
-- Không thêm UI, route hay worker cho flow ngoài phạm vi hiện hành.
+- Không thêm UI, route hay tác vụ cho flow ngoài phạm vi hiện hành. Không tự ý khởi chạy tiến trình daemon nền lúc khởi động app.
 - Không biến thiếu dữ liệu thành 0 hoặc thành claim.
 - Không retry request sau khi provider có thể đã nhận job nếu chưa đối chiếu trạng thái.
 - Không commit credentials, cookies, session hoặc media riêng.

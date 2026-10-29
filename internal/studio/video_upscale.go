@@ -14,12 +14,10 @@ func NormalizeVideoOutputResolution(value string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "", VideoOutput1080P:
 		return VideoOutput1080P, nil
-	case VideoOutput4K:
-		return VideoOutput4K, nil
-	case VideoOutput8K:
-		return VideoOutput8K, nil
+	case VideoOutput2K, "1440p", "2560x1440", "1440x2560":
+		return VideoOutput2K, nil
 	default:
-		return "", fmt.Errorf("độ phân giải đầu ra không hỗ trợ: %q", value)
+		return "", fmt.Errorf("độ phân giải đầu ra không hỗ trợ: %q (chỉ hỗ trợ 1080p và 2k)", value)
 	}
 }
 
@@ -38,11 +36,7 @@ func VideoOutputDims(aspect, resolution string) (int, int, error) {
 		w, h := AspectDims(aspect)
 		return w, h, nil
 	}
-	if resolution == VideoOutput8K {
-		w, h := AspectDims8K(aspect)
-		return w, h, nil
-	}
-	w, h := AspectDims4K(aspect)
+	w, h := AspectDims2K(aspect)
 	return w, h, nil
 }
 
@@ -124,10 +118,8 @@ func ConcatClipsToMaster(ctx context.Context, clips []string, durations []float6
 	if hasAudio {
 		args = append(args, "-map", "[aout]")
 	}
-	if resolution == VideoOutput8K {
-		args = append(args, VideoEncoderArgs8K()...)
-	} else if resolution == VideoOutput4K {
-		args = append(args, VideoEncoderArgs4K()...)
+	if resolution == VideoOutput2K {
+		args = append(args, VideoEncoderArgs2K()...)
 	} else {
 		args = append(args, VideoEncoderArgs()...)
 	}
@@ -160,7 +152,7 @@ func ConcatClipsToMaster(ctx context.Context, clips []string, durations []float6
 	return nil
 }
 
-// UpscaleVideo creates a 4K/8K master after generation. It preserves the full
+// UpscaleVideo creates a 1080p or 2K master after generation. It preserves the full
 // frame, aspect ratio, timing, and audio. Upscaling increases pixel dimensions;
 // it cannot recover details absent from a 360p/480p source.
 func UpscaleVideo(ctx context.Context, srcVideo, dstVideo, aspect, resolution string) error {
@@ -200,10 +192,10 @@ func UpscaleVideo(ctx context.Context, srcVideo, dstVideo, aspect, resolution st
 	_ = os.Remove(tmp)
 	defer os.Remove(tmp)
 	args := []string{"-i", srcVideo, "-map", "0:v:0", "-map", "0:a?", "-vf", VideoMasterFilter(width, height)}
-	if resolution == VideoOutput8K {
-		args = append(args, VideoEncoderArgs8K()...)
+	if resolution == VideoOutput2K {
+		args = append(args, VideoEncoderArgs2K()...)
 	} else {
-		args = append(args, VideoEncoderArgs4K()...)
+		args = append(args, VideoEncoderArgs()...)
 	}
 	args = append(args, "-fps_mode", "passthrough", "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", tmp)
 	if err := ffmpegRun(ctx, args...); err != nil {

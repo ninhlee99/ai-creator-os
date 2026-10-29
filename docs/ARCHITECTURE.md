@@ -6,7 +6,7 @@ MiuNova phục vụ hai flow TikTok: affiliate và viral. Xem [System blueprint]
 
 | Gói | Vai trò |
 |---|---|
-| `cmd/aicos` | App setup, cấu hình và worker |
+| `cmd/aicos` | App setup, cấu hình và khởi chạy on-demand (không chạy daemon ngầm) |
 | `internal/web` | Go templates, HTMX routes/partials và operator controls |
 | `internal/network`, `internal/tiktok` | Kênh, account và TikTok OAuth |
 | `internal/studio` | Radar video, job, media, audio, QC và artifact |

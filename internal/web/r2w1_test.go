@@ -187,9 +187,9 @@ func TestReconcileWritesRealMoney(t *testing.T) {
 	}
 
 	// Legacy ledger entries must not be shown as current Accesstrade revenue.
-	rec := get(t, s, "/")
+	rec := get(t, s, "/dashboard")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET / = %d, want 200", rec.Code)
+		t.Fatalf("GET /dashboard = %d, want 200", rec.Code)
 	}
 	if body := rec.Body.String(); !strings.Contains(body, "Chưa có dữ liệu đơn") || strings.Contains(body, "123.456 ₫") {
 		t.Error("dashboard treated legacy ledger commission as current Accesstrade order data")

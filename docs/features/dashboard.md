@@ -1,11 +1,13 @@
-# Dashboard
+# Điều Hướng & Giám Sát Hệ Thống
 
-Dashboard tóm tắt trạng thái hai flow TikTok:
+Ứng dụng khởi động trực tiếp vào **Workflow Studio (`/workflow`)** — không dùng dashboard trung gian rườm rà.
 
-- Kênh đã lưu và trạng thái cấu hình OAuth.
-- Studio jobs và artifact đang xử lý.
-- AccessTrade sync/order evidence khi có.
-- Cảnh báo hoặc bước bị chặn có thể xử lý.
-- Worker health và thời điểm chạy gần nhất.
-
-Dashboard không được diễn giải account “connected” thành quyền publish đã xác minh, upload thành public post, hoặc job hoàn tất thành hiệu quả nội dung.
+- **Trang chủ (`/`)**: Tự động điều hướng trực tiếp vào **Workflow Canvas (`/workflow`)** để người dùng sáng tạo video AI ngay khi mở app.
+- **Giám sát RAM & CPU Toàn diện (Chân Sidebar trên mọi trang)**:
+  - Tự động cập nhật mỗi 4 giây qua HTMX (`GET /api/system/sidebar-metrics`).
+  - Đo lường RAM thời gian thực (Đã dùng, Còn trống, Phần trăm, Mức cảnh báo OOM).
+  - Đo lường CPU Load Average và số nhân CPU khả dụng.
+  - Hiển thị trực quan node workflow đang thực thi thực tế (e.g. `video_upscale` 2K, `face_swap`).
+  - Cảnh báo trực quan 3 cấp độ: 🟢 ỔN ĐỊNH, 🟡 TẢI CAO, 🔴 OOM NGUY CƠ để bảo vệ an toàn máy Mac.
+- **Quản lý & Dừng Tiến Trình Nặng (Process Killer)**:
+  - Hỗ trợ API an toàn (`POST /api/system/kill-process`) để dừng khẩn cấp các tiến trình nền nặng hoặc crawler zombie.

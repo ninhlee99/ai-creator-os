@@ -2,13 +2,13 @@
 
 ## Scope
 
-Safety gates apply to TikTok affiliate/viral radar, media generation, metrics sync and publishing actions. They do not claim that a provider call was canceled unless the worker reports cancellation.
+Safety gates apply to TikTok affiliate/viral radar, media generation, metrics sync and publishing actions. Hệ thống hoạt động hoàn toàn theo cơ chế on-demand (người dùng bấm chạy), không có tiến trình daemon ngầm tự động kích hoạt khi khởi động.
 
 ## Controls
 
 - Kill switch stops new automation actions and requests cancellation of cancellable in-flight jobs.
 - Dry-run permits reads/planning but blocks production-side effects such as generating paid media, creating external links, uploading drafts and public publishing.
-- Master switch controls scheduled automation ticks. Manual review and read-only inspection remain available.
+- Master switch controls automated network requests. Manual review and read-only inspection remain available.
 - Every state change records actor, time, previous state and new state.
 
 ## Correct status

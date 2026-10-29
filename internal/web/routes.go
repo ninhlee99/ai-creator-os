@@ -22,7 +22,15 @@ func (s *Server) Routes() http.Handler {
 	// Đợt S: health endpoint cho watchdog ngoài — không qua onboardGate.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 
-	mux.HandleFunc("GET /", s.handleDashboard)
+	// Trang chủ điều hướng trực tiếp vào Studio Workflow Canvas.
+	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		http.Redirect(w, r, "/workflow", http.StatusSeeOther)
+	})
+	mux.HandleFunc("GET /dashboard", s.handleDashboard)
 	mux.HandleFunc("POST /automation/switch", s.handleAutoSwitch)
 	mux.HandleFunc("GET /accounts", s.handleAccounts)
 	mux.HandleFunc("GET /accounts/new", s.handleAccountNew)
@@ -107,6 +115,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/custom-models", s.handleSaveCustomAPIModel)
 	mux.HandleFunc("POST /api/custom-models/delete", s.handleDeleteCustomAPIModel)
 
+	// Giám sát tài nguyên hệ thống (RAM, CPU, Workflow Nodes, Tiến trình nặng)
+	mux.HandleFunc("GET /api/system/metrics", s.handleSystemMetrics)
+	mux.HandleFunc("GET /api/system/sidebar-metrics", s.handleSystemSidebarMetrics)
+	mux.HandleFunc("POST /api/system/kill-process", s.handleKillProcess)
+
 	// Legacy Web AI prompt cockpit now redirects to account login settings.
 	mux.HandleFunc("GET /web-ai", redirectTo("/settings/system#tab-webai"))
 	mux.HandleFunc("POST /web-ai/accounts/delete", s.handleWebAIAccountDelete)
@@ -176,11 +189,18 @@ func (s *Server) Routes() http.Handler {
 	// Accesstrade (Đợt C): hunter + order sync + công tắc tick.
 	mux.HandleFunc("POST /at/hunt", s.handleATHunt)
 	mux.HandleFunc("POST /at/orders/sync", s.handleATOrderSync)
-	// Universal Workflow Video Creation Studio
-	mux.HandleFunc("GET /workflow/create", s.handleViral)
-	mux.HandleFunc("POST /workflow/create", s.handleViralCreate)
-	mux.HandleFunc("GET /viral", s.handleViral)
-	mux.HandleFunc("POST /viral/create", s.handleViralCreate)
+	// Universal Workflow Video Creation Studio (Tạo Video AI Bằng 1 Câu Lệnh)
+	mux.HandleFunc("GET /workflow/create", s.handleVideoCreate)
+	mux.HandleFunc("POST /workflow/create", s.handleVideoCreateSubmit)
+	// Điều hướng tương thích route cũ /viral sang /workflow/create
+	mux.HandleFunc("GET /viral", func(w http.ResponseWriter, r *http.Request) {
+		target := "/workflow/create"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("POST /viral/create", s.handleVideoCreateSubmit)
 
 	// provider chain configuration (new requirement)
 	mux.HandleFunc("GET /settings/chain", s.handleChainGet)

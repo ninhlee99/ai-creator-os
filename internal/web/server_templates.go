@@ -5,11 +5,13 @@ import (
 	"embed"
 	"encoding/hex"
 	"fmt"
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"html/template"
 	"log"
-	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
 	"net/http"
+
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
+	"github.com/ninhlee99/ai-creator-os/internal/sysmon"
+	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
 )
 
 //go:embed templates/*.html templates/*/*.html
@@ -59,7 +61,8 @@ var pageFiles = map[string]string{
 	"studio_flow":          "studio_flow.html",
 	"publishers":           "publishers.html",
 	"products":             "products.html",
-	"viral":                "viral.html",
+	"video_create":         "video_create.html",
+	"viral":                "video_create.html",
 	"growth":               "growth.html",
 	"settings_system":      "settings/system.html",
 	"settings_providers":   "settings/providers.html",
@@ -109,6 +112,7 @@ func (s *Server) ctx(kv ...any) map[string]any {
 		"DryRun":   s.Cfg.DryRun(),
 		"MasterOn": automation.MasterOn(s.settings()),
 		"AuthOn":   s.authEnabled(),
+		"Metrics":  sysmon.CollectFast(),
 	}
 	if s.WebAI != nil {
 		m["WebAICount"] = s.WebAI.CountConnected()

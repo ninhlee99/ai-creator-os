@@ -58,6 +58,21 @@ var templateFuncs = template.FuncMap{
 	"reasonLabel": reasonLabel,
 	// statusClass maps a raw status slug to a semantic badge class suffix.
 	"statusClass": statusClass,
+	"fmtFloat1": func(f float64) string {
+		return fmt.Sprintf("%.1f", f)
+	},
+	"fmtMB": func(mb uint64) string {
+		if mb >= 1024 {
+			return fmt.Sprintf("%.1f GB", float64(mb)/1024.0)
+		}
+		return fmt.Sprintf("%d MB", mb)
+	},
+	"fmtFloatMB": func(mb float64) string {
+		if mb >= 1024 {
+			return fmt.Sprintf("%.1f GB", mb/1024.0)
+		}
+		return fmt.Sprintf("%.1f MB", mb)
+	},
 	"mul":         func(a, b float64) float64 { return a * b },
 	"add":         func(a, b int) int { return a + b },
 	"pct":         func(f float64) float64 { return f * 100 },
