@@ -132,6 +132,46 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
+	// Tự động sử dụng nhân vật đại diện đã setting trong kênh nếu người dùng chưa tải ảnh mới
+	if len(uploadedPhotos) == 0 && s.Studio != nil {
+		if ms, err := s.Studio.ModelLibrary(); err == nil && ms != nil {
+			targetAcctID := accountID
+			if targetAcctID <= 0 && account != "" && s.Mgr != nil {
+				if accts, err := s.Mgr.List(); err == nil {
+					for _, a := range accts {
+						if a != nil && (a.Username == account || "@"+a.Username == account) {
+							targetAcctID = a.ID
+							break
+						}
+					}
+				}
+			}
+			if modelID > 0 {
+				if photoPath, err := s.findModelPhotoByID(modelID); err == nil && photoPath != "" {
+					uploadedPhotos = append(uploadedPhotos, photoPath)
+				}
+			}
+			if len(uploadedPhotos) == 0 && targetAcctID > 0 {
+				if photos, err := ms.List(targetAcctID); err == nil && len(photos) > 0 {
+					for _, p := range photos {
+						if p.Path != "" && fileExists(p.Path) {
+							uploadedPhotos = append(uploadedPhotos, p.Path)
+						}
+					}
+				}
+			}
+			if len(uploadedPhotos) == 0 {
+				if allPhotos, err := ms.ListAll(); err == nil && len(allPhotos) > 0 {
+					for _, p := range allPhotos {
+						if p.Path != "" && fileExists(p.Path) {
+							uploadedPhotos = append(uploadedPhotos, p.Path)
+						}
+					}
+				}
+			}
+		}
+	}
+
 	jobTitle := "Video affiliate: " + prod.Title
 	params := map[string]any{
 		"product_id":       prod.ID,
@@ -156,18 +196,30 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 			progress(65, "Tổng hợp visual footage & âm thanh xu hướng...")
 			progress(85, "Kiểm định chất lượng visual QC & biên tập khung hình 9:16...")
 
-			// Check if there's an image to assemble into video
-			var imgPath string
-			if len(prod.ImageURLs) > 0 {
-				firstImg := prod.ImageURLs[0]
-				if strings.HasPrefix(firstImg, "/uploads/") {
-					imgPath = filepath.Join(s.Studio.UploadDir(), strings.TrimPrefix(firstImg, "/uploads/"))
-				} else if strings.HasPrefix(firstImg, "http://") || strings.HasPrefix(firstImg, "https://") {
-					tmpImg := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("job_prod_%d.jpg", prod.ID))
-					if err := studio.DownloadImage(ctx, firstImg, tmpImg); err == nil {
-						imgPath = tmpImg
-					}
+			// Tải toàn bộ hình ảnh sản phẩm để đưa vào quy trình dựng video
+			var productImgPaths []string
+			for idx, imgURL := range prod.ImageURLs {
+				imgURL = strings.TrimSpace(imgURL)
+				if imgURL == "" {
+					continue
 				}
+				if strings.HasPrefix(imgURL, "/uploads/") {
+					localPath := filepath.Join(s.Studio.UploadDir(), strings.TrimPrefix(imgURL, "/uploads/"))
+					if fileExists(localPath) {
+						productImgPaths = append(productImgPaths, localPath)
+					}
+				} else if strings.HasPrefix(imgURL, "http://") || strings.HasPrefix(imgURL, "https://") {
+					tmpImg := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("job_prod_%d_%d.jpg", prod.ID, idx))
+					dlCtx, dlCancel := context.WithTimeout(ctx, 15*time.Second)
+					if err := studio.DownloadImage(dlCtx, imgURL, tmpImg); err == nil && fileExists(tmpImg) {
+						productImgPaths = append(productImgPaths, tmpImg)
+					}
+					dlCancel()
+				}
+			}
+			var imgPath string
+			if len(productImgPaths) > 0 {
+				imgPath = productImgPaths[0]
 			}
 
 			outFilename := fmt.Sprintf("affiliate_prod_%d_%d.mp4", prod.ID, time.Now().Unix())
@@ -179,12 +231,14 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 					if graph, err := fs.GetGraph(workflowID); err == nil && graph != nil {
 						progress(50, "Đang chạy workflow canvas: "+graph.Name+"...")
 						flowInputs := map[string]any{
-							"product_name": prod.Title,
-							"product_id":   prod.ID,
-							"price":        prod.Price,
-							"category":     prod.Category,
-							"product_url":  prod.ProductURL,
-							"image":        imgPath,
+							"product_name":   prod.Title,
+							"product_id":     prod.ID,
+							"price":          prod.Price,
+							"category":       prod.Category,
+							"product_url":    prod.ProductURL,
+							"image":          imgPath,
+							"images":         productImgPaths,
+							"product_images": productImgPaths,
 						}
 						if len(uploadedPhotos) > 0 {
 							flowInputs["model_photo"] = uploadedPhotos[0]
@@ -203,15 +257,40 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 				}
 			}
 
-			// If workflow did not produce a final video, fallback to rendering standard 9:16 clip from product image
-			if !flowDone && imgPath != "" && fileExists(imgPath) {
-				_ = studio.FFmpegRun(ctx,
-					"-loop", "1", "-i", imgPath,
-					"-c:v", "libx264", "-t", "5",
-					"-pix_fmt", "yuv420p",
-					"-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black",
-					finalPath,
-				)
+			// Nếu workflow không sinh video thì dựng video kết hợp toàn bộ ảnh sản phẩm chuẩn TikTok 9:16
+			if !flowDone && len(productImgPaths) > 0 {
+				if len(productImgPaths) == 1 {
+					_ = studio.FFmpegRun(ctx,
+						"-loop", "1", "-i", productImgPaths[0],
+						"-c:v", "libx264", "-t", "5",
+						"-pix_fmt", "yuv420p",
+						"-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black",
+						"-y", finalPath,
+					)
+				} else {
+					var inputArgs []string
+					var filterComplex []string
+					perImageSec := 3
+					for i, pImg := range productImgPaths {
+						inputArgs = append(inputArgs, "-loop", "1", "-t", strconv.Itoa(perImageSec), "-i", pImg)
+						filterComplex = append(filterComplex, fmt.Sprintf("[%d:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,setsar=1[v%d]", i, i))
+					}
+					var concatInputs strings.Builder
+					for i := range productImgPaths {
+						concatInputs.WriteString(fmt.Sprintf("[v%d]", i))
+					}
+					concatInputs.WriteString(fmt.Sprintf("concat=n=%d:v=1:a=0[outv]", len(productImgPaths)))
+					filterComplex = append(filterComplex, concatInputs.String())
+
+					ffmpegArgs := append(inputArgs,
+						"-filter_complex", strings.Join(filterComplex, ";"),
+						"-map", "[outv]",
+						"-c:v", "libx264",
+						"-pix_fmt", "yuv420p",
+						"-y", finalPath,
+					)
+					_ = studio.FFmpegRun(ctx, ffmpegArgs...)
+				}
 			}
 
 			progress(100, "Hoàn tất tạo video affiliate!")

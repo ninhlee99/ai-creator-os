@@ -112,20 +112,35 @@ func (tikTokLoginAdapter) matchesIdentityURL(rawURL string) bool {
 func (tikTokLoginAdapter) identityScript() string {
 	return `(() => {
 		try {
-			// 1. Trích xuất username từ global state TikTok
+			// 1. Kiểm tra trực tiếp đường dẫn URL hiện tại nếu đang ở trang Profile (/@username)
+			const curMatch = (window.location.pathname || '').match(/\/@([a-zA-Z0-9_.-]+)/);
+			if (curMatch && curMatch[1]) {
+				return '@' + curMatch[1];
+			}
+			// 2. Trích xuất username từ link Profile (URL sau /@)
+			const profileSelectors = [
+				'a[data-e2e="profile-icon"]',
+				'a[data-e2e="nav-profile"]',
+				'a[href*="/@"]'
+			];
+			for (const sel of profileSelectors) {
+				const els = document.querySelectorAll(sel);
+				for (const el of els) {
+					const href = el.getAttribute('href') || el.href || '';
+					const m = href.match(/\/@([a-zA-Z0-9_.-]+)/);
+					if (m && m[1] && m[1] !== 'live' && m[1] !== 'tag' && m[1] !== 'explore') {
+						return '@' + m[1];
+					}
+				}
+			}
+			// 3. Trích xuất username từ global state TikTok
 			if (window.SIGI_STATE && window.SIGI_STATE.AppContext && window.SIGI_STATE.AppContext.user && window.SIGI_STATE.AppContext.user.uniqueId) {
 				return '@' + window.SIGI_STATE.AppContext.user.uniqueId;
 			}
 			if (window.__DEFAULT_SCOPE__ && window.__DEFAULT_SCOPE__['webapp.app-context'] && window.__DEFAULT_SCOPE__['webapp.app-context'].user && window.__DEFAULT_SCOPE__['webapp.app-context'].user.uniqueId) {
 				return '@' + window.__DEFAULT_SCOPE__['webapp.app-context'].user.uniqueId;
 			}
-			// 2. Trích xuất username từ link profile trên thanh điều hướng
-			const link = document.querySelector('a[href*="/@"]');
-			if (link) {
-				const m = link.getAttribute('href').match(/@([a-zA-Z0-9_.-]+)/);
-				if (m) return '@' + m[1];
-			}
-			// 3. Trích xuất username từ title icon profile
+			// 4. Trích xuất username từ title icon profile
 			const title = document.querySelector('[data-e2e="user-title"], [data-e2e="profile-icon"]');
 			if (title && title.innerText && title.innerText.trim()) {
 				const text = title.innerText.trim();

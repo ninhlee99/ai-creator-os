@@ -338,8 +338,8 @@ func extractImages(h, finalURL string) []string {
 		}
 	}
 
-	// Trích xuất trực tiếp các URL ảnh CDN sản phẩm phổ biến trên sàn
-	cdnRegex := regexp.MustCompile(`https://[a-zA-Z0-9_\-\.]*(?:susercontent\.com|ibyteimg\.com|tiktokcdn\.com|alicdn\.com|tikicdn\.com|scdn\.vn)/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)`)
+	// Trích xuất trực tiếp các URL ảnh CDN sản phẩm phổ biến trên sàn (giữ nguyên query params cho signed URL)
+	cdnRegex := regexp.MustCompile(`https://[a-zA-Z0-9_\-\.]*(?:susercontent\.com|ibyteimg\.com|tiktokcdn\.com|alicdn\.com|tikicdn\.com|scdn\.vn)/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?`)
 	for _, m := range cdnRegex.FindAllString(h, -1) {
 		addImg(m)
 		if len(images) >= 8 {

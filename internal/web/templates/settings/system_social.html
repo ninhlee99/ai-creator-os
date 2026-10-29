@@ -95,18 +95,10 @@
           </div>
           <div style="display:flex; gap:10px; align-items:center; margin-top:16px; flex-wrap:wrap">
             <button type="button" class="btn btn-secondary btn-sm" onclick="startBrowserLogin('tiktok', 'TikTok')">🔄 Đăng nhập lại</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="const f=document.getElementById('tt-name-form'); f.style.display=f.style.display==='none'?'block':'none'">✏ Đổi username</button>
             <form method="post" action="/settings/tiktok/cookie/delete" style="display:inline">
               <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--err)" onclick="return confirm('Bạn có chắc muốn xóa cookie TikTok đã lưu?')">🗑 Xóa cookie</button>
             </form>
           </div>
-          <form id="tt-name-form" method="post" action="/settings/tiktok/account-name" style="margin-top:12px; display:none; background:var(--bg2); padding:10px; border-radius:8px; border:1px solid var(--border)">
-            <label style="font-size:11.5px; font-weight:600; color:var(--muted); display:block; margin-bottom:6px">Tên tài khoản / Username TikTok thật:</label>
-            <div style="display:flex; gap:8px">
-              <input type="text" name="account_name" value="{{.TikTokAccountName}}" placeholder="@Meow" style="flex:1; height:32px; font-size:12px; padding:0 10px; border-radius:6px; border:1px solid var(--border); background:var(--bg3); color:var(--text)">
-              <button type="submit" class="btn btn-primary btn-sm" style="height:32px">Lưu</button>
-            </div>
-          </form>
         </div>
         {{else}}
         <div style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:24px 16px; text-align:center; margin-top:14px">

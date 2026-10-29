@@ -145,7 +145,7 @@ func ReadMemoryUsage(totalMB uint64) (usedMB, freeMB uint64, percent float64) {
 	return usedMB, freeMB, percent
 }
 
-// ReadCPULoad đọc tải CPU (load averages 1m, 5m) và ước tính % CPU.
+// ReadCPULoad đọc tải CPU (load averages 1m, 5m) và % CPU tức thời thực tế.
 func ReadCPULoad(cores int) (percent, load1m, load5m float64) {
 	if cores <= 0 {
 		cores = runtime.NumCPU()
@@ -158,13 +158,30 @@ func ReadCPULoad(cores int) (percent, load1m, load5m float64) {
 			if len(fields) >= 2 {
 				load1m, _ = strconv.ParseFloat(fields[0], 64)
 				load5m, _ = strconv.ParseFloat(fields[1], 64)
-				percent = (load1m / float64(cores)) * 100.0
-				if percent > 100.0 {
-					percent = 100.0
-				}
-				return percent, load1m, load5m
 			}
 		}
+		// Đọc tổng % CPU tức thời của tất cả tiến trình trên máy
+		if psOut, err := exec.Command("ps", "-A", "-o", "%cpu").Output(); err == nil {
+			var totalCPU float64
+			for _, line := range strings.Split(string(psOut), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || line == "%CPU" {
+					continue
+				}
+				if v, err := strconv.ParseFloat(line, 64); err == nil {
+					totalCPU += v
+				}
+			}
+			if cores > 0 {
+				percent = totalCPU / float64(cores)
+			}
+		} else if cores > 0 {
+			percent = (load1m / float64(cores)) * 100.0
+		}
+		if percent > 100.0 {
+			percent = 100.0
+		}
+		return percent, load1m, load5m
 	} else if runtime.GOOS == "linux" {
 		data, err := os.ReadFile("/proc/loadavg")
 		if err == nil {
@@ -172,13 +189,29 @@ func ReadCPULoad(cores int) (percent, load1m, load5m float64) {
 			if len(fields) >= 2 {
 				load1m, _ = strconv.ParseFloat(fields[0], 64)
 				load5m, _ = strconv.ParseFloat(fields[1], 64)
-				percent = (load1m / float64(cores)) * 100.0
-				if percent > 100.0 {
-					percent = 100.0
-				}
-				return percent, load1m, load5m
 			}
 		}
+		if psOut, err := exec.Command("ps", "-A", "-o", "%cpu").Output(); err == nil {
+			var totalCPU float64
+			for _, line := range strings.Split(string(psOut), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || line == "%CPU" {
+					continue
+				}
+				if v, err := strconv.ParseFloat(line, 64); err == nil {
+					totalCPU += v
+				}
+			}
+			if cores > 0 {
+				percent = totalCPU / float64(cores)
+			}
+		} else if cores > 0 {
+			percent = (load1m / float64(cores)) * 100.0
+		}
+		if percent > 100.0 {
+			percent = 100.0
+		}
+		return percent, load1m, load5m
 	}
 	return 10.0, 1.0, 1.0
 }
@@ -381,11 +414,10 @@ func CollectFast() *SystemSnapshot {
 }
 
 // Collect thu thập toàn bộ ảnh chụp hệ thống, CPU, RAM, node và tiến trình.
-// Có in-memory cache TTL 3s để tránh spawn liên tục subprocess (vm_stat, sysctl, ps)
-// khi nhiều tab trình duyệt poll qua HTMX.
+// Có in-memory cache ngắn 800ms để tối ưu tài nguyên nhưng luôn đảm bảo realtime khi poll 2s.
 func Collect(activeNodes []ActiveNodeInfo) *SystemSnapshot {
 	cacheMu.RLock()
-	if cachedSnapshot != nil && time.Since(cachedAt) < 3*time.Second {
+	if cachedSnapshot != nil && time.Since(cachedAt) < 800*time.Millisecond {
 		// Tái sử dụng dữ liệu OS nặng từ cache, chỉ cập nhật danh sách activeNodes
 		base := *cachedSnapshot
 		cacheMu.RUnlock()

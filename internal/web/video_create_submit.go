@@ -349,11 +349,39 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	// Tự động lấy ảnh nhân vật đã lưu trong kênh nếu người dùng chưa tải ảnh mới
+	// Tự động sử dụng nhân vật đã setting trong kênh nếu người dùng chưa tải ảnh mới
+	if accountID <= 0 && s.Mgr != nil {
+		if accts, err := s.Mgr.List(); err == nil && len(accts) > 0 {
+			for _, a := range accts {
+				if a != nil && (a.Username == account || "@"+a.Username == account) {
+					accountID = a.ID
+					account = a.Username
+					break
+				}
+			}
+			if accountID <= 0 && accts[0] != nil {
+				accountID = accts[0].ID
+				account = accts[0].Username
+			}
+		}
+	}
 	if len(uploadedPhotos) == 0 && accountID > 0 && s.Studio != nil {
 		if ms, err := s.Studio.ModelLibrary(); err == nil && ms != nil {
 			if photos, err := ms.List(accountID); err == nil && len(photos) > 0 {
-				uploadedPhotos = append(uploadedPhotos, photos[0].Path)
+				for _, ph := range photos {
+					if ph.Path != "" && fileExists(ph.Path) {
+						uploadedPhotos = append(uploadedPhotos, ph.Path)
+					}
+				}
+			}
+			if len(uploadedPhotos) == 0 {
+				if allPhotos, err := ms.ListAll(); err == nil && len(allPhotos) > 0 {
+					for _, ph := range allPhotos {
+						if ph.Path != "" && fileExists(ph.Path) {
+							uploadedPhotos = append(uploadedPhotos, ph.Path)
+						}
+					}
+				}
 			}
 		}
 	}

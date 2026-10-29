@@ -213,7 +213,7 @@
           {{if gt (len .ImageURLs) 1}}
           <div class="thumb-gallery-strip" title="Bấm vào để xem góc ảnh khác">
             {{range .ImageURLs}}
-            <img src="{{.}}" class="thumb-gallery-item" onclick="switchProductMainThumb('{{$.ID}}', '{{.}}')" title="Xem góc ảnh này" loading="lazy">
+            <img src="{{.}}" class="thumb-gallery-item" onclick="switchProductMainThumb('{{$.ID}}', '{{.}}')" title="Xem góc ảnh này" loading="lazy" onerror="this.style.display='none'">
             {{end}}
           </div>
           {{end}}

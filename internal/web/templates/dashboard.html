@@ -207,7 +207,7 @@
 <!-- SUB-TEMPLATE: COCKPIT GIÁM SÁT TÀI NGUYÊN & WORKFLOW (TINH GỌN & HIỆN ĐẠI)-->
 <!-- ========================================================================= -->
 {{define "system-metrics-panel"}}
-<div id="system-metrics-panel" hx-get="/api/system/metrics" hx-trigger="every 3s" hx-swap="outerHTML" style="margin-bottom:20px">
+<div id="system-metrics-panel" hx-get="/api/system/metrics" hx-trigger="every 2s" hx-swap="outerHTML" style="margin-bottom:20px">
 
   <!-- CẢNH BÁO TẢI CAO / OOM (CHỈ HIỆN KHI CẦN THIẾT) -->
   {{if eq .Metrics.OverallStatus "danger"}}
@@ -242,7 +242,7 @@
           <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:{{if eq .Metrics.OverallStatus "danger"}}#ef4444{{else if eq .Metrics.OverallStatus "warn"}}#f59e0b{{else}}#10b981{{end}};box-shadow:0 0 6px {{if eq .Metrics.OverallStatus "danger"}}#ef4444{{else if eq .Metrics.OverallStatus "warn"}}#f59e0b{{else}}#10b981{{end}}"></span>
           <span style="font-size:12.5px;font-weight:800;color:var(--text);letter-spacing:0.3px">Tài nguyên Máy tính</span>
         </div>
-        <span style="font-size:10.5px;color:var(--muted)">Tự làm mới (3s)</span>
+        <span style="font-size:10.5px;color:var(--muted)">Realtime (2s)</span>
       </div>
 
       <!-- RAM GAUGE -->
@@ -267,7 +267,7 @@
         <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
           <span style="font-weight:700;color:var(--text)">CPU Load Avg ({{.Metrics.CPUCores}} Cores)</span>
           <span style="font-weight:800;color:{{if eq .Metrics.CPUStatus "danger"}}#ef4444{{else if eq .Metrics.CPUStatus "warn"}}#f59e0b{{else}}var(--text){{end}}">
-            {{fmtFloat1 .Metrics.CPULoad1m}} (1m) · {{fmtFloat1 .Metrics.CPULoad5m}} (5m)
+            {{fmtFloat1 .Metrics.CPUPercent}}% · Load: {{fmtFloat1 .Metrics.CPULoad1m}} (1m)
           </span>
         </div>
         <div style="width:100%;height:7px;background:var(--border);border-radius:4px;overflow:hidden">
