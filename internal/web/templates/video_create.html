@@ -26,9 +26,9 @@
 
 <div style="max-width:860px;margin:0 auto;padding:16px 0 60px">
 
-  {{if .Viral.Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:12px 16px;border-radius:12px;color:#10b981;border:1px solid rgba(16,185,129,0.25);margin-bottom:16px;font-weight:600">✓ {{.Viral.Notice}}</p>{{end}}
-  {{if .Viral.Warning}}<p class="notice notice-warn" role="status" style="margin-bottom:16px;border-radius:12px;padding:12px 16px">{{.Viral.Warning}}</p>{{end}}
-  {{if .Viral.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:12px 16px;border-radius:12px;color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-bottom:16px;font-weight:600">⚠ {{.Viral.Error}}</p>{{end}}
+  {{if .Video.Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:12px 16px;border-radius:12px;color:#10b981;border:1px solid rgba(16,185,129,0.25);margin-bottom:16px;font-weight:600">✓ {{.Video.Notice}}</p>{{else if .Viral.Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:12px 16px;border-radius:12px;color:#10b981;border:1px solid rgba(16,185,129,0.25);margin-bottom:16px;font-weight:600">✓ {{.Viral.Notice}}</p>{{end}}
+  {{if .Video.Warning}}<p class="notice notice-warn" role="status" style="margin-bottom:16px;border-radius:12px;padding:12px 16px">{{.Video.Warning}}</p>{{else if .Viral.Warning}}<p class="notice notice-warn" role="status" style="margin-bottom:16px;border-radius:12px;padding:12px 16px">{{.Viral.Warning}}</p>{{end}}
+  {{if .Video.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:12px 16px;border-radius:12px;color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-bottom:16px;font-weight:600">⚠ {{.Video.Error}}</p>{{else if .Viral.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:12px 16px;border-radius:12px;color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-bottom:16px;font-weight:600">⚠ {{.Viral.Error}}</p>{{end}}
 
   <!-- AI PROMPT CHAT INPUT BOX (GEMINI / GROK / CLAUDE / CHATGPT STYLE) -->
   <form method="post" action="/" enctype="multipart/form-data" id="video-create-form" onsubmit="return validateProduction()">
@@ -110,16 +110,16 @@
       <span>Thay nhân vật</span>
       <span>1080p Full HD</span>
       <span>2K QHD</span>
-      <input type="text" name="topic" id="viral-topic" value="{{.Viral.Topic}}">
+      <input type="text" name="topic" id="viral-topic" data-alt-id="video-topic" value="{{.Viral.Topic}}">
       <input type="url" name="product_url" id="field-product-url" value="">
-      <input type="url" name="tiktok_link" id="viral-tiktok-link" value="{{.Viral.SourceVideoURL}}">
-      <input type="hidden" name="model_id" id="viral-model-id" value="{{.Viral.SelectedModelID}}">
+      <input type="url" name="tiktok_link" id="viral-tiktok-link" data-alt-id="video-tiktok-link" value="{{.Viral.SourceVideoURL}}">
+      <input type="hidden" name="model_id" id="viral-model-id" data-alt-id="video-model-id" value="{{.Viral.SelectedModelID}}">
       <select name="output_type" id="field-output-type">
         <option value="auto" {{if and (ne .Viral.OutputType "viral") (ne .Viral.OutputType "affiliate")}}selected{{end}}>⚡ Tự Động (Auto)</option>
-        <option value="affiliate" {{if eq .Viral.OutputType "affiliate"}}selected{{end}}>🛍️ Video Affiliate</option>
-        <option value="viral" {{if eq .Viral.OutputType "viral"}}selected{{end}}>🔥 Video TikTok Viral</option>
+        <option value="affiliate" {{if eq .Viral.OutputType "affiliate"}}selected{{end}}>🛍️ Video Giới Thiệu Sản Phẩm</option>
+        <option value="viral" {{if eq .Viral.OutputType "viral"}}selected{{end}}>🔥 Video Xu Hướng (Trending)</option>
       </select>
-      <select name="account" id="viral-account">
+      <select name="account" id="viral-account" data-alt-id="video-account">
         {{range .Viral.AccountOptions}}
         <option value="{{.Username}}" data-account-id="{{.ID}}" {{if eq .ID $.Viral.SelectedAccountID}}selected{{end}}>@{{.Username}}</option>
         {{end}}

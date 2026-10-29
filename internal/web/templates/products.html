@@ -1,146 +1,313 @@
 {{define "title"}}Sản phẩm Affiliate{{end}}
 {{define "content"}}
 
-<!-- Header Tinh gọn -->
-<div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
-  <div>
-    <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: var(--text);">
-      Sản phẩm Affiliate
-    </h1>
-    <p class="hint" style="margin: 4px 0 0; font-size: 13px;">
-      Thêm sản phẩm từ link affiliate Shopee, TikTok Shop, Lazada... và khởi chạy workflow tạo video.
-    </p>
+<style>
+.products-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.product-import-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+}
+.platform-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2.5px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.platform-tiktok { background: rgba(0,0,0,0.06); color: var(--text); border: 1px solid rgba(0,0,0,0.12); }
+:root[data-theme=dark] .platform-tiktok { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+.platform-shopee { background: rgba(238, 77, 45, 0.1); color: #ee4d2d; border: 1px solid rgba(238, 77, 45, 0.25); }
+.platform-lazada { background: rgba(15, 20, 110, 0.08); color: #0f146e; border: 1px solid rgba(15, 20, 110, 0.2); }
+:root[data-theme=dark] .platform-lazada { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+.platform-tiki { background: rgba(26, 148, 255, 0.1); color: #1a94ff; border: 1px solid rgba(26, 148, 255, 0.25); }
+.platform-sendo { background: rgba(227, 39, 38, 0.1); color: #e32726; border: 1px solid rgba(227, 39, 38, 0.25); }
+.platform-affiliate { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+
+.product-row-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+.product-row-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  transform: translateY(-1px);
+}
+.thumb-gallery-strip {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.thumb-gallery-item {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.thumb-gallery-item:hover {
+  transform: scale(1.15);
+  border-color: var(--accent);
+}
+@media (max-width: 768px) {
+  .product-row-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+</style>
+
+<div class="products-container">
+
+  <!-- HEADER -->
+  <div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border);">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span class="badge badge-live" style="font-size:11px;padding:3px 8px;font-weight:700">🛍️ Quản Lý Sản Phẩm</span>
+        <span style="font-size:12px;color:var(--muted)">Hỗ trợ TikTok Shop, Shopee, Lazada, Tiki, Sendo</span>
+      </div>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: var(--text); letter-spacing:-0.02em">
+        Sản phẩm Affiliate
+      </h1>
+    </div>
   </div>
-</div>
 
-{{if .Error}}<p class="err" role="alert" style="margin-bottom: 16px; border-radius: 8px;">{{.Error}}</p>{{end}}
-{{if .Notice}}<p class="notice" role="status" style="margin-bottom: 16px; border-radius: 8px;">{{.Notice}}</p>{{end}}
+  {{if .Error}}<p class="err" role="alert" style="background:rgba(239,68,68,0.1);padding:12px 16px;border-radius:10px;color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-bottom:18px;font-weight:600">⚠ {{.Error}}</p>{{end}}
+  {{if .Notice}}<p class="notice" role="status" style="background:rgba(16,185,129,0.1);padding:12px 16px;border-radius:10px;color:#10b981;border:1px solid rgba(16,185,129,0.25);margin-bottom:18px;font-weight:600">✓ {{.Notice}}</p>{{end}}
 
-<!-- 1. THÊM SẢN PHẨM NHANH TỪ LINK AFFILIATE -->
-<div class="card" style="background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-bottom:24px;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
-  <div style="margin-bottom:12px">
-    <h2 style="margin:0 0 4px;font-size:15px;font-weight:700;border:none;padding:0;display:flex;align-items:center;gap:8px;color:var(--text)">
-      <span>🔗</span> Thêm sản phẩm từ Link Affiliate
-    </h2>
-    <p style="margin:0;font-size:12.5px;color:var(--muted)">
-      Dán link affiliate từ Shopee, TikTok Shop, Lazada... Hệ thống tự động phân tích lấy ảnh, tên, giá và lưu vào danh sách sản phẩm.
-    </p>
+  <!-- 1. THÊM SẢN PHẨM NHANH TỪ LINK CÁC SÀN TMĐT -->
+  <div class="product-import-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+      <div>
+        <h2 style="margin:0 0 4px;font-size:16px;font-weight:750;border:none;padding:0;display:flex;align-items:center;gap:8px;color:var(--text)">
+          <span>🔗</span> Nhập Sản Phẩm Tự Động Từ Link Sàn
+        </h2>
+        <p style="margin:0;font-size:12.5px;color:var(--muted)">
+          Hệ thống tự động cào ảnh sắc nét (nhiều góc), tên sản phẩm, giá bán, hoa hồng và danh mục.
+        </p>
+      </div>
+
+      <!-- SÀN ĐƯỢC HỖ TRỢ -->
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span class="platform-pill platform-tiktok">🎵 TikTok Shop</span>
+        <span class="platform-pill platform-shopee">🧡 Shopee</span>
+        <span class="platform-pill platform-lazada">💙 Lazada</span>
+        <span class="platform-pill platform-tiki">🔵 Tiki</span>
+        <span class="platform-pill platform-sendo">🔴 Sendo</span>
+      </div>
+    </div>
+
+    <form method="post" action="/products/import-link" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input type="url" name="url" required
+        placeholder="Dán link sản phẩm hoặc affiliate: https://vt.tiktok.com/... hoặc https://s.shopee.vn/... hoặc https://tiki.vn/..."
+        style="flex:1;min-width:300px;height:44px;padding:0 16px;font-size:13.5px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box;transition:border-color 0.15s">
+      <button type="submit" class="btn btn-primary" style="height:44px;padding:0 22px;font-weight:700;font-size:13.5px;border-radius:10px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(37,99,235,0.25)">
+        <span>💾</span> Lưu sản phẩm
+      </button>
+    </form>
   </div>
-  <form method="post" action="/products/import-link" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <input type="url" name="url" required placeholder="Dán link affiliate: https://s.shopee.vn/... hoặc https://vt.tiktok.com/... hoặc link sản phẩm" style="flex:1;min-width:280px;height:42px;padding:0 14px;font-size:13.5px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);box-sizing:border-box">
-    <button type="submit" class="btn btn-primary" style="height:42px;padding:0 20px;font-weight:700;font-size:13px;border-radius:8px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px">
-      <span>💾</span> Lưu sản phẩm
-    </button>
-  </form>
-</div>
 
-<!-- 2. DANH SÁCH SẢN PHẨM -->
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-  <div style="display:flex;align-items:center;gap:8px">
-    <h2 style="margin:0;font-size:16px;font-weight:800;color:var(--text)">Danh sách sản phẩm</h2>
-    {{if .Shelf}}<span class="badge badge-ok" style="font-size:11px">{{len .Shelf}} sản phẩm</span>{{end}}
+  <!-- 2. DANH SÁCH SẢN PHẨM (ĐÃ BỎ ĐIỂM VÀ TRẠNG THÁI THEO YÊU CẦU) -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h2 style="margin:0;font-size:17px;font-weight:800;color:var(--text)">Kho Sản Phẩm &amp; Kệ Hàng</h2>
+      {{if .Shelf}}
+      <span class="badge badge-ok" style="font-size:11.5px;font-weight:700;padding:3px 9px">
+        {{len .Shelf}} sản phẩm sẵn sàng
+      </span>
+      {{end}}
+    </div>
   </div>
-</div>
 
-{{if .Shelf}}
-<div class="table-wrap mobile-table-scroll" role="region" aria-label="Danh sách sản phẩm affiliate" tabindex="0" style="border:1px solid var(--border);border-radius:12px;background:var(--bg2)">
-<table class="products-table-shelf" style="margin:0">
-  <thead>
-    <tr>
-      <th style="padding:12px 14px">Sản phẩm</th>
-      <th>Danh mục</th>
-      <th>Giá</th>
-      <th>Hoa hồng</th>
-      <th>Điểm</th>
-      <th>Trạng thái</th>
-      <th style="text-align:right;padding:12px 14px">Thao tác</th>
-    </tr>
-  </thead>
-  <tbody>
-  {{range .Shelf}}
-  <tr style="border-bottom:1px solid var(--border)">
-    <td style="padding:12px 14px">
-      <div style="display:flex;align-items:center;gap:12px">
-        {{if .ImageURL}}
-        <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0" loading="lazy">
-        {{else}}
-        <div style="width:48px;height:48px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted);flex-shrink:0">🛍️</div>
-        {{end}}
-        <div style="min-width:0">
-          <strong style="display:block;font-size:13px;color:var(--text);line-height:1.4" title="{{.Title}}">{{.Title}}</strong>
-          <span style="color:var(--muted);font-size:11.5px">{{.PlatformPID}}</span>
-          {{if .ProductURL}}
-          <a href="{{.ProductURL}}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--accent);margin-left:6px">Mở link ↗</a>
+  {{if .Shelf}}
+  <div style="display:flex;flex-direction:column;gap:12px">
+    {{range .Shelf}}
+    <div class="product-row-card">
+      
+      <!-- CỘT 1: ẢNH + TIÊU ĐỀ + THƯ VIỆN ẢNH CHI TIẾT -->
+      <div style="display:flex;gap:16px;align-items:flex-start;flex:1;min-width:0">
+        
+        <!-- ẢNH CHÍNH SẢN PHẨM -->
+        <div style="position:relative;flex-shrink:0">
+          {{if .ImageURL}}
+          <img id="p-main-img-{{.ID}}" src="{{.ImageURL}}" alt="{{.Title}}"
+               style="width:72px;height:72px;border-radius:10px;object-fit:cover;border:1.5px solid var(--border);background:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.06);display:block" loading="lazy">
+          {{else}}
+          <div style="width:72px;height:72px;border-radius:10px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--muted);border:1.5px solid var(--border)">🛍️</div>
+          {{end}}
+
+          {{if gt (len .ImageURLs) 1}}
+          <span style="position:absolute;bottom:-4px;right:-4px;background:rgba(0,0,0,0.75);color:#fff;font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:8px" title="{{len .ImageURLs}} ảnh sản phẩm">
+            +{{len .ImageURLs}}
+          </span>
           {{end}}
         </div>
+
+        <!-- THÔNG TIN SẢN PHẨM -->
+        <div style="min-width:0;flex:1">
+          
+          <!-- HÀNG TAGS: SÀN + SHOP + DANH MỤC -->
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">
+            {{if hasPrefix .PlatformPID "TTS-"}}
+              <span class="platform-pill platform-tiktok">🎵 TikTok Shop</span>
+            {{else if hasPrefix .PlatformPID "SP-"}}
+              <span class="platform-pill platform-shopee">🧡 Shopee</span>
+            {{else if hasPrefix .PlatformPID "LZD-"}}
+              <span class="platform-pill platform-lazada">💙 Lazada</span>
+            {{else if hasPrefix .PlatformPID "TIKI-"}}
+              <span class="platform-pill platform-tiki">🔵 Tiki</span>
+            {{else if hasPrefix .PlatformPID "SENDO-"}}
+              <span class="platform-pill platform-sendo">🔴 Sendo</span>
+            {{else}}
+              <span class="platform-pill platform-affiliate">🛍️ Affiliate</span>
+            {{end}}
+
+            {{if .ShopName}}
+            <span style="font-size:11.5px;font-weight:600;color:var(--muted)">· {{.ShopName}}</span>
+            {{end}}
+
+            {{if .Category}}
+            <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--bg3);color:var(--muted);border:1px solid var(--border)">
+              {{if eq .Category "Thời trang"}}👗 {{else if eq .Category "Làm đẹp"}}💄 {{else if eq .Category "Gia dụng"}}🏠 {{else if eq .Category "Ẩm thực"}}🍜 {{else if eq .Category "Điện tử"}}📱 {{end}}{{.Category}}
+            </span>
+            {{end}}
+          </div>
+
+          <!-- TIÊU ĐỀ SẢN PHẨM -->
+          <strong style="display:block;font-size:14px;font-weight:750;color:var(--text);line-height:1.4;margin-bottom:6px" title="{{.Title}}">
+            {{.Title}}
+          </strong>
+
+          <!-- MÃ SKU + LINK -->
+          <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted)">
+            <span>Mã: <code>{{.PlatformPID}}</code></span>
+            {{if .ProductURL}}
+            <span>·</span>
+            <a href="{{.ProductURL}}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-weight:600;text-decoration:none">
+              Mở link sản phẩm ↗
+            </a>
+            {{end}}
+          </div>
+
+          <!-- STRIP NHIỀU ẢNH SẢN PHẨM (NẾU CÓ) -->
+          {{if gt (len .ImageURLs) 1}}
+          <div class="thumb-gallery-strip" title="Bấm vào để xem góc ảnh khác">
+            {{range .ImageURLs}}
+            <img src="{{.}}" class="thumb-gallery-item" onclick="switchProductMainThumb('{{$.ID}}', '{{.}}')" title="Xem góc ảnh này" loading="lazy">
+            {{end}}
+          </div>
+          {{end}}
+
+        </div>
       </div>
-    </td>
-    <td><span style="font-size:12.5px">{{if .Category}}{{.Category}}{{else}}—{{end}}</span></td>
-    <td><strong style="font-size:13px;color:var(--text)">{{fmtVND .Price}}{{if gt .PriceMax .Price}} – {{fmtVND .PriceMax}}{{end}}</strong></td>
-    <td>
-      {{if gt .CommissionValue 0.0}}
-      <span class="badge badge-info" style="font-size:11px">{{if .CommissionEstimate}}Ước tính {{productMoney .CommissionValue .CommissionCurrency}}/đơn{{else}}Nguồn báo {{productMoney .CommissionValue .CommissionCurrency}}{{end}}</span>
-      {{else}}
-      <span style="color:var(--muted);font-size:11.5px">Chưa có dữ liệu</span>
-      {{end}}
-    </td>
-    <td><strong>{{printf "%.2f" .Score}}</strong></td>
-    <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
-    <td style="text-align:right;padding:12px 14px">
-      <button type="button" class="btn btn-primary btn-sm"
-              data-product-id="{{.ID}}"
-              data-product-title="{{.Title}}"
-              data-product-price="{{fmtVND .Price}}"
-              data-product-img="{{.ImageURL}}"
-              onclick="openProductVideoModal(this)"
-              style="font-size:12px;padding:6px 14px;font-weight:700;border-radius:8px;display:inline-flex;align-items:center;gap:5px"
-              title="Khởi chạy workflow tạo video cho sản phẩm này">
-        <span>⚡</span> Tạo video
-      </button>
-    </td>
-  </tr>
+
+      <!-- CỘT 2: GIÁ BÁN & HOA HỒNG CHI TIẾT -->
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:160px;flex-shrink:0">
+        
+        <!-- GIÁ SẢN PHẨM -->
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:800;color:var(--text)">
+            {{fmtVND .Price}}{{if gt .PriceMax .Price}} – {{fmtVND .PriceMax}}{{end}}
+          </div>
+          {{if and (gt .OriginalPrice .Price) (gt .OriginalPrice 0.0)}}
+          <div style="font-size:11.5px;color:var(--muted);text-decoration:line-through">
+            {{fmtVND .OriginalPrice}}
+          </div>
+          {{end}}
+        </div>
+
+        <!-- HOA HỒNG CHI TIẾT -->
+        <div>
+          {{if gt .CommissionValue 0.0}}
+          <span class="badge badge-ok" style="font-size:11.5px;font-weight:750;padding:4px 10px;border-radius:8px;background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.25)">
+            💰 Hoa hồng: {{productMoney .CommissionValue .CommissionCurrency}}
+          </span>
+          {{else}}
+          <span class="badge badge-dim" style="font-size:11px">Ước tính 10% hoa hồng</span>
+          {{end}}
+        </div>
+
+        <!-- THAO TÁC: NÚT TẠO VIDEO -->
+        <div style="margin-top:6px">
+          <button type="button" class="btn btn-primary btn-sm"
+                  data-product-id="{{.ID}}"
+                  data-product-title="{{.Title}}"
+                  data-product-price="{{fmtVND .Price}}"
+                  data-product-img="{{.ImageURL}}"
+                  onclick="openProductVideoModal(this)"
+                  style="font-size:13px;padding:7px 16px;font-weight:750;border-radius:10px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 3px 10px rgba(37,99,235,0.25)"
+                  title="Khởi chạy tác vụ AI tạo video cho sản phẩm này">
+            <span>⚡</span> Tạo video
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="empty-state compact" style="padding:48px 20px;text-align:center;background:var(--bg2);border:1px dashed var(--border);border-radius:14px">
+    <div class="es-icon" style="font-size:42px;margin-bottom:10px">🛍️</div>
+    <h3 style="margin:0 0 6px;font-size:17px;font-weight:750;color:var(--text)">Kho sản phẩm đang trống</h3>
+    <p style="margin:0 auto;max-width:460px;font-size:13px;color:var(--muted);line-height:1.5">
+      Dán link affiliate từ TikTok Shop, Shopee, Lazada hoặc Tiki ở thanh nhập phía trên để đưa sản phẩm vào kho và bắt đầu sản xuất video.
+    </p>
+  </div>
   {{end}}
-  </tbody>
-</table>
+
 </div>
-{{else}}
-<div class="empty-state compact" style="padding:40px 20px;text-align:center;background:var(--bg2);border:1px dashed var(--border);border-radius:14px">
-  <div class="es-icon" style="font-size:36px;margin-bottom:8px">🛍️</div>
-  <h3 style="margin:0 0 6px;font-size:16px;color:var(--text)">Danh sách sản phẩm trống</h3>
-  <p style="margin:0;font-size:13px;color:var(--muted)">Hãy dán link affiliate sản phẩm ở ô trên để thêm sản phẩm vào hệ thống.</p>
-</div>
-{{end}}
 
 <!-- MODAL TẠO VIDEO CHO SẢN PHẨM -->
 <div class="modal-backdrop" id="product-video-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);z-index:9999;align-items:center;justify-content:center;padding:16px;" onclick="closeProductVideoModal(event)">
-  <div class="modal" role="dialog" aria-modal="true" style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.5);" onclick="event.stopPropagation()">
+  <div class="modal" role="dialog" aria-modal="true" style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.5);" onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">
       <h3 style="margin:0;font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-        <span>🎬</span> Tạo Video Affiliate AI
+        <span>🎬</span> Tạo Video Cho Sản Phẩm
       </h3>
       <button type="button" class="btn btn-secondary btn-sm" onclick="closeProductVideoModal()" style="border-radius:50%;width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
 
     <!-- Thông tin sản phẩm đã chọn -->
-    <div style="display:flex;align-items:center;gap:12px;background:var(--bg3);padding:10px 14px;border-radius:10px;margin-bottom:18px">
-      <img id="modal-product-img" src="" alt="Ảnh sản phẩm" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:#fff">
+    <div style="display:flex;align-items:center;gap:12px;background:var(--bg3);padding:12px 14px;border-radius:12px;margin-bottom:18px">
+      <img id="modal-product-img" src="" alt="Ảnh sản phẩm" style="width:56px;height:56px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:#fff">
       <div style="min-width:0;flex:1">
-        <strong id="modal-product-title" style="display:block;font-size:13px;color:var(--text);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></strong>
-        <span id="modal-product-price" style="font-size:12.5px;color:var(--accent);font-weight:700"></span>
+        <strong id="modal-product-title" style="display:block;font-size:13.5px;color:var(--text);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></strong>
+        <span id="modal-product-price" style="font-size:13px;color:var(--accent,#2563eb);font-weight:800"></span>
       </div>
     </div>
 
     <form method="post" action="/products/create-video" enctype="multipart/form-data">
       <input type="hidden" name="product_id" id="modal-product-id" value="">
 
-      <!-- Chọn Workflow -->
+      <!-- Chọn Workflow Thực Thi (Đổi tên common, không dùng viral) -->
       <div style="margin-bottom:16px">
         <label for="modal-workflow-id" style="font-size:12.5px;font-weight:700;display:block;margin-bottom:6px;color:var(--text)">
           🧩 Chọn Workflow thực thi:
         </label>
         <select name="workflow_id" id="modal-workflow-id" style="width:100%;height:40px;padding:0 12px;font-size:13px;font-weight:600;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
-          <option value="preset_affiliate_daily" selected>⚡ [Mặc định] TikTok Affiliate (Kling 3.0 &amp; Veo AI)</option>
-          <option value="preset_viral_dance">⚡ TikTok Viral Dance (Veo 3.1 &amp; Muse AI)</option>
+          <option value="preset_affiliate_daily" selected>⚡ [Mặc định] Video Giới Thiệu Sản Phẩm (Kling 3.0 &amp; Veo AI)</option>
+          <option value="preset_viral_dance">⚡ Video Vũ Đạo &amp; Chuyển Động (Veo 3.1 &amp; Muse AI)</option>
           {{range .AvailableWorkflows}}
           {{if and (ne .ID "preset_affiliate_daily") (ne .ID "preset_viral_dance")}}
           <option value="{{.ID}}">📁 {{.Title}} {{if .Category}}({{.Category}}){{end}}</option>
@@ -181,7 +348,7 @@
         {{end}}
 
         <!-- Upload nhiều ảnh nhân vật -->
-        <div style="border:1.5px dashed var(--border);padding:12px;border-radius:8px;background:var(--bg3);text-align:center">
+        <div style="border:1.5px dashed var(--border);padding:12px;border-radius:10px;background:var(--bg3);text-align:center">
           <label for="modal-character-photos" style="cursor:pointer;display:block">
             <span style="font-size:12px;font-weight:700;color:var(--accent);display:block;margin-bottom:2px">
               📤 Hoặc tải lên nhiều góc ảnh nhân vật mới
@@ -194,7 +361,7 @@
 
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button type="button" class="btn btn-secondary" onclick="closeProductVideoModal()">Hủy</button>
-        <button type="submit" class="btn btn-primary" style="font-weight:700;padding:10px 20px;border-radius:8px;background:linear-gradient(135deg, #2563eb, #7c3aed);border:none;box-shadow:0 3px 10px rgba(124,58,237,0.3)">
+        <button type="submit" class="btn btn-primary" style="font-weight:750;padding:10px 22px;border-radius:10px;background:linear-gradient(135deg, #2563eb, #7c3aed);border:none;box-shadow:0 3px 10px rgba(124,58,237,0.3)">
           🚀 Khởi chạy Workflow Tạo Video
         </button>
       </div>
@@ -203,6 +370,11 @@
 </div>
 
 <script>
+function switchProductMainThumb(prodId, newSrc) {
+  var img = document.getElementById('p-main-img-' + prodId);
+  if (img) img.src = newSrc;
+}
+
 function openProductVideoModal(btn) {
   var modal = document.getElementById('product-video-modal');
   if (!modal) return;
@@ -266,9 +438,7 @@ function filterModalModels() {
 {{end}}
 
 {{define "product-results"}}
-<div id="product-results">
-  <!-- Stub for legacy HTMX compatibility -->
-</div>
+<div id="product-results"></div>
 {{end}}
 
 {{define "product-history"}}

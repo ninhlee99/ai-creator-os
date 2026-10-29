@@ -279,7 +279,7 @@ func (s *Server) handleVideoCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.render(w, "video_create", s.ctx("VideoCreate", v, "Viral", v))
+	s.render(w, "video_create", s.ctx("VideoCreate", v, "Video", v, "Viral", v))
 }
 
 // handleViral giữ tương thích cho router cũ.

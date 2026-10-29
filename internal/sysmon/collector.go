@@ -57,22 +57,51 @@ func ReadMemoryUsage(totalMB uint64) (usedMB, freeMB uint64, percent float64) {
 	if runtime.GOOS == "darwin" {
 		out, err := exec.Command("vm_stat").Output()
 		if err == nil {
-			var pagesFree, pagesSpeculative uint64
+			var pagesActive, pagesWired, pagesCompressor, pagesFree, pagesInactive, pagesSpeculative, pagesPurgeable uint64
+			pageSize := uint64(4096)
 			for _, line := range strings.Split(string(out), "\n") {
-				if strings.HasPrefix(line, "Pages free:") {
-					val := strings.TrimRight(strings.TrimSpace(strings.TrimPrefix(line, "Pages free:")), ".")
-					pagesFree, _ = strconv.ParseUint(val, 10, 64)
-				} else if strings.HasPrefix(line, "Pages speculative:") {
-					val := strings.TrimRight(strings.TrimSpace(strings.TrimPrefix(line, "Pages speculative:")), ".")
-					pagesSpeculative, _ = strconv.ParseUint(val, 10, 64)
+				if strings.Contains(line, "page size of") {
+					parts := strings.Fields(line)
+					for i, p := range parts {
+						if p == "of" && i+1 < len(parts) {
+							if sz, err := strconv.ParseUint(parts[i+1], 10, 64); err == nil && sz > 0 {
+								pageSize = sz
+							}
+						}
+					}
+				}
+				parts := strings.Split(line, ":")
+				if len(parts) != 2 {
+					continue
+				}
+				key := strings.TrimSpace(parts[0])
+				val := strings.TrimRight(strings.TrimSpace(parts[1]), ".")
+				num, _ := strconv.ParseUint(val, 10, 64)
+				switch key {
+				case "Pages active":
+					pagesActive = num
+				case "Pages wired down":
+					pagesWired = num
+				case "Pages occupied by compressor":
+					pagesCompressor = num
+				case "Pages free":
+					pagesFree = num
+				case "Pages inactive":
+					pagesInactive = num
+				case "Pages speculative":
+					pagesSpeculative = num
+				case "Pages purgeable":
+					pagesPurgeable = num
 				}
 			}
-			availBytes := (pagesFree + pagesSpeculative) * 4096
-			freeMB = availBytes / (1024 * 1024)
-			if totalMB > freeMB {
-				usedMB = totalMB - freeMB
+			// Chuẩn Darwin (tương đồng Activity Monitor / htop):
+			// RAM thực tế đang dùng = Active + Wired + Compressed (bỏ qua cache file inactive/purgeable).
+			usedBytes := (pagesActive + pagesWired + pagesCompressor) * pageSize
+			usedMB = usedBytes / (1024 * 1024)
+			if totalMB > usedMB {
+				freeMB = totalMB - usedMB
 			} else {
-				usedMB = totalMB
+				freeMB = (pagesFree + pagesInactive + pagesSpeculative + pagesPurgeable) * pageSize / (1024 * 1024)
 			}
 			if totalMB > 0 {
 				percent = (float64(usedMB) / float64(totalMB)) * 100.0

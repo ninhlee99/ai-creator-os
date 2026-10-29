@@ -94,6 +94,10 @@ type productView struct {
 	Category           string
 	Price              float64
 	PriceMax           float64
+	OriginalPrice      float64
+	ShopName           string
+	Rating             float64
+	SoldCount          int64
 	CommissionRate     float64
 	CommissionCurrency string
 	CommissionValue    float64
@@ -101,6 +105,7 @@ type productView struct {
 	Score              float64
 	Status             string
 	ImageURL           string
+	ImageURLs          []string
 	ProductURL         string
 }
 
@@ -139,6 +144,10 @@ func (s *Server) shelfViews() []productView {
 			Category:           p.Category,
 			Price:              p.Price,
 			PriceMax:           p.PriceMax,
+			OriginalPrice:      p.OriginalPrice,
+			ShopName:           p.ShopName,
+			Rating:             p.Rating,
+			SoldCount:          p.SoldCount,
 			CommissionRate:     p.CommissionRate,
 			CommissionCurrency: commissionCurrency,
 			CommissionValue:    commissionValue,
@@ -146,6 +155,7 @@ func (s *Server) shelfViews() []productView {
 			Score:              products.Score(p),
 			Status:             p.ShelfStatus,
 			ImageURL:           img,
+			ImageURLs:          p.ImageURLs,
 			ProductURL:         p.ProductURL,
 		})
 	}

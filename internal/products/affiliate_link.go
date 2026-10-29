@@ -53,6 +53,8 @@ var (
 
 	ogSiteNameRegex     = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']`)
 	jsonldBrandRegex    = regexp.MustCompile(`(?i)"(?:brand|seller)"\s*:\s*\{\s*"name"\s*:\s*"([^"]+)"`)
+	ogDescRegex         = regexp.MustCompile(`(?i)<meta\s+[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']`)
+	metaDescRegex       = regexp.MustCompile(`(?i)<meta\s+[^>]*name=["']description["'][^>]*content=["']([^"']+)["']`)
 )
 
 // ExtractFromAffiliateLink fetches the affiliate URL, follows redirects,
@@ -284,7 +286,7 @@ func extractImages(h, finalURL string) []string {
 		lower := strings.ToLower(u)
 		if strings.Contains(lower, "favicon") || strings.Contains(lower, "icon") ||
 			strings.Contains(lower, "logo") || strings.Contains(lower, "1x1") ||
-			strings.Contains(lower, "pixel") {
+			strings.Contains(lower, "pixel") || strings.Contains(lower, "avatar") {
 			return
 		}
 		if !seen[u] {
@@ -319,8 +321,34 @@ func extractImages(h, finalURL string) []string {
 		}
 	}
 
-	if len(images) > 6 {
-		images = images[:6]
+	// Trích xuất nhiều ảnh từ mảng JSON (Shopee, Lazada, Tiki, TikTok Shop)
+	jsonArrayImageRegex := regexp.MustCompile(`"(?:images|image)"\s*:\s*\[([^\]]+)\]`)
+	for _, m := range jsonArrayImageRegex.FindAllStringSubmatch(h, -1) {
+		if len(m) > 1 {
+			rawItems := strings.Split(m[1], ",")
+			for _, it := range rawItems {
+				it = strings.Trim(strings.TrimSpace(it), "\"")
+				if strings.HasPrefix(it, "http://") || strings.HasPrefix(it, "https://") {
+					addImg(it)
+				} else if len(it) == 32 && !strings.Contains(it, " ") {
+					// Hash ảnh Shopee: ví dụ vn-11134207-7r98o-xyz123 hoặc 32 hex chars
+					addImg("https://down-vn.img.susercontent.com/file/" + it)
+				}
+			}
+		}
+	}
+
+	// Trích xuất trực tiếp các URL ảnh CDN sản phẩm phổ biến trên sàn
+	cdnRegex := regexp.MustCompile(`https://[a-zA-Z0-9_\-\.]*(?:susercontent\.com|ibyteimg\.com|tiktokcdn\.com|alicdn\.com|tikicdn\.com|scdn\.vn)/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)`)
+	for _, m := range cdnRegex.FindAllString(h, -1) {
+		addImg(m)
+		if len(images) >= 8 {
+			break
+		}
+	}
+
+	if len(images) > 8 {
+		images = images[:8]
 	}
 	return images
 }
@@ -402,11 +430,27 @@ func extractPlatformPID(finalURL, rawURL string) string {
 		}
 	}
 
-	// Lazada: -i123456789-
+	// Lazada: -i123456789- or /products/...-i123456789.html
 	if strings.Contains(lower, "lazada") {
-		lzdRegex := regexp.MustCompile(`-i(\d+)-`)
+		lzdRegex := regexp.MustCompile(`-i(\d+)`)
 		if m := lzdRegex.FindStringSubmatch(u); len(m) > 1 {
 			return "LZD-" + m[1]
+		}
+	}
+
+	// Tiki: -p12345678.html or /p/12345678
+	if strings.Contains(lower, "tiki") {
+		tikiRegex := regexp.MustCompile(`(?:-p|/p/)(\d+)`)
+		if m := tikiRegex.FindStringSubmatch(u); len(m) > 1 {
+			return "TIKI-" + m[1]
+		}
+	}
+
+	// Sendo: -12345678.html
+	if strings.Contains(lower, "sendo") {
+		sendoRegex := regexp.MustCompile(`(?:-|\/)(\d+)\.html`)
+		if m := sendoRegex.FindStringSubmatch(u); len(m) > 1 {
+			return "SENDO-" + m[1]
 		}
 	}
 
@@ -418,6 +462,10 @@ func extractPlatformPID(finalURL, rawURL string) string {
 	ttGeneral := regexp.MustCompile(`(?:product/|item_id=)(\d+)`)
 	if m := ttGeneral.FindStringSubmatch(u); len(m) > 1 {
 		return "TTS-" + m[1]
+	}
+	tikiGeneral := regexp.MustCompile(`-p(\d+)`)
+	if m := tikiGeneral.FindStringSubmatch(u); len(m) > 1 {
+		return "TIKI-" + m[1]
 	}
 
 	// Fallback hash
@@ -445,6 +493,10 @@ func extractShopName(h, finalURL string) string {
 		return "TikTok Shop"
 	} else if strings.Contains(finalURL, "lazada") {
 		return "Lazada Shop"
+	} else if strings.Contains(finalURL, "tiki") {
+		return "Tiki Trading"
+	} else if strings.Contains(finalURL, "sendo") {
+		return "Sendo Shop"
 	}
 	return "Affiliate Shop"
 }
