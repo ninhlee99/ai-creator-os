@@ -91,6 +91,9 @@ func kindLabel(kind string) string {
 func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 	out := make([]studioJobView, 0, len(jobs))
 	for _, j := range jobs {
+		if j.Kind == studio.KindTikTokRadarRefresh {
+			continue
+		}
 		if s.Studio != nil && (j.Kind == studio.KindAffiliate || j.Kind == studio.KindViral) &&
 			(j.Params == "" || (j.Status == studio.StatusDone && j.Log == "")) {
 			if full, ok := s.Studio.GetJob(j.ID); ok {

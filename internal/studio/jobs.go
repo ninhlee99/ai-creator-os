@@ -283,9 +283,9 @@ func (s *Studio) GetJob(id string) (Job, bool) {
 	return j, err == nil
 }
 
-// ListJobs returns jobs newest first.
+// ListJobs returns jobs newest first, excluding internal background crawler tasks.
 func (s *Studio) ListJobs(limit int) []Job {
-	rows, err := s.db.Query(`SELECT id,kind,title,status,progress,CASE WHEN status = 'failed' THEN log ELSE '' END,output,created_at,finished_at FROM studio_jobs ORDER BY created_at DESC LIMIT ?`, limit)
+	rows, err := s.db.Query(`SELECT id,kind,title,status,progress,CASE WHEN status = 'failed' THEN log ELSE '' END,output,created_at,finished_at FROM studio_jobs WHERE kind != ? ORDER BY created_at DESC LIMIT ?`, KindTikTokRadarRefresh, limit)
 	if err != nil {
 		return nil
 	}
@@ -301,14 +301,15 @@ func (s *Studio) ListJobs(limit int) []Job {
 }
 
 // RecentFailedJobs returns failed jobs newest first, independently of the
-// general recent-job window used by the dashboard's video cards.
+// general recent-job window used by the dashboard's video cards. Internal
+// crawler telemetry jobs are excluded.
 func (s *Studio) RecentFailedJobs(limit int) ([]Job, error) {
 	if limit <= 0 {
 		return nil, nil
 	}
 	rows, err := s.db.Query(`SELECT id,kind,title,status,progress,log,output,caption,params,created_at,finished_at
-		FROM studio_jobs WHERE status=?
-		ORDER BY finished_at DESC, created_at DESC LIMIT ?`, StatusFailed, limit)
+		FROM studio_jobs WHERE status=? AND kind != ?
+		ORDER BY finished_at DESC, created_at DESC LIMIT ?`, StatusFailed, KindTikTokRadarRefresh, limit)
 	if err != nil {
 		return nil, err
 	}
