@@ -460,21 +460,29 @@
         {{end}}
 
         <!-- Upload nhiều ảnh nhân vật -->
-        <div style="border:1.5px dashed var(--border);padding:12px;border-radius:10px;background:var(--bg3);text-align:center">
-          <label for="modal-character-photos" style="cursor:pointer;display:block">
-            <span style="font-size:12px;font-weight:700;color:var(--accent);display:block;margin-bottom:2px">
-              📤 Hoặc tải lên nhiều góc ảnh nhân vật mới
+        <div style="border:1.5px dashed var(--border);padding:16px 14px;border-radius:12px;background:var(--bg3);text-align:center;transition:border-color 0.2s, background 0.2s;">
+          <input type="file" id="modal-character-photos" name="character_photos" multiple accept="image/*" style="display:none;" onchange="updateSelectedPhotosCount(this)">
+          <label for="modal-character-photos" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;margin:0">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--border)">
+              📸
+            </div>
+            <span style="font-size:12.5px;font-weight:700;color:var(--text);margin-top:2px">
+              Tải lên ảnh nhân vật mới
             </span>
-            <span style="font-size:11px;color:var(--muted)">Tải nhiều góc chụp để AI nhận diện khuôn mặt chính xác nhất</span>
-            <input type="file" id="modal-character-photos" name="character_photos" multiple accept="image/*" style="display:block;margin:8px auto 0;font-size:12px">
+            <span id="modal-character-photos-hint" style="font-size:11.5px;color:var(--muted)">
+              Chọn một hoặc nhiều góc chụp để AI nhận diện khuôn mặt
+            </span>
+            <span class="btn btn-secondary btn-sm" style="margin-top:4px;font-size:11.5px;font-weight:600;padding:4px 12px;border-radius:6px;pointer-events:none">
+              📁 Chọn ảnh từ máy
+            </span>
           </label>
         </div>
       </div>
 
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button type="button" class="btn btn-secondary" onclick="closeProductVideoModal()">Hủy</button>
-        <button type="submit" class="btn btn-primary" style="font-weight:750;padding:10px 22px;border-radius:10px;background:linear-gradient(135deg, #2563eb, #7c3aed);border:none;box-shadow:0 3px 10px rgba(124,58,237,0.3)">
-          🚀 Khởi chạy Workflow Tạo Video
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
+        <button type="button" class="btn btn-secondary" onclick="closeProductVideoModal()" style="padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600">Hủy</button>
+        <button type="submit" class="btn btn-primary" style="font-weight:750;padding:9px 24px;border-radius:8px;font-size:13px;background:var(--accent,#2563eb);border:none;box-shadow:0 2px 8px rgba(37,99,235,0.25);display:inline-flex;align-items:center;gap:6px">
+          <span>⚡</span> Tạo video
         </button>
       </div>
     </form>
@@ -674,6 +682,16 @@ function filterModalModels() {
   });
   if (firstVisible) {
     selectModalModel(firstVisible, firstVisible.getAttribute('data-model-id'));
+  }
+}
+
+function updateSelectedPhotosCount(input) {
+  var hint = document.getElementById('modal-character-photos-hint');
+  if (!hint) return;
+  if (input.files && input.files.length > 0) {
+    hint.innerHTML = '<strong style="color:var(--accent,#2563eb)">✓ Đã chọn ' + input.files.length + ' ảnh nhân vật mới</strong>';
+  } else {
+    hint.innerText = 'Chọn một hoặc nhiều góc chụp để AI nhận diện khuôn mặt';
   }
 }
 </script>
