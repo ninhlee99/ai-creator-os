@@ -79,19 +79,6 @@
 
 <div class="products-container">
 
-  <!-- HEADER -->
-  <div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border);">
-    <div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <span class="badge badge-live" style="font-size:11px;padding:3px 8px;font-weight:700">🛍️ Quản Lý Sản Phẩm</span>
-        <span style="font-size:12px;color:var(--muted)">Hỗ trợ TikTok Shop, Shopee, Lazada, Tiki, Sendo</span>
-      </div>
-      <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: var(--text); letter-spacing:-0.02em">
-        Sản phẩm Affiliate
-      </h1>
-    </div>
-  </div>
-
   {{if .Error}}<p class="err" role="alert" style="background:rgba(239,68,68,0.1);padding:12px 16px;border-radius:10px;color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-bottom:18px;font-weight:600">⚠ {{.Error}}</p>{{end}}
   {{if .Notice}}<p class="notice" role="status" style="background:rgba(16,185,129,0.1);padding:12px 16px;border-radius:10px;color:#10b981;border:1px solid rgba(16,185,129,0.25);margin-bottom:18px;font-weight:600">✓ {{.Notice}}</p>{{end}}
 
@@ -348,29 +335,25 @@
           </div>
         </div>
 
-        <!-- LINK MỞ TRANG GỐC TRÊN SÀN -->
-        <div id="detail-link-box">
-          <a id="detail-link" href="" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="width:100%;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:600;text-decoration:none;padding:8px 12px;border-radius:8px">
-            <span>🌐</span> Mở trang sản phẩm gốc trên sàn ↗
-          </a>
-        </div>
-
       </div>
 
       <!-- KHỐI QUẢN LÝ & TẢI THÊM ẢNH SẢN PHẨM -->
       <div style="grid-column: 1 / -1; background:var(--bg3); border:1.5px dashed var(--border); border-radius:12px; padding:14px 16px; margin-top:8px">
         <form method="post" action="/products/add-images" enctype="multipart/form-data" style="margin:0">
           <input type="hidden" name="product_id" id="detail-add-img-product-id" value="">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
             <span style="font-size:12.5px; font-weight:750; color:var(--text); display:flex; align-items:center; gap:6px">
               <span>📸</span> Bổ sung góc ảnh cho sản phẩm này
             </span>
-            <span style="font-size:11px; color:var(--muted)">Tải file từ máy hoặc dán link ảnh</span>
+            <span id="detail-upload-hint" style="font-size:11px; color:var(--muted)">Tải file từ máy hoặc dán link ảnh</span>
           </div>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-            <input type="file" name="product_images" multiple accept="image/*" style="font-size:12px; color:var(--muted); flex:1; min-width:200px">
-            <input type="text" name="image_urls" placeholder="Hoặc dán URL ảnh bổ sung..." style="flex:2; min-width:240px; height:36px; padding:0 10px; font-size:12.5px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text)">
-            <button type="submit" class="btn btn-secondary btn-sm" style="height:36px; padding:0 16px; font-weight:750; font-size:12.5px; border-radius:8px; white-space:nowrap">
+            <input type="file" id="detail-product-images-input" name="product_images" multiple accept="image/*" style="display:none;" onchange="updateProductAddImagesHint(this)">
+            <label for="detail-product-images-input" class="btn btn-secondary btn-sm" style="height:36px; padding:0 14px; font-weight:600; font-size:12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; margin:0">
+              <span>📁</span> <span id="detail-upload-btn-label">Chọn ảnh từ máy</span>
+            </label>
+            <input type="text" name="image_urls" placeholder="Hoặc dán URL ảnh bổ sung..." style="flex:1; min-width:200px; height:36px; padding:0 12px; font-size:12.5px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text)">
+            <button type="submit" class="btn btn-primary btn-sm" style="height:36px; padding:0 16px; font-weight:750; font-size:12.5px; border-radius:8px; white-space:nowrap">
               + Thêm ảnh
             </button>
           </div>
@@ -692,6 +675,18 @@ function updateSelectedPhotosCount(input) {
     hint.innerHTML = '<strong style="color:var(--accent,#2563eb)">✓ Đã chọn ' + input.files.length + ' ảnh nhân vật mới</strong>';
   } else {
     hint.innerText = 'Chọn một hoặc nhiều góc chụp để AI nhận diện khuôn mặt';
+  }
+}
+
+function updateProductAddImagesHint(input) {
+  var label = document.getElementById('detail-upload-btn-label');
+  var hint = document.getElementById('detail-upload-hint');
+  if (input.files && input.files.length > 0) {
+    if (label) label.innerText = '✓ ' + input.files.length + ' ảnh đã chọn';
+    if (hint) hint.innerHTML = '<span style="color:var(--accent,#2563eb);font-weight:700">✓ Đã chọn ' + input.files.length + ' file ảnh</span>';
+  } else {
+    if (label) label.innerText = 'Chọn ảnh từ máy';
+    if (hint) hint.innerText = 'Tải file từ máy hoặc dán link ảnh';
   }
 }
 </script>

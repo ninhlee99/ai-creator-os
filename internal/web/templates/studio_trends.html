@@ -449,30 +449,6 @@
 </style>
 
 <main class="mx-auto max-w-7xl space-y-4">
-  <!-- Header Xu hướng Tinh gọn -->
-  <header style="margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
-    <div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <h1 id="studio-top" style="margin: 0; font-size: 20px; font-weight: 800; color: var(--text);">
-          Xu hướng TikTok
-        </h1>
-        <span class="badge badge-ok" style="font-size:11px;font-weight:700">🇻🇳 Việt Nam</span>
-        <span style="display:none">Radar TikTok</span>
-      </div>
-      <p class="hint" style="margin: 0; font-size: 12.5px;">
-        Khám phá các video thịnh hành nhất tại Việt Nam để chọn nhạc nền và ý tưởng tạo video.
-      </p>
-    </div>
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <form method="post" action="/studio/trends/refresh" style="margin: 0;">
-        <input type="hidden" name="topic" value="{{.Topic}}">
-        <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 8px; font-weight: 600; font-size: 12px; padding: 6px 14px;" title="Cập nhật trực tiếp dữ liệu mới nhất từ TikTok">
-          ↻ Cập nhật
-        </button>
-      </form>
-    </div>
-  </header>
-
   {{if .Error}}<p class="err" role="alert" style="border-radius: 12px; padding: 12px 16px;">{{.Error}}</p>{{end}}
   {{if .Notice}}<p class="notice" role="status" style="border-radius: 12px; padding: 12px 16px;">{{.Notice}}</p>{{end}}
 

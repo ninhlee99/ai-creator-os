@@ -69,6 +69,15 @@ func ExtractFromAffiliateLink(ctx context.Context, rawURL string) (*ExtractedPro
 		return nil, fmt.Errorf("URL không hợp lệ: cần bắt đầu bằng http:// hoặc https://")
 	}
 
+	// Nếu là link TikTok, ưu tiên dùng trình duyệt headless để tự động vượt qua popup
+	// "Get the full app experience" (bằng cách click "Not now" hoặc ✕), cuộn trang và cào nhiều ảnh
+	lowerHost := strings.ToLower(parsed.Host)
+	if strings.Contains(lowerHost, "tiktok.com") {
+		if prod, err := ExtractTikTokProductWithBrowser(ctx, rawURL); err == nil && prod != nil && len(prod.ImageURLs) > 0 {
+			return prod, nil
+		}
+	}
+
 	client := &http.Client{
 		Timeout: 20 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {

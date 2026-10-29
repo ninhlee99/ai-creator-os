@@ -380,6 +380,21 @@ func (s *Server) WireStudioWebAI() {
 		}
 		return accounts[0].Cookie, accounts[0].CookieJar
 	})
+	products.SetTikTokCookieProvider(func() (string, []webai.BrowserCookie) {
+		if s.WebAI == nil {
+			return "", nil
+		}
+		accounts, err := s.WebAI.GetAccounts(webai.PlatformTikTok)
+		if err != nil || len(accounts) == 0 {
+			return "", nil
+		}
+		for _, acc := range accounts {
+			if acc.IsActive && (acc.Cookie != "" || len(acc.CookieJar) > 0) {
+				return acc.Cookie, acc.CookieJar
+			}
+		}
+		return accounts[0].Cookie, accounts[0].CookieJar
+	})
 }
 
 // Close releases the dashboard's read handle (ledger/manager are owned by
