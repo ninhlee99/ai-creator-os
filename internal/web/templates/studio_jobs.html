@@ -7,32 +7,29 @@
 
 {{define "content"}}
 
-<div class="webai-header" style="margin-bottom: 20px;">
-  <div class="webai-header-left">
-    <h1>Video &amp; nội dung</h1>
-  </div>
-  <div class="webai-header-actions">
-    <a href="/workflow" class="btn btn-primary btn-sm">🎨 Workflow</a>
-    <a href="/" class="btn btn-secondary btn-sm">⚡ Tạo video AI</a>
-    <a href="/products" class="btn btn-secondary btn-sm">🛍️ Sản phẩm Affiliate</a>
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+  <!-- Clean Single Tab Navigation -->
+  <nav class="tabs" style="margin-bottom:0;">
+    <a href="/studio/jobs?tab=running" class="{{if eq .Tab "running"}}active{{end}}">
+      Đang xử lý {{if .RunningCount}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.RunningCount}}</span>{{end}}
+    </a>
+    <a href="/studio/jobs?tab=done" class="{{if or (eq .Tab "done") (not .Tab)}}active{{end}}">
+      Hoàn tất {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
+    </a>
+    <a href="/studio/jobs?tab=failed" class="{{if eq .Tab "failed"}}active{{end}}">
+      Lỗi {{if .FailedCount}}<span class="badge badge-err" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.FailedCount}}</span>{{end}}
+    </a>
+    <a href="/studio/jobs?tab=schedule" class="{{if eq .Tab "schedule"}}active{{end}}">
+      Lịch tự động
+    </a>
+  </nav>
+
+  <div style="display:flex; gap:8px; align-items:center;">
+    <a href="/workflow" class="btn btn-secondary btn-sm" style="font-weight:600;padding:6px 12px;border-radius:8px">🎨 Workflow</a>
+    <a href="/" class="btn btn-secondary btn-sm" style="font-weight:600;padding:6px 12px;border-radius:8px">⚡ Tạo video AI</a>
+    <a href="/products" class="btn btn-secondary btn-sm" style="font-weight:600;padding:6px 12px;border-radius:8px">🛍️ Sản phẩm Affiliate</a>
   </div>
 </div>
-
-<!-- Clean Single Tab Navigation -->
-<nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/studio/jobs?tab=running" class="{{if eq .Tab "running"}}active{{end}}">
-    Đang xử lý {{if .RunningCount}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.RunningCount}}</span>{{end}}
-  </a>
-  <a href="/studio/jobs?tab=done" class="{{if or (eq .Tab "done") (not .Tab)}}active{{end}}">
-    Hoàn tất {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
-  </a>
-  <a href="/studio/jobs?tab=failed" class="{{if eq .Tab "failed"}}active{{end}}">
-    Lỗi {{if .FailedCount}}<span class="badge badge-err" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.FailedCount}}</span>{{end}}
-  </a>
-  <a href="/studio/jobs?tab=schedule" class="{{if eq .Tab "schedule"}}active{{end}}">
-    Lịch tự động
-  </a>
-</nav>
 
 {{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
 {{if .Err}}<p class="err">{{.Err}}</p>{{end}}
