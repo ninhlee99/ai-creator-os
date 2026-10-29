@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+var museMediaURLRegex = regexp.MustCompile(`https?://[^\s"'<>)]+\.(?:mp4|webm|mov|png|jpg|jpeg|webp)(?:\?[^\s"'<>)]*)?`)
 
 func museEventSeq(event map[string]any) uint64 {
 	switch value := event["seq"].(type) {
@@ -60,31 +63,26 @@ func isMuseReply(event map[string]any, baseline uint64) bool {
 func extractMuseMediaURLs(event map[string]any, text string) []string {
 	serialized, _ := json.Marshal(event)
 	content := string(serialized) + "\n" + text
-	start := 0
 	seen := map[string]bool{}
 	var links []string
-	for {
-		i := strings.Index(content[start:], "https://muse.ai/files/")
-		if i < 0 {
-			break
+
+	matches := museMediaURLRegex.FindAllString(content, -1)
+	for _, match := range matches {
+		clean := strings.TrimRight(match, ".,;!?\"')}]")
+		parsed, err := url.Parse(clean)
+		if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") {
+			continue
 		}
-		start += i
-		end := start
-		for end < len(content) && !strings.ContainsRune(" \t\r\n\"'<>)]}", rune(content[end])) {
-			end++
+		host := strings.ToLower(parsed.Hostname())
+		if host != "muse.ai" && host != "www.muse.ai" && !strings.HasSuffix(host, ".muse.ai") {
+			continue
 		}
-		link := strings.TrimRight(content[start:end], ".,;!?")
-		parsed, err := url.Parse(link)
-		if err == nil && parsed.Scheme == "https" && (parsed.Hostname() == "muse.ai" || parsed.Hostname() == "www.muse.ai") && strings.HasPrefix(parsed.Path, "/files/") {
-			ext := strings.ToLower(filepath.Ext(parsed.Path))
-			if (ext == ".mp4" || ext == ".webm" || ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp") && !seen[link] {
-				seen[link] = true
-				links = append(links, link)
+		ext := strings.ToLower(filepath.Ext(parsed.Path))
+		if ext == ".mp4" || ext == ".webm" || ext == ".mov" || ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp" {
+			if !seen[clean] {
+				seen[clean] = true
+				links = append(links, clean)
 			}
-		}
-		start = end
-		if start >= len(content) {
-			break
 		}
 	}
 	return links

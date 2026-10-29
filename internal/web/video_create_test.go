@@ -173,11 +173,6 @@ func TestDetectAutoWorkflow(t *testing.T) {
 	if outType != "workflow" || wf != "preset_fashion_tryon" {
 		t.Errorf("got %s %s, want workflow preset_fashion_tryon", outType, wf)
 	}
-	// Audio story
-	outType, wf = detectAutoWorkflow("Kể câu chuyện cổ tích và bài học cuộc sống", "Truyện audio", "", "", 0, false, "")
-	if outType != "workflow" || wf != "preset_audio_story" {
-		t.Errorf("got %s %s, want workflow preset_audio_story", outType, wf)
-	}
 	// Viral dance
 	outType, wf = detectAutoWorkflow("Nhảy vũ đạo bắt trend hot tiktok triệu view", "Vũ đạo", "", "", 0, true, "")
 	if outType != "viral" || wf != "preset_viral_dance" {

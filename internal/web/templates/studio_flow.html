@@ -509,6 +509,7 @@
 window.__INITIAL_GRAPH__ = {{if .ActiveGraph}}{{.ActiveGraph}}{{else}}null{{end}};
 window.__NODE_DEFINITIONS__ = {{if .NodeDefs}}{{.NodeDefs}}{{else}}[]{{end}};
 window.__SAVED_GRAPHS__ = {{if .Graphs}}{{.Graphs}}{{else}}[]{{end}};
+window.__INITIAL_RUN_ID__ = {{if .RunID}}"{{.RunID}}"{{else}}""{{end}};
 </script>
 <script src="/static/flow-canvas.js?v={{assetVer}}"></script>
 {{end}}

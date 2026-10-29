@@ -55,10 +55,16 @@ func (s *Server) handleStudioFlowView(w http.ResponseWriter, r *http.Request) {
 	var activeGraph *flow.FlowGraph
 
 	preset := r.URL.Query().Get("preset")
+	runID := r.URL.Query().Get("run_id")
 
 	if s.Studio != nil {
 		if fStore, err := s.Studio.GetFlowStore(); err == nil {
 			graphs, _ = fStore.ListGraphs()
+			if preset == "" && runID != "" {
+				if run, err := fStore.GetRun(runID); err == nil && run != nil && run.GraphID != "" {
+					preset = run.GraphID
+				}
+			}
 			if preset != "" {
 				activeGraph, _ = fStore.GetGraph(preset)
 			}
@@ -89,6 +95,7 @@ func (s *Server) handleStudioFlowView(w http.ResponseWriter, r *http.Request) {
 		"ActiveGraph":    activeGraph,
 		"NodeDefs":       nodeDefs,
 		"PresetID":       preset,
+		"RunID":          runID,
 		"IsWorkflowPage": true,
 	}
 

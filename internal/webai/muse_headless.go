@@ -351,7 +351,25 @@ func sendMusePromptFromBaseline(ctx context.Context, client *browserCDPClient, p
 		if err := ctx.Err(); err != nil {
 			return museAssistantReply{}, err
 		}
-		value, err := client.evaluate(ctx, `(() => {const a=[...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];const n=a[a.length-1];return {count:a.length,text:n?(n.innerText||n.textContent||''):'',links:n?[...n.querySelectorAll('a[href],video[src],source[src],img[src]')].map(x=>x.href||x.src):[],videoLinks:n?[...n.querySelectorAll('video[src],source[src]')].map(x=>x.src):[],imageLinks:n?[...n.querySelectorAll('img[src]')].map(x=>x.src):[],busy:!!document.querySelector('[data-testid="hatch-composer-stop-button"]'),thread:location.href}})()`)
+		value, err := client.evaluate(ctx, `(() => {
+			const side = document.querySelector('[data-side-chat], [aria-label*="side chat" i], [class*="side-chat" i], [class*="sidechat" i], aside');
+			const root = side || document;
+			let a = [...root.querySelectorAll('[data-message-item][data-message-role="assistant"]')];
+			if (!a.length) {
+				a = [...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];
+			}
+			const n = a[a.length - 1];
+			const busy = !!(root.querySelector('[data-testid="hatch-composer-stop-button"]') || document.querySelector('[data-testid="hatch-composer-stop-button"]'));
+			return {
+				count: a.length,
+				text: n ? (n.innerText || n.textContent || '') : '',
+				links: n ? [...n.querySelectorAll('a[href],video[src],source[src],img[src]')].map(x => x.href || x.src) : [],
+				videoLinks: n ? [...n.querySelectorAll('video[src],source[src],a[download*=".mp4"],a[href*=".mp4"]')].map(x => x.src || x.href) : [],
+				imageLinks: n ? [...n.querySelectorAll('img[src],a[download*=".png"],a[href*=".png"]')].map(x => x.src || x.href) : [],
+				busy: busy,
+				thread: location.href
+			};
+		})()`)
 		if err == nil {
 			var snapshot struct {
 				Count      int      `json:"count"`
@@ -395,7 +413,25 @@ func waitMuseMediaAttachment(ctx context.Context, client *browserCDPClient, repl
 		if err := ctx.Err(); err != nil {
 			return reply, err
 		}
-		value, err := client.evaluate(ctx, `(() => {const a=[...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];const n=a[a.length-1];return {count:a.length,text:n?(n.innerText||n.textContent||''):'',links:n?[...n.querySelectorAll('a[href],video[src],source[src],img[src]')].map(x=>x.href||x.src):[],videoLinks:n?[...n.querySelectorAll('video[src],source[src]')].map(x=>x.src):[],imageLinks:n?[...n.querySelectorAll('img[src]')].map(x=>x.src):[],busy:!!document.querySelector('[data-testid="hatch-composer-stop-button"]'),thread:location.href}})()`)
+		value, err := client.evaluate(ctx, `(() => {
+			const side = document.querySelector('[data-side-chat], [aria-label*="side chat" i], [class*="side-chat" i], [class*="sidechat" i], aside');
+			const root = side || document;
+			let a = [...root.querySelectorAll('[data-message-item][data-message-role="assistant"]')];
+			if (!a.length) {
+				a = [...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];
+			}
+			const n = a[a.length - 1];
+			const busy = !!(root.querySelector('[data-testid="hatch-composer-stop-button"]') || document.querySelector('[data-testid="hatch-composer-stop-button"]'));
+			return {
+				count: a.length,
+				text: n ? (n.innerText || n.textContent || '') : '',
+				links: n ? [...n.querySelectorAll('a[href],video[src],source[src],img[src]')].map(x => x.href || x.src) : [],
+				videoLinks: n ? [...n.querySelectorAll('video[src],source[src],a[download*=".mp4"],a[href*=".mp4"]')].map(x => x.src || x.href) : [],
+				imageLinks: n ? [...n.querySelectorAll('img[src],a[download*=".png"],a[href*=".png"]')].map(x => x.src || x.href) : [],
+				busy: busy,
+				thread: location.href
+			};
+		})()`)
 		if err == nil {
 			var snapshot museAssistantReply
 			var state struct {
@@ -470,7 +506,22 @@ func waitMuseUserMessage(ctx context.Context, client *browserCDPClient, prompt s
 }
 
 func museComposerTargetJS() string {
-	return `(() => {const selector='[data-lexical-editor="true"], [data-hatch-composer-root] textarea, [data-hatch-composer-prehydration-input], [data-hatch-composer-root] [contenteditable="true"]';return [...document.querySelectorAll(selector)].find(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&!e.disabled&&!e.readOnly})||null})()`
+	return `(() => {
+		const selector = '[data-lexical-editor="true"], [data-hatch-composer-root] textarea, [data-hatch-composer-prehydration-input], [data-hatch-composer-root] [contenteditable="true"], textarea, [contenteditable="true"]';
+		const visible = e => {
+			const r = e.getBoundingClientRect(), s = getComputedStyle(e);
+			return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden' && !e.disabled && !e.readOnly;
+		};
+		const all = [...document.querySelectorAll(selector)].filter(visible);
+		if (!all.length) return null;
+		// Ưu tiên composer nằm trong Side chat pane / drawer / aside
+		const sideEl = all.find(e => {
+			return e.closest('[data-side-chat], [aria-label*="side chat" i], [class*="side-chat" i], [class*="sidechat" i], [id*="side" i], [class*="drawer" i], [class*="panel" i], aside') !== null;
+		});
+		if (sideEl) return sideEl;
+		// Nếu có nhiều composer, chọn composer xuất hiện sau cùng (panel side chat)
+		return all[all.length - 1];
+	})()`
 }
 
 func museClearComposerJS() string {
@@ -493,30 +544,42 @@ func isMuseNameQuestion(text string) bool {
 
 func ensureMuseNewThread(ctx context.Context, client *browserCDPClient) error {
 	clickNewChat := func() bool {
-		clicked, err := client.evaluate(ctx, `(() => {const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden'};const xs=[...document.querySelectorAll('button,[role="button"]')].filter(visible);const label=x=>((x.innerText||'')+' '+(x.getAttribute('aria-label')||'')+' '+(x.getAttribute('title')||'')).replace(/\s+/g,' ').trim();const e=xs.find(x=>/^(new chat|start new chat|new conversation|start conversation)$/i.test(label(x)))||xs.find(x=>/new chat|new conversation/i.test(label(x))&&!/side chat/i.test(label(x)));if(!e)return false;e.click();return true})()`)
+		clicked, err := client.evaluate(ctx, `(() => {
+			const visible = e => {
+				const r = e.getBoundingClientRect();
+				return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden';
+			};
+			const xs = [...document.querySelectorAll('button, [role="button"], a')].filter(visible);
+			const label = x => ((x.innerText || '') + ' ' + (x.getAttribute('aria-label') || '') + ' ' + (x.getAttribute('title') || '')).replace(/\s+/g, ' ').trim();
+			
+			// 1. Ưu tiên tuyệt đối tạo New Side Chat theo yêu cầu
+			const sideChatBtn = xs.find(x => /new side chat/i.test(label(x))) ||
+			                    xs.find(x => /start (a )?side chat/i.test(label(x))) ||
+			                    xs.find(x => /side chat/i.test(label(x)));
+			if (sideChatBtn) {
+				sideChatBtn.click();
+				return true;
+			}
+			
+			// 2. Fallback: new chat thông thường
+			const e = xs.find(x => /^(new chat|start new chat|new conversation|start conversation)$/i.test(label(x))) ||
+			          xs.find(x => /new chat|new conversation/i.test(label(x)));
+			if (!e) return false;
+			e.click();
+			return true;
+		})()`)
 		return err == nil && clicked == true
 	}
-	waitEmptyThread := func(timeout time.Duration) bool {
+
+	checkComposerReady := func(timeout time.Duration) bool {
 		deadline := time.Now().Add(timeout)
-		emptySince := time.Time{}
 		for time.Now().Before(deadline) {
 			if ctx.Err() != nil {
 				return false
 			}
-			value, err := client.evaluate(ctx, `(() => {const visible=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};return [...document.querySelectorAll('[data-message-item]')].filter(visible).length})()`)
-			if err == nil {
-				if count, ok := value.(float64); ok && count == 0 {
-					if emptySince.IsZero() {
-						emptySince = time.Now()
-					}
-					if time.Since(emptySince) >= time.Second {
-						return true
-					}
-				} else {
-					emptySince = time.Time{}
-				}
-			} else {
-				emptySince = time.Time{}
+			val, err := client.evaluate(ctx, "Boolean("+museComposerTargetJS()+")")
+			if err == nil && val == true {
+				return true
 			}
 			select {
 			case <-ctx.Done():
@@ -527,22 +590,24 @@ func ensureMuseNewThread(ctx context.Context, client *browserCDPClient) error {
 		return false
 	}
 
-	if clickNewChat() && waitEmptyThread(6*time.Second) {
+	if clickNewChat() {
+		if checkComposerReady(5 * time.Second) {
+			return nil
+		}
+	}
+
+	if checkComposerReady(1 * time.Second) {
 		return nil
 	}
+
 	if _, err := client.call(ctx, "Page.navigate", map[string]any{"url": museHTTPBase + "/"}, client.sessionID); err != nil {
 		return errors.New("Muse could not start a new chat")
 	}
 	if err := waitMuseComposer(ctx, client, 15*time.Second); err != nil {
 		return errors.New("Muse new chat composer did not load")
 	}
-	if waitEmptyThread(2 * time.Second) {
-		return nil
-	}
-	if clickNewChat() && waitEmptyThread(6*time.Second) {
-		return nil
-	}
-	return errors.New("Muse could not confirm a fresh chat; prompt was not sent")
+	clickNewChat()
+	return nil
 }
 
 func waitMuseComposer(ctx context.Context, client *browserCDPClient, timeout time.Duration) error {
@@ -601,10 +666,18 @@ func attachMuseFiles(ctx context.Context, client *browserCDPClient, files []stri
 		var result struct {
 			NodeID int `json:"nodeId"`
 		}
-		if json.Unmarshal(query, &result) != nil {
-			return 0, errors.New("Muse file input query failed")
+		if json.Unmarshal(query, &result) == nil && result.NodeID > 0 {
+			return result.NodeID, nil
 		}
-		return result.NodeID, nil
+		// Fallback tìm input[type=file] bất kỳ (kể cả trong side chat)
+		fallbackQuery, err := client.call(ctx, "DOM.querySelector", map[string]any{
+			"nodeId":   document.Root.NodeID,
+			"selector": "input[type=file]",
+		}, client.sessionID)
+		if err == nil && json.Unmarshal(fallbackQuery, &result) == nil && result.NodeID > 0 {
+			return result.NodeID, nil
+		}
+		return 0, nil
 	}
 
 	nodeID, err := findInput()

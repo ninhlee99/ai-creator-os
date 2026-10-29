@@ -246,6 +246,12 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
+	targetWF := workflowID
+	if targetWF == "preset_affiliate_daily" || targetWF == "auto" || targetWF == "" {
+		targetWF = "preset_affiliate_showcase"
+	}
+	runID := fmt.Sprintf("aff-wf-%d-%d", prod.ID, time.Now().Unix())
+
 	jobTitle := "Video affiliate: " + prod.Title
 	params := map[string]any{
 		"product_id":       prod.ID,
@@ -255,7 +261,8 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 		"category":         prod.Category,
 		"theme":            prod.Theme,
 		"images":           prod.ImageURLs,
-		"workflow_id":      workflowID,
+		"workflow_id":      targetWF,
+		"run_id":           runID,
 		"account":          account,
 		"account_id":       accountID,
 		"model_id":         modelID,
@@ -368,7 +375,6 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 						services.MuseCreditsAcknowledged = true
 						services.GoogleFlowCreditsAcknowledged = true
 
-						runID := fmt.Sprintf("aff-wf-%d-%d", prod.ID, time.Now().Unix())
 						run, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
 						if runErr == nil && run != nil && run.Status == "completed" {
 							if vid, ok := run.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {

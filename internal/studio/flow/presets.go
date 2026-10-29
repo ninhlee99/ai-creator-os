@@ -51,5 +51,4 @@ func presetByID(id string) FlowGraph {
 // Exported constructors remain as compatibility helpers; preset content lives in JSON.
 func PresetViralDance() FlowGraph         { return presetByID("preset_viral_dance") }
 func PresetAffiliateShowcase() FlowGraph  { return presetByID("preset_affiliate_showcase") }
-func PresetMultiAIHybrid() FlowGraph      { return presetByID("preset_multi_ai") }
 func PresetFashionTryOnAngles() FlowGraph { return presetByID("preset_fashion_tryon") }

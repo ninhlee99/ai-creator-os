@@ -371,16 +371,117 @@ func renderCinematicMotionShot(ctx *ExecutionContext, files []string, prompt, ou
 
 	shotDuration := 6
 	totalFrames := shotDuration * 30
-	srcImg := validImages[0]
-	vf := fmt.Sprintf("scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,zoompan=z='min(zoom+0.001,1.12)':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30,setsar=1", totalFrames)
 
-	args := []string{
-		"-loop", "1", "-i", srcImg,
-		"-vf", vf,
-		"-t", strconv.Itoa(shotDuration),
-		"-c:v", "libx264", "-pix_fmt", "yuv420p",
-		"-y", outPath,
+	// Xác định số thứ tự shot hiện tại từ thư mục iteration (ví dụ: item_001, item_002...)
+	shotIndex := 0
+	if strings.Contains(ctx.WorkDir, "item_") {
+		parts := strings.Split(filepath.ToSlash(ctx.WorkDir), "/")
+		for _, p := range parts {
+			if strings.HasPrefix(p, "item_") {
+				if num, err := strconv.Atoi(strings.TrimPrefix(p, "item_")); err == nil && num > 0 {
+					shotIndex = num - 1
+				}
+			}
+		}
 	}
+
+	// Phân loại ảnh nhân vật và ảnh sản phẩm
+	var charImages []string
+	var prodImages []string
+	for _, f := range validImages {
+		lower := strings.ToLower(filepath.Base(f))
+		if strings.Contains(lower, "extract") || strings.Contains(lower, "cutout") ||
+			strings.Contains(lower, "prod") || strings.Contains(lower, "dl_") ||
+			strings.Contains(lower, "garment") || strings.Contains(lower, "listing") {
+			prodImages = append(prodImages, f)
+		} else {
+			charImages = append(charImages, f)
+		}
+	}
+
+	// Chọn ảnh chính và ảnh phụ (badge) cho shot để đảm bảo sản phẩm luôn xuất hiện nổi bật
+	var srcImg string
+	var badgeImg string
+
+	if len(prodImages) > 0 && len(charImages) > 0 {
+		// Kết hợp luân phiên giữa sản phẩm và mẫu:
+		// Shot 0: Sản phẩm cận cảnh kèm huy hiệu người mẫu ở góc (endorsing)
+		// Shot 1: Cận cảnh sản phẩm / cutout chi tiết (không bị che)
+		// Shot 2: Người mẫu giới thiệu kèm huy hiệu sản phẩm
+		// Shot 3: Góc ảnh sản phẩm khác / chất liệu
+		// Shot 4: Sản phẩm chốt hạ (CTA)
+		switch shotIndex % 5 {
+		case 0:
+			srcImg = prodImages[0]
+			badgeImg = charImages[0]
+		case 1:
+			if len(prodImages) > 1 {
+				srcImg = prodImages[1]
+			} else {
+				srcImg = prodImages[0]
+			}
+		case 2:
+			srcImg = charImages[0]
+			badgeImg = prodImages[0]
+		case 3:
+			pIdx := (shotIndex) % len(prodImages)
+			srcImg = prodImages[pIdx]
+		default:
+			srcImg = prodImages[0]
+			badgeImg = charImages[0]
+		}
+	} else if len(prodImages) > 0 {
+		srcImg = prodImages[shotIndex%len(prodImages)]
+	} else {
+		srcImg = validImages[shotIndex%len(validImages)]
+	}
+
+	// Đa dạng hóa chuyển động camera qua từng shot để video sinh động
+	var motionFilter string
+	switch shotIndex % 4 {
+	case 0:
+		// Zoom in chậm, mượt
+		motionFilter = fmt.Sprintf("zoompan=z='min(zoom+0.0008,1.14)':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30", totalFrames)
+	case 1:
+		// Lướt nhẹ từ trên xuống dưới (quét dáng sản phẩm)
+		motionFilter = fmt.Sprintf("zoompan=z='1.10':d=%d:x='iw/2-(iw/zoom/2)':y='min(ih-ih/zoom,max(0,ih*0.08+on*0.35))':s=1080x1920:fps=30", totalFrames)
+	case 2:
+		// Lướt nhẹ từ dưới lên trên (nhấn mạnh chi tiết form)
+		motionFilter = fmt.Sprintf("zoompan=z='1.10':d=%d:x='iw/2-(iw/zoom/2)':y='max(0,ih*0.25-on*0.35)':s=1080x1920:fps=30", totalFrames)
+	default:
+		// Zoom in tập trung trung tâm
+		motionFilter = fmt.Sprintf("zoompan=z='min(zoom+0.001,1.15)':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30", totalFrames)
+	}
+
+	var args []string
+	if badgeImg != "" && fileExists(badgeImg) {
+		badgeSize := 280
+		filterComplex := fmt.Sprintf(
+			"[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,%s,setsar=1[bg];"+
+				"[1:v]scale=%d:%d:force_original_aspect_ratio=cover,crop=%d:%d,setsar=1[pip];"+
+				"[bg][pip]overlay=main_w-overlay_w-36:36[vout]",
+			motionFilter, badgeSize, badgeSize, badgeSize, badgeSize,
+		)
+		args = []string{
+			"-loop", "1", "-i", srcImg,
+			"-loop", "1", "-i", badgeImg,
+			"-filter_complex", filterComplex,
+			"-map", "[vout]",
+			"-t", strconv.Itoa(shotDuration),
+			"-c:v", "libx264", "-pix_fmt", "yuv420p",
+			"-y", outPath,
+		}
+	} else {
+		vf := fmt.Sprintf("scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,%s,setsar=1", motionFilter)
+		args = []string{
+			"-loop", "1", "-i", srcImg,
+			"-vf", vf,
+			"-t", strconv.Itoa(shotDuration),
+			"-c:v", "libx264", "-pix_fmt", "yuv420p",
+			"-y", outPath,
+		}
+	}
+
 	if ctx.FFmpegRunner != nil {
 		if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
 			return fmt.Errorf("tạo chuyển động shot thất bại: %w", err)

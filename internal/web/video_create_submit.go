@@ -122,9 +122,6 @@ func detectAutoWorkflow(prompt, topic, productURL, tiktokLink string, photoCount
 	if strings.Contains(content, "thời trang") || strings.Contains(content, "outfit") || strings.Contains(content, "phối đồ") || strings.Contains(content, "tryon") {
 		return "workflow", "preset_fashion_tryon"
 	}
-	if strings.Contains(content, "truyện") || strings.Contains(content, "kể chuyện") || strings.Contains(content, "podcast") {
-		return "workflow", "preset_audio_story"
-	}
 
 	affType := detectAutoVideoType(prompt, topic, productURL, tiktokLink, photoCount, hasVideo)
 	if affType == "affiliate" {
@@ -733,6 +730,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		if isAutoMode {
 			jobTitle = "Video Affiliate (AI Tự Động): " + topic
 		}
+		runID := fmt.Sprintf("wf-aff-%d-%d", accountID, time.Now().Unix())
 		params := map[string]any{
 			"prompt":            prompt,
 			"topic":             topic,
@@ -744,6 +742,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			"photos":            uploadedPhotos,
 			"auto_detected":     isAutoMode,
 			"workflow_id":       workflowID,
+			"run_id":            runID,
 		}
 		if sampleVideoPath != "" {
 			params["sample_video"] = sampleVideoPath
@@ -828,7 +827,6 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 						services := s.flowExecutionServices()
 						services.MuseCreditsAcknowledged = true
 						services.GoogleFlowCreditsAcknowledged = true
-						runID := fmt.Sprintf("wf-aff-%d-%d", accountID, time.Now().Unix())
 						flowRun, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
 							if runErr == nil && flowRun != nil && flowRun.Status == "completed" {
 								if vid, ok := flowRun.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {
@@ -892,6 +890,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		if isAutoMode {
 			jobTitle = "TikTok Viral (AI Tự Động): " + topic
 		}
+		runID := fmt.Sprintf("wf-viral-%d-%d", accountID, time.Now().Unix())
 		params := map[string]any{
 			"prompt":            prompt,
 			"topic":             topic,
@@ -903,6 +902,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			"photos":            uploadedPhotos,
 			"auto_detected":     isAutoMode,
 			"workflow_id":       workflowID,
+			"run_id":            runID,
 		}
 		keepSourceVideoForJob = true
 		jobID, err := s.Studio.CreateExternalJob("viral", jobTitle, params,
@@ -957,7 +957,6 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 						services := s.flowExecutionServices()
 						services.MuseCreditsAcknowledged = true
 						services.GoogleFlowCreditsAcknowledged = true
-						runID := fmt.Sprintf("wf-viral-%d-%d", accountID, time.Now().Unix())
 						flowRun, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
 							if runErr == nil && flowRun != nil && flowRun.Status == "completed" {
 								if vid, ok := flowRun.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {

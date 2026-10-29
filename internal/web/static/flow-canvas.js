@@ -105,6 +105,19 @@
       this.bindGraphsModal();
       this.updateZoomDisplay();
       if (this.graph.nodes.length) requestAnimationFrame(() => this.fitCanvas());
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetRunId = urlParams.get('run_id') || window.__INITIAL_RUN_ID__;
+      if (targetRunId) {
+        this.currentRunId = targetRunId;
+        const panel = document.getElementById('flow-run-panel');
+        if (panel) panel.hidden = false;
+        if (this.statusPill) {
+          this.statusPill.innerText = `⚡ Đang xem Run: ${targetRunId.slice(-12)}`;
+          this.statusPill.className = 'wf-status-pill status-ready';
+        }
+        this.startPollingRun(targetRunId);
+      }
     }
 
     setupResizeObserver() {
@@ -2693,7 +2706,7 @@
     startPollingRun(runId) {
       if (this.pollInterval) clearInterval(this.pollInterval);
 
-      this.pollInterval = setInterval(async () => {
+      const pollOnce = async () => {
         try {
           const resp = await fetch(`/api/flow/runs/${runId}`);
           const res = await resp.json();
@@ -2748,8 +2761,10 @@
 
           // Terminal completion
           if (run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
-            clearInterval(this.pollInterval);
-            this.pollInterval = null;
+            if (this.pollInterval) {
+              clearInterval(this.pollInterval);
+              this.pollInterval = null;
+            }
 
             const runBtn = document.getElementById('btn-run-flow');
             const cancelBtn = document.getElementById('btn-cancel-flow');
@@ -2782,7 +2797,11 @@
         } catch (e) {
           console.error('Workflow poll error', e);
         }
-      }, 700);
+      };
+
+      pollOnce();
+      this.pollInterval = setInterval(pollOnce, 800);
+    }
     }
 
     async cancelFlow() {

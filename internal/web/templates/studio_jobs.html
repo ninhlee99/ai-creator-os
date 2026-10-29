@@ -202,126 +202,23 @@
     {{template "studio-affiliate-handoff" .}}
     {{end}}
 
-    <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">🎬 Storyboard Từng Cảnh</button>
+    <div style="display:flex;align-items:center;gap:12px;margin:14px 0 6px">
+      <a href="/workflow?preset={{if .WorkflowID}}{{.WorkflowID}}{{else}}preset_affiliate_showcase{{end}}{{if .RunID}}&run_id={{.RunID}}{{end}}" target="_blank" class="btn btn-primary" style="font-weight:750;display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);border:none;box-shadow:0 3px 12px rgba(124,58,237,0.35);color:#fff;text-decoration:none">
+        <span>⚡ Xem quy trình Workflow (Live Nodes)</span> ↗
+      </a>
+      <span style="font-size:12px;color:var(--muted)">Bấm để mở Canvas xem các Node đang xử lý và sáng đèn realtime</span>
     </div>
-    <div class="board" style="margin-top:10px"></div>
-    <details open style="margin-top:12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 12px">
-      <summary style="font-size:12px;cursor:pointer;color:var(--muted);font-weight:600">📜 Nhật ký render chi tiết (Log Console) · Realtime</summary>
-      <pre class="log" id="log-{{.ID}}" style="margin-top:8px;font-family:monospace;font-size:11.5px;max-height:180px;overflow:auto;color:var(--text);background:var(--bg);padding:10px;border-radius:6px;line-height:1.4"></pre>
-    </details>
+
+
   </div>
   {{end}}
 </div>
 
 {{else if or (eq .Tab "done") (not .Tab)}}
-<!-- DONE JOBS VIEW: Unified 4-Videos-Per-Row Grid Gallery -->
+<!-- DONE JOBS VIEW: Modern Video Gallery -->
 <div class="studio-videos-grid">
   {{range .Jobs}}
-  <div id="job-{{.ID}}" class="video-item-card" data-job="{{.ID}}">
-    <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:5px">
-          <span class="badge badge-info" style="font-size:10px;font-weight:700">{{.KindLabel}}</span>
-          <span class="badge badge-{{.Class}}" style="font-size:10px;font-weight:700">{{.Label}}</span>
-          {{if and (eq .Status "done") (not .QCVerified)}}<span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #f59e0b;border-radius:999px;padding:2px 7px" title="Job hoàn tất render nhưng thiếu bằng chứng QC của pipeline hiện tại">⚠ Chưa xác minh QC</span>{{end}}
-        </div>
-        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa job này và toàn bộ file liên quan?" data-confirm-danger>
-          <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err);padding:2px 6px;font-size:11px" title="Xóa video và file">🗑</button>
-        </form>
-      </div>
-
-      <div class="video-item-title" title="{{.Title}}">
-        {{.Title}}
-      </div>
-      {{if or .AccountName .ModelPhoto}}
-      <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text);margin:4px 0 6px">
-        {{if .ModelPhoto}}<img src="{{.ModelPhoto}}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">{{end}}
-        <strong style="color:var(--text)">@{{.AccountName}}</strong>
-        {{if .OutputResolution}}<span class="badge badge-draft" style="font-size:9.5px;padding:1px 5px">{{.OutputResolution}}</span>{{end}}
-        {{if .Engine}}<span class="badge badge-ok" style="font-size:9.5px;padding:1px 5px">🌊 Web AI</span>{{end}}
-      </div>
-      {{end}}
-      {{if .SourceMusicTitle}}
-      <div class="hint" style="margin:4px 0 8px">
-        {{if eq .Kind "viral"}}Audio giữ từ video Radar:{{else}}Sound tách từ video Radar:{{end}}
-        <strong>{{.SourceMusicTitle}}</strong> ·
-        <a href="{{.SourceMusicURL}}" target="_blank" rel="noopener noreferrer">Mở nguồn ↗</a>
-        {{if .SourceMusicVideoID}}<small> · ID {{.SourceMusicVideoID}}</small>{{end}}
-        {{if .SourceMusicAuthor}}<small> · @{{.SourceMusicAuthor}}</small>{{end}}
-      </div>
-      {{end}}
-
-      {{if eq .Kind "affiliate"}}
-      {{template "studio-affiliate-handoff" .}}
-      {{end}}
-
-      {{if eq .OutputKind "video"}}
-      <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để xem video">
-        <video class="player" data-video-spec preload="metadata" muted loop playsinline src="/media/{{.Output}}"></video>
-        <div class="video-play-overlay">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
-        </div>
-        <span class="video-badge-spec">Đang đọc khổ…</span>
-      </div>
-      {{else if eq .OutputKind "image"}}
-      <div class="video-thumb-preview" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);overflow:hidden">
-        <img src="/media/{{.Output}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:contain">
-      </div>
-      {{else if eq .OutputKind "text"}}
-      <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="display:block;padding:24px 10px;text-align:center;margin-bottom:10px">📄 Mở kịch bản</a>
-      {{else}}
-      <div style="padding:24px 10px;text-align:center;background:var(--bg3);border-radius:10px;border:1px dashed var(--border);margin-bottom:10px">
-        <span style="font-size:24px;display:block;margin-bottom:4px">⚠️</span>
-        <span style="font-size:11.5px;color:var(--muted)">Chưa có file video</span>
-      </div>
-      {{end}}
-
-      <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);margin-bottom:10px">
-        <span>📅 {{fmtVN .CreatedAt}}</span>
-        {{if .FinishedAt}}<span style="color:var(--accent);font-weight:700">✓ Xong</span>{{end}}
-      </div>
-      {{template "studio-tiktok-publication" .}}
-      {{template "studio-tiktok-draft-action" .}}
-    </div>
-
-    <div>
-      {{if eq .OutputKind "video"}}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-        {{if .QCVerified}}<a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" title="Mở trang tải file video để tự đăng trong ứng dụng nền tảng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📤 Bàn giao</a>{{else}}<span class="btn btn-secondary btn-sm" aria-disabled="true" title="Hoàn tất render chưa chứng minh video đạt kiểm tra chất lượng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center;opacity:.65">⚠ Chưa xác minh QC</span>{{end}}
-        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">⬇ Tải video</a>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:4px">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" style="font-size:11px;padding:4px 0;text-align:center" title="Xem video phóng to">▶ Xem</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Kind}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Sao chép Post Kit">📋 Kit</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Storyboard từng cảnh">🎬 Cảnh</button>
-      </div>
-      {{if eq .Kind "affiliate"}}
-      <details class="advanced remix" style="margin-top:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
-        <summary style="font-size:11px;font-weight:700;cursor:pointer">✏️ Remix</summary>
-        <form method="post" action="/studio/jobs/{{.ID}}/remix" enctype="multipart/form-data" style="margin-top:8px" data-confirm="Dựng lại sẽ gửi yêu cầu mới tới Muse AI và có thể dùng credits. Tiếp tục?">
-          <div class="remix-grid" style="gap:6px">
-            <label style="font-size:11px">Thời lượng (s)<input type="number" name="seconds" min="30" max="180" placeholder="giữ nguyên" style="padding:4px 6px;font-size:11px"></label>
-          </div>
-          <input type="hidden" name="confirm_flow_credits" value="1">
-          <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700;font-size:11px;width:100%;margin-top:6px">Dựng lại</button>
-        </form>
-      </details>
-      {{end}}
-      {{else if eq .OutputKind "image"}}
-      <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="display:block;text-align:center">⬇ Tải ảnh</a>
-      {{else if eq .OutputKind "text"}}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <a class="btn btn-primary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="text-align:center">Mở kịch bản</a>
-        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="text-align:center">Tải .md</a>
-      </div>
-      {{else}}
-      <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="width:100%;font-size:11.5px">🎬 Storyboard Từng Cảnh</button>
-      {{end}}
-
-      <div class="board" style="margin-top:6px"></div>
-    </div>
-  </div>
+    {{template "studio-video-card" .}}
   {{end}}
 </div>
 
@@ -335,69 +232,7 @@
   </h3>
   <div class="studio-videos-grid">
     {{range .DoneJobs}}
-    <div id="job-{{.ID}}" class="video-item-card" data-job="{{.ID}}">
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="display:flex;align-items:center;gap:5px">
-            <span class="badge badge-info" style="font-size:10px;font-weight:700">{{.KindLabel}}</span>
-            <span class="badge badge-{{.Class}}" style="font-size:10px;font-weight:700">{{.Label}}</span>
-            {{if and (eq .Status "done") (not .QCVerified)}}<span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #f59e0b;border-radius:999px;padding:2px 7px" title="Job hoàn tất render nhưng thiếu bằng chứng QC của pipeline hiện tại">⚠ Chưa xác minh QC</span>{{end}}
-          </div>
-          <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa job này và toàn bộ file liên quan?" data-confirm-danger>
-            <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err);padding:2px 6px;font-size:11px" title="Xóa video và file">🗑</button>
-          </form>
-        </div>
-
-        <div class="video-item-title" title="{{.Title}}">
-          {{.Title}}
-        </div>
-
-        {{if eq .OutputKind "video"}}
-        <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để xem video">
-          <video class="player" data-video-spec preload="metadata" muted loop playsinline src="/media/{{.Output}}"></video>
-          <div class="video-play-overlay">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
-          </div>
-          <span class="video-badge-spec">Đang đọc khổ…</span>
-        </div>
-        {{else if eq .OutputKind "image"}}
-        <div class="video-thumb-preview" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);overflow:hidden">
-          <img src="/media/{{.Output}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:contain">
-        </div>
-        {{else if eq .OutputKind "text"}}
-        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="display:block;padding:24px 10px;text-align:center;margin-bottom:10px">📄 Mở kịch bản</a>
-        {{end}}
-
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);margin-bottom:10px">
-          <span>📅 {{fmtVN .CreatedAt}}</span>
-          {{if .FinishedAt}}<span style="color:var(--accent);font-weight:700">✓ Xong</span>{{end}}
-        </div>
-        {{template "studio-tiktok-publication" .}}
-        {{template "studio-tiktok-draft-action" .}}
-      </div>
-
-      <div>
-        {{if eq .OutputKind "video"}}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-          {{if .QCVerified}}<a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" title="Mở trang tải file video để tự đăng trong ứng dụng nền tảng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📤 Bàn giao</a>{{else}}<span class="btn btn-secondary btn-sm" aria-disabled="true" title="Hoàn tất render chưa chứng minh video đạt kiểm tra chất lượng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center;opacity:.65">⚠ Chưa xác minh QC</span>{{end}}
-          <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">⬇ Tải video</a>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:4px">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" style="font-size:11px;padding:4px 0;text-align:center" title="Xem video phóng to">▶ Xem</button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Kind}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Sao chép Post Kit">📋 Kit</button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Storyboard từng cảnh">🎬 Cảnh</button>
-        </div>
-        {{else if eq .OutputKind "image"}}
-        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="display:block;text-align:center">⬇ Tải ảnh</a>
-        {{else if eq .OutputKind "text"}}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          <a class="btn btn-primary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="text-align:center">Mở kịch bản</a>
-          <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="text-align:center">Tải .md</a>
-        </div>
-        {{end}}
-        <div class="board" style="margin-top:6px"></div>
-      </div>
-    </div>
+      {{template "studio-video-card" .}}
     {{end}}
   </div>
 </div>
@@ -510,5 +345,138 @@ function copyAffiliateTrackingLink(button) {
   {{if .ProductName}}<div><strong>Sản phẩm cần gắn trong TikTok Shop:</strong> {{.ProductName}}{{if .ProductShopID}} · ID <code>{{.ProductShopID}}</code>{{end}}{{if .ProductPageURL}} · <a href="{{.ProductPageURL}}" target="_blank" rel="noopener noreferrer">Mở listing ↗</a>{{end}}</div>{{end}}
   {{if .AffiliateAttributionID}}<div>Mã đối chiếu đơn (sub2): <code>{{.AffiliateAttributionID}}</code></div>{{else}}<div>Chưa có mã tracking riêng cho video.</div>{{end}}
   {{if .AffiliateLink}}<div class="flex flex-wrap items-center gap-2"><span>Link affiliate:</span><a href="{{.AffiliateLink}}" target="_blank" rel="noopener noreferrer">Mở link ↗</a><button type="button" class="btn btn-secondary btn-sm" data-affiliate-link="{{.AffiliateLink}}" onclick="copyAffiliateTrackingLink(this)">Sao chép link</button></div><small>Trong TikTok, gắn sản phẩm từ TikTok Shop bằng tìm kiếm sản phẩm. Link affiliate dùng đối chiếu đơn; chưa thay thế product card.</small>{{end}}
+</div>
+{{end}}
+
+{{define "studio-video-card"}}
+<div id="job-{{.ID}}" class="video-item-card" data-job="{{.ID}}" style="display:flex;flex-direction:column;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,0.04);position:relative">
+  <div>
+    <!-- 1. Video Thumbnail Preview at TOP -->
+    {{if eq .OutputKind "video"}}
+    <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để xem video" style="position:relative;background:#090d16;border-radius:10px;overflow:hidden;margin-bottom:10px;aspect-ratio:9/16;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06)">
+      <video class="player" data-video-spec preload="metadata" muted loop playsinline src="/media/{{.Output}}" style="width:100%;height:100%;object-fit:cover;display:block"></video>
+      <div class="video-play-overlay">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
+      </div>
+
+      <!-- Top Overlay Badges inside video thumbnail -->
+      <div style="position:absolute;top:8px;left:8px;right:8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;z-index:3">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <span class="badge" style="background:rgba(0,0,0,0.7);color:#fff;backdrop-filter:blur(4px);font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;border:1px solid rgba(255,255,255,0.15)">{{.KindLabel}}</span>
+          {{if and (eq .Status "done") (not .QCVerified)}}
+          <span style="font-size:10px;font-weight:700;color:#fff;background:rgba(217,119,6,0.9);backdrop-filter:blur(4px);border-radius:6px;padding:2px 7px" title="Chưa xác minh QC">⚠ QC</span>
+          {{else}}
+          <span style="font-size:10px;font-weight:700;color:#fff;background:rgba(16,185,129,0.9);backdrop-filter:blur(4px);border-radius:6px;padding:2px 7px" title="QC Đã xác nhận">✓ QC</span>
+          {{end}}
+        </div>
+        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline;pointer-events:auto" data-confirm="Xóa job này và toàn bộ file liên quan?" data-confirm-danger>
+          <button class="btn btn-ghost btn-sm" type="submit" style="color:#fff;background:rgba(0,0,0,0.6);border-radius:50%;width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.2)" title="Xóa video và file">🗑</button>
+        </form>
+      </div>
+
+      <!-- Bottom overlay inside thumbnail -->
+      <div style="position:absolute;bottom:8px;left:8px;right:8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;z-index:3">
+        <span class="video-badge-spec" style="background:rgba(0,0,0,0.75);color:#fff;backdrop-filter:blur(4px);font-size:10px;padding:2px 6px;border-radius:4px">Đang đọc khổ…</span>
+        {{if .FinishedAt}}<span style="background:rgba(0,0,0,0.75);color:#34d399;font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px">✓ Xong</span>{{end}}
+      </div>
+    </div>
+    {{else if eq .OutputKind "image"}}
+    <div class="video-thumb-preview" style="aspect-ratio:9/16;display:flex;align-items:center;justify-content:center;background:#090d16;border-radius:10px;overflow:hidden;margin-bottom:10px;position:relative">
+      <img src="/media/{{.Output}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover">
+      <div style="position:absolute;top:8px;right:8px;z-index:3">
+        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa job này và file liên quan?" data-confirm-danger>
+          <button class="btn btn-ghost btn-sm" type="submit" style="color:#fff;background:rgba(0,0,0,0.6);border-radius:50%;width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2)" title="Xóa">🗑</button>
+        </form>
+      </div>
+    </div>
+    {{else if eq .OutputKind "text"}}
+    <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="display:block;padding:24px 10px;text-align:center;margin-bottom:10px">📄 Mở kịch bản</a>
+    {{else}}
+    <div style="padding:24px 10px;text-align:center;background:var(--bg3);border-radius:10px;border:1px dashed var(--border);margin-bottom:10px;aspect-ratio:9/16;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <span style="font-size:24px;display:block;margin-bottom:4px">⚠️</span>
+      <span style="font-size:11.5px;color:var(--muted)">Chưa có file video</span>
+    </div>
+    {{end}}
+
+    <!-- 2. Video Title -->
+    <div class="video-item-title" title="{{.Title}}" style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35;min-height:35px">
+      {{.Title}}
+    </div>
+
+    <!-- 3. Account / Channel & Date row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;color:var(--muted);margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        {{if .ModelPhoto}}<img src="{{.ModelPhoto}}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">{{end}}
+        <strong style="color:var(--text)">{{if .AccountName}}@{{.AccountName}}{{else}}Mặc định{{end}}</strong>
+      </div>
+      <span>📅 {{fmtVN .CreatedAt}}</span>
+    </div>
+
+    <!-- 4. Audio source if any -->
+    {{if .SourceMusicTitle}}
+    <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+      ♫ <strong style="color:var(--text)">{{.SourceMusicTitle}}</strong>
+      {{if .SourceMusicURL}} · <a href="{{.SourceMusicURL}}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Nguồn ↗</a>{{end}}
+    </div>
+    {{end}}
+
+    <!-- 5. Affiliate Details (Compact Collapsible) -->
+    {{if eq .Kind "affiliate"}}
+    <details style="margin:4px 0 8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:11px">
+      <summary style="cursor:pointer;font-weight:600;color:var(--accent)">🛍 Thông tin TikTok Shop</summary>
+      <div style="margin-top:6px;padding-top:4px;border-top:1px dashed var(--border)">
+        {{template "studio-affiliate-handoff" .}}
+      </div>
+    </details>
+    {{end}}
+  </div>
+
+  <!-- 6. Action Buttons at Bottom -->
+  <div style="margin-top:auto;padding-top:8px;border-top:1px solid var(--border)">
+    {{if eq .OutputKind "video"}}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+      {{if .QCVerified}}
+      <a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" title="Mở trang tải file video để tự đăng" style="font-weight:700;font-size:11px;padding:6px 4px;text-align:center">📤 Bàn giao</a>
+      {{else}}
+      <button class="btn btn-secondary btn-sm" type="button" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" style="font-weight:700;font-size:11px;padding:6px 4px;text-align:center">▶ Xem duyệt</button>
+      {{end}}
+      <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;font-size:11px;padding:6px 4px;text-align:center">⬇ Tải video</a>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:4px">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" style="font-size:10.5px;padding:4px 0;text-align:center" title="Xem video phóng to">▶ Xem</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Kind}}')" style="font-size:10.5px;padding:4px 0;text-align:center" title="Sao chép Post Kit">📋 Kit</button>
+      <a href="/workflow?preset={{if .WorkflowID}}{{.WorkflowID}}{{else}}preset_affiliate_showcase{{end}}{{if .RunID}}&run_id={{.RunID}}{{end}}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:10.5px;padding:4px 0;text-align:center;color:var(--accent);font-weight:700" title="Xem sơ đồ nodes thực thi của workflow này">⚡ Nodes</a>
+    </div>
+
+    <!-- Collapsible Advanced Settings (TikTok Draft & Remix) -->
+    <details style="margin-top:6px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:10.5px">
+      <summary style="cursor:pointer;color:var(--muted);font-weight:600">⚙️ Tuỳ chọn nâng cao</summary>
+      <div style="margin-top:6px;padding-top:4px;border-top:1px dashed var(--border)">
+        {{template "studio-tiktok-publication" .}}
+        {{template "studio-tiktok-draft-action" .}}
+        {{if eq .Kind "affiliate"}}
+        <form method="post" action="/studio/jobs/{{.ID}}/remix" enctype="multipart/form-data" style="margin-top:6px" data-confirm="Dựng lại sẽ gửi yêu cầu mới tới Muse AI và có thể dùng credits. Tiếp tục?">
+          <div class="remix-grid" style="gap:4px">
+            <label style="font-size:10.5px">Thời lượng (s)<input type="number" name="seconds" min="30" max="180" placeholder="giữ nguyên" style="padding:3px 5px;font-size:10.5px"></label>
+          </div>
+          <input type="hidden" name="confirm_flow_credits" value="1">
+          <button class="btn btn-secondary btn-sm" type="submit" style="font-weight:700;font-size:10.5px;width:100%;margin-top:4px">✏️ Remix lại</button>
+        </form>
+        {{end}}
+      </div>
+    </details>
+    {{else if eq .OutputKind "image"}}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="display:block;text-align:center;font-size:11px">⬇ Tải ảnh</a>
+      <a href="/workflow?preset={{if .WorkflowID}}{{.WorkflowID}}{{else}}preset_affiliate_showcase{{end}}{{if .RunID}}&run_id={{.RunID}}{{end}}" target="_blank" class="btn btn-secondary btn-sm" style="text-align:center;font-size:11px">⚡ Nodes</a>
+    </div>
+    {{else if eq .OutputKind "text"}}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <a class="btn btn-primary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="text-align:center;font-size:11px">Mở kịch bản</a>
+      <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="text-align:center;font-size:11px">Tải .md</a>
+    </div>
+    {{end}}
+  </div>
 </div>
 {{end}}

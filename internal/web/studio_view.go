@@ -60,6 +60,8 @@ type studioJobView struct {
 	TikTokDraftHasAccount  bool     `json:"tiktok_draft_has_account,omitempty"`
 	TikTokDraftUser        string   `json:"tiktok_draft_user,omitempty"`
 	TikTokDraftConfigured  bool     `json:"tiktok_draft_configured,omitempty"`
+	WorkflowID             string   `json:"workflow_id,omitempty"`
+	RunID                  string   `json:"run_id,omitempty"`
 }
 
 func toModelWebURL(path string) string {
@@ -120,6 +122,34 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 			QCVerified:    studioOutputQCVerified(j),
 			FailureReason: failureReason,
 			Log:           j.Log,
+		}
+		var rawParams map[string]any
+		if json.Unmarshal([]byte(j.Params), &rawParams) == nil {
+			if wf, ok := rawParams["workflow_id"].(string); ok && wf != "" {
+				view.WorkflowID = wf
+			}
+			if rid, ok := rawParams["run_id"].(string); ok && rid != "" {
+				view.RunID = rid
+			}
+		}
+		if view.WorkflowID == "" {
+			if j.Kind == studio.KindAffiliate {
+				view.WorkflowID = "preset_affiliate_showcase"
+			} else if j.Kind == studio.KindViral {
+				view.WorkflowID = "preset_viral_dance"
+			}
+		}
+		if view.RunID == "" && s.Studio != nil && view.WorkflowID != "" {
+			if fStore, err := s.Studio.GetFlowStore(); err == nil && fStore != nil {
+				if runs, err := fStore.ListRuns(20); err == nil {
+					for _, r := range runs {
+						if r.GraphID == view.WorkflowID {
+							view.RunID = r.ID
+							break
+						}
+					}
+				}
+			}
 		}
 		if j.Kind == studio.KindAffiliate {
 			var p studio.AffiliateParams
