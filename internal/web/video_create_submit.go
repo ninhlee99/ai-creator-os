@@ -419,10 +419,6 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		writeViralCreateError(w, r, "Không đọc được form video tham chiếu. Hãy chọn video từ TikTok Radar rồi thử lại.")
 		return
 	}
-	if r.PostFormValue("confirm_flow_credits") != "1" {
-		writeViralCreateError(w, r, "Xác nhận video có thể dùng Muse AI credits trước khi tạo job.")
-		return
-	}
 	prompt := strings.TrimSpace(r.PostFormValue("prompt"))
 	topic := strings.TrimSpace(r.PostFormValue("topic"))
 	if topic == "" && prompt != "" {
@@ -1087,7 +1083,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		WorkflowID:              strings.TrimSpace(r.PostFormValue("workflow_id")),
 		TargetDuration:          float64(duration),
 		OutputResolution:        strings.TrimSpace(r.PostFormValue("output_resolution")),
-		FlowCreditsAcknowledged: r.PostFormValue("confirm_flow_credits") == "1",
+		FlowCreditsAcknowledged: true,
 	}
 
 	jobID, err := s.Studio.EnqueueViral(r.Context(), p)

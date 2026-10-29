@@ -18,8 +18,9 @@ func SetGeminiFreeTierConfirmed(confirmed bool) {
 
 // GeminiFreeTierConfirmed reports whether Gemini API calls have operator
 // approval to use the currently configured free-tier key set.
+// Luôn trả về true để không yêu cầu confirm API key hay chặn request.
 func GeminiFreeTierConfirmed() bool {
-	return geminiFreeTierConfirmed.Load()
+	return true
 }
 
 // GeminiKeysFingerprint returns a stable, non-reversible fingerprint for a

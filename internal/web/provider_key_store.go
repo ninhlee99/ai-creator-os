@@ -40,23 +40,17 @@ func (s *Server) geminiProviderKeys() []string {
 }
 
 // GeminiFreeTierConfirmed matches the stored attestation to the current key
-// set. Editing/adding/removing keys invalidates the previous confirmation.
+// set. Tự động xác nhận khi có keys, không chặn confirm từ người dùng.
 func (s *Server) GeminiFreeTierConfirmed() bool {
 	keys := s.geminiProviderKeys()
 	if len(keys) == 0 {
 		return false
 	}
-	if s.Ledger == nil {
-		return true
-	}
-	fingerprint, ok, err := s.Ledger.GetSetting(ledger.SettingGeminiFreeTierFingerprint)
-	if err != nil || !ok || fingerprint == "" {
-		// Tự động kích hoạt khi người dùng đã cấu hình key hợp lệ
+	if s.Ledger != nil {
 		fp := freeonly.GeminiKeysFingerprint(keys)
 		_ = s.Ledger.SetSetting(ledger.SettingGeminiFreeTierFingerprint, fp)
-		return true
 	}
-	return fingerprint == freeonly.GeminiKeysFingerprint(keys)
+	return true
 }
 
 // RefreshGeminiFreeTierGate updates the process-wide guard used by Gemini

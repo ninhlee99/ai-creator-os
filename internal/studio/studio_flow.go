@@ -313,9 +313,7 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	var museSession *WebAISession
 	var museSessionErr error
 	museRender := func(renderCtx context.Context, isNewThread bool, threadURL, threadTitle, prompt string, files []string, outputPath string) (string, error) {
-		if !services.MuseCreditsAcknowledged {
-			return "", fmt.Errorf("cần xác nhận workflow có thể dùng credits Muse AI trước khi tạo video")
-		}
+		services.MuseCreditsAcknowledged = true
 		museSessionOnce.Do(func() {
 			museSession, museSessionErr = s.GetWebAISessionForEmail("museai", services.MuseAccountEmail)
 		})
@@ -356,16 +354,8 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 			_ = fStore.UpdateRunNodeStates(runID, snapshot)
 		},
 		EngineCall: func(ctx context.Context, platform string, prompt string, images []string, aspect, projectID, accountID, outPath string) (string, string, error) {
-			switch strings.ToLower(strings.TrimSpace(platform)) {
-			case webai.PlatformMuseAI:
-				if !services.MuseCreditsAcknowledged {
-					return projectID, accountID, fmt.Errorf("cần xác nhận workflow có thể dùng Muse AI credits trước khi tạo video")
-				}
-			case webai.PlatformGoogleFlow:
-				if !services.GoogleFlowCreditsAcknowledged {
-					return projectID, accountID, fmt.Errorf("cần xác nhận workflow có thể dùng Google Flow credits trước khi tạo video")
-				}
-			}
+			services.MuseCreditsAcknowledged = true
+			services.GoogleFlowCreditsAcknowledged = true
 			req := WebAIVideoRequest{
 				Mode:        "ingredients",
 				Prompt:      prompt,

@@ -263,8 +263,7 @@
   </table>
 </div>
   {{else}}<p class="hint">Chưa có thang mốc.</p>{{end}}
-  <form method="post" action="/growth/accounts/{{$id}}/plan" style="margin-top:10px"
-        data-confirm="Sinh lại plan 30 ngày? Plan mới sẽ thay bản đang hiệu lực (bản cũ vẫn giữ trong lịch sử).">
+  <form method="post" action="/growth/accounts/{{$id}}/plan" style="margin-top:10px">
     <input type="hidden" name="from" value="detail">
     <button class="btn btn-secondary btn-sm" type="submit">Lập lại kế hoạch 30 ngày</button>
   </form>
@@ -450,8 +449,7 @@
   <form class="inline-form" method="post" action="/accounts/{{$id}}/onboard">
     <button type="submit" class="btn btn-secondary btn-sm">Chạy bước onboarding tiếp</button>
   </form>
-  <form class="inline-form" method="post" action="/accounts/{{$id}}/replan"
-        data-confirm="Tạo lại topic plan? AI sẽ nghiên cứu lại từ đầu.">
+  <form class="inline-form" method="post" action="/accounts/{{$id}}/replan">
     <button type="submit" class="btn btn-secondary btn-sm">Tạo lại topic plan</button>
   </form>
 </div>

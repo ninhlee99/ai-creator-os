@@ -34,7 +34,7 @@ func newTestWebAIServer(t *testing.T) (*Server, *webai.Store) {
 	return srv, store
 }
 
-func TestStudioAIGenerateRequiresFlowCreditsConsent(t *testing.T) {
+func TestStudioAIGenerateDoesNotRequireCreditsConsent(t *testing.T) {
 	srv, store := newTestWebAIServer(t)
 	defer store.Close()
 	dir := t.TempDir()
@@ -54,11 +54,9 @@ func TestStudioAIGenerateRequiresFlowCreditsConsent(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	srv.handleStudioAIGenerate(rec, req)
-	if rec.Code != http.StatusSeeOther || !strings.Contains(rec.Header().Get("Location"), "credits") {
-		t.Fatalf("Flow request without consent status=%d location=%q", rec.Code, rec.Header().Get("Location"))
-	}
-	if jobs := st.ListJobs(10); len(jobs) != 0 {
-		t.Fatalf("Flow request without consent queued %d jobs", len(jobs))
+	// Không yêu cầu consent credits nữa; không chuyển hướng đến lỗi credits
+	if rec.Code != http.StatusSeeOther || strings.Contains(rec.Header().Get("Location"), "credits") {
+		t.Fatalf("Flow request must not block on credits consent: status=%d location=%q", rec.Code, rec.Header().Get("Location"))
 	}
 }
 

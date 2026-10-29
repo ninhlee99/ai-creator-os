@@ -43,12 +43,10 @@ func TestEnqueueViralJob(t *testing.T) {
 		Genre: "mystery",
 	}
 
-	jobID, err := s.EnqueueViral(context.Background(), p)
-	if err == nil || !strings.Contains(err.Error(), "credits") {
-		t.Fatalf("EnqueueViral error = %v, want explicit credits consent", err)
-	}
-	if jobID != "" || len(s.ListViralJobs(10)) != 0 {
-		t.Fatalf("paid video edit must not enqueue a job: id=%q jobs=%d", jobID, len(s.ListViralJobs(10)))
+	// Không còn yêu cầu xác nhận credits thủ công, nhưng vẫn kiểm tra các điều kiện khác (ví dụ character editor)
+	_, err = s.EnqueueViral(context.Background(), p)
+	if err == nil || strings.Contains(err.Error(), "credits") {
+		t.Fatalf("EnqueueViral error = %v, must not block on credits consent", err)
 	}
 }
 

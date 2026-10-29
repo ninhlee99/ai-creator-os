@@ -88,7 +88,6 @@ document.querySelectorAll('.keyring').forEach(function (root) {
       return;
     }
     if (ev.target.closest('.key-test-btn')) {
-      if (!await window.showAppConfirm('Kiểm tra key sẽ gửi request thật tới Gemini và tiêu thụ quota. Tiếp tục?', { title: 'Kiểm tra API key', confirmText: 'Gửi request', tone: 'warning' })) return;
       var btn = ev.target.closest('.key-test-btn');
       btn.disabled = true;
       msg.hidden = false; msg.textContent = 'Đang kiểm tra…'; msg.className = 'key-msg';

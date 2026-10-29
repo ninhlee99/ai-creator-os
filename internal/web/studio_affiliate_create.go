@@ -99,7 +99,7 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 		return
 	}
 	p.VideoEngine = studio.AffiliateVideoEngineMuseAI
-	p.FlowCreditsAcknowledged = r.PostFormValue("confirm_flow_credits") == "1"
+	p.FlowCreditsAcknowledged = true
 	keepClipsForJob := false
 	var clips []string
 	defer func() {
@@ -182,10 +182,6 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	}
 	if parseErr != nil {
 		studioErr("Không đọc được form — thử lại.")
-		return
-	}
-	if r.PostFormValue("confirm_flow_credits") != "1" {
-		studioErr("Xác nhận video có thể dùng Muse AI credits trước khi tạo job.")
 		return
 	}
 	planID := strings.TrimSpace(r.FormValue("prepared_plan_id"))

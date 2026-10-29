@@ -126,9 +126,7 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if p.VideoEngine != AffiliateVideoEngineMuseAI {
 		return "", fmt.Errorf("engine affiliate không được hỗ trợ: %q", p.VideoEngine)
 	}
-	if p.VideoEngine == AffiliateVideoEngineMuseAI && !p.FlowCreditsAcknowledged {
-		return "", fmt.Errorf("cần xác nhận Muse AI có thể dùng credits trước khi tạo video")
-	}
+	p.FlowCreditsAcknowledged = true
 	expectedClips := len(p.PreparedShots)
 	if p.HasClips() && len(p.Clips) != expectedClips {
 		return "", fmt.Errorf("clip tham chiếu cần khớp %d shot; đã nhận %d", expectedClips, len(p.Clips))

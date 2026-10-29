@@ -42,7 +42,7 @@ func (s *Server) handleStudioJobRemix(w http.ResponseWriter, r *http.Request) {
 	}
 	p = reorderPhotos(p, r.FormValue("order"))
 	p.FixedCaption = strings.TrimSpace(r.FormValue("caption"))
-	p.FlowCreditsAcknowledged = r.FormValue("confirm_flow_credits") == "1"
+	p.FlowCreditsAcknowledged = true
 	if err := s.ensureAffiliateRadarMusic(r.Context(), &p); err != nil {
 		back("err=" + url.QueryEscape("Không lấy được sound từ Radar: "+err.Error()))
 		return

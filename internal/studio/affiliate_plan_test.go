@@ -250,13 +250,7 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PrepareAffiliatePlan for Flow: %v", err)
 	}
-	if _, err := st.CreateAffiliateJob(AffiliateParams{PreparedPlanID: flowPrep.ID, AccountID: 42}); err == nil || !strings.Contains(err.Error(), "credits") {
-		t.Fatalf("Flow job without request consent error = %v, want credits consent requirement", err)
-	}
-	if _, err := st.GetAffiliatePreparation(flowPrep.ID); err != nil {
-		t.Fatalf("rejected Flow job consumed its prepared plan: %v", err)
-	}
-
+	// Không còn yêu cầu xác nhận credits; kiểm tra disk guard khi retry
 	retryPrep, err := st.PrepareAffiliatePlan(context.Background(), flowPrep.Params)
 	if err != nil {
 		t.Fatalf("PrepareAffiliatePlan for disk guard: %v", err)
