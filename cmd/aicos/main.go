@@ -16,6 +16,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/logx"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
 
 // version mặc định khi build thường; build phát hành truyền
@@ -46,6 +47,9 @@ func main() {
 	logx.SetupRailsLogging(os.Stderr, nil, lvl)
 
 	log.Printf("aicos %s starting (addr=%s data=%s)", version, *addr, *dataDir)
+
+	// Dọn dẹp triệt để các tiến trình browser headless mồ côi từ lần chạy trước (nếu có) để giải phóng RAM
+	webai.CleanupOrphanedHeadlessBrowsers()
 
 	// -- 1. data dir + ledger ---------------------------------------------
 	if err := os.MkdirAll(*dataDir, 0o700); err != nil {

@@ -47,10 +47,19 @@ func acquireHeadlessBrowserSlot(ctx context.Context) (func(), error) {
 	slots := getHeadlessBrowserSlots()
 	select {
 	case slots <- struct{}{}:
-		return func() { <-slots }, nil
+		return func() {
+			<-slots
+			cleanupOrphanedHeadlessBrowsers()
+		}, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+// CleanupOrphanedHeadlessBrowsers quét và tắt dứt điểm các tiến trình trình duyệt headless
+// bị mồ côi (orphaned) để thu hồi toàn bộ RAM cho hệ thống.
+func CleanupOrphanedHeadlessBrowsers() {
+	cleanupOrphanedHeadlessBrowsers()
 }
 
 // AcquireHeadlessBrowserSlot caps browser processes across webai and Studio.

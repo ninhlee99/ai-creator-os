@@ -497,15 +497,15 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 	}
 
 	if s.Studio == nil {
-		writeViralCreateError(w, r, "Studio chưa sẵn sàng để xác minh video Radar TikTok")
+		writeViralCreateError(w, r, "Studio chưa sẵn sàng để xử lý video TikTok")
 		return
 	}
-	sourceVideo, err := s.Studio.ResolveTikTokRadarDanceVideo(r.Context(), tiktokLink)
-	if err != nil {
-		writeViralCreateError(w, r, "Chọn video từ Radar TikTok trước khi tiếp tục: "+err.Error())
-		return
+	var sourceVideo studio.TikTokTrendVideo
+	// Thử kiểm tra nếu video đã có sẵn trong Radar để lấy metadata
+	if radarVid, err := s.Studio.ResolveTikTokRadarVideo(r.Context(), tiktokLink); err == nil && radarVid.VideoURL != "" {
+		sourceVideo = radarVid
+		tiktokLink = radarVid.VideoURL
 	}
-	tiktokLink = sourceVideo.VideoURL
 	dlDst := filepath.Join(upDir, fmt.Sprintf("%d-tiktok-dl.mp4", time.Now().UnixNano()))
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	downloadErr := studio.DownloadTikTokSourceVideo(ctx, tiktokLink, dlDst)
@@ -516,19 +516,19 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		if len([]rune(message)) > 500 {
 			message = string([]rune(message)[:500]) + "…"
 		}
-		log.Printf("web: viral Radar download failed: %s", message)
-		writeViralCreateError(w, r, "Không tải được video từ Radar: "+message)
+		log.Printf("web: viral source download failed: %s", message)
+		writeViralCreateError(w, r, "Không tải được video từ link TikTok đã nhập: "+message)
 		return
 	}
 	if err := studio.ValidateTikTokSourceFile(dlDst); err != nil {
 		_ = os.Remove(dlDst)
-		writeViralCreateError(w, r, "Video Radar tải về không hợp lệ: "+err.Error())
+		writeViralCreateError(w, r, "Video TikTok tải về không hợp lệ: "+err.Error())
 		return
 	}
 	sampleVideoPath = dlDst
 	previewCleanup = append(previewCleanup, sampleVideoPath)
 	if !studio.ProbeHasAudio(r.Context(), sampleVideoPath) {
-		writeViralCreateError(w, r, "Video Radar không có track âm thanh; chọn video khác.")
+		writeViralCreateError(w, r, "Video TikTok không có track âm thanh; vui lòng chọn hoặc dán link video khác.")
 		return
 	}
 

@@ -48,3 +48,7 @@ func killBrowserProcessTree(cmd *exec.Cmd) error {
 	}
 	return cmd.Process.Kill()
 }
+
+func cleanupOrphanedHeadlessBrowsers() {
+	// Trên Windows, taskkill /F /IM msedge.exe hoặc chrome.exe có thể quét theo cờ commandline nếu cần
+}

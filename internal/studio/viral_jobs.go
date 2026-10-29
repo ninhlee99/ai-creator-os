@@ -51,22 +51,21 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 		return "", fmt.Errorf("cần file video nguồn hợp lệ: %w", err)
 	}
 	if !IsTikTokVideoURL(p.SourceVideoURL) {
-		return "", fmt.Errorf("cần video nguồn TikTok đã chọn trong Radar")
+		return "", fmt.Errorf("cần link video TikTok hợp lệ")
 	}
-	sourceVideo, err := s.ResolveTikTokRadarDanceVideo(ctx, p.SourceVideoURL)
-	if err != nil {
-		return "", fmt.Errorf("video nguồn không thuộc Radar đã lưu: %w", err)
+	if sourceVideo, err := s.ResolveTikTokRadarDanceVideo(ctx, p.SourceVideoURL); err == nil {
+		if p.SourceVideoID == "" || p.SourceVideoID == sourceVideo.VideoID {
+			p.SourceVideoURL = sourceVideo.VideoURL
+			p.SourceVideoID = sourceVideo.VideoID
+			p.SourceVideoAuthor = sourceVideo.Author
+			p.SourceMusicTitle = sourceVideo.SoundTitle()
+			p.SourceCollectedAt = sourceVideo.CollectedAt
+		}
+	} else if p.SourceVideoID == "" {
+		p.SourceVideoID = tiktokVideoID(p.SourceVideoURL)
 	}
-	if p.SourceVideoID != "" && p.SourceVideoID != sourceVideo.VideoID {
-		return "", fmt.Errorf("video ID không khớp URL nguồn Radar")
-	}
-	p.SourceVideoURL = sourceVideo.VideoURL
-	p.SourceVideoID = sourceVideo.VideoID
-	p.SourceVideoAuthor = sourceVideo.Author
-	p.SourceMusicTitle = sourceVideo.SoundTitle()
-	p.SourceCollectedAt = sourceVideo.CollectedAt
 	if !ProbeHasAudio(ctx, p.SampleVideo) {
-		return "", fmt.Errorf("video nguồn Radar không có track âm thanh")
+		return "", fmt.Errorf("video nguồn TikTok không có track âm thanh")
 	}
 	duration := probeDuration(ctx, p.SampleVideo)
 	if err := validateViralSourceDuration(duration); err != nil {

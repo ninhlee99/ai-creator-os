@@ -11,10 +11,25 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
 
 func startWorkersAndServe(ctx context.Context, cancel context.CancelFunc, addr string, srv *web.Server, studioInst *studio.Studio) {
 	log.Printf("daemon: đã tắt toàn bộ tiến trình daemon ngầm lúc khởi động (hệ thống hoạt động on-demand)")
+
+	// Quét dọn định kỳ các tiến trình browser headless mồ côi (nếu có) để reset RAM
+	go func() {
+		ticker := time.NewTicker(3 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				webai.CleanupOrphanedHeadlessBrowsers()
+			}
+		}
+	}()
 
 	httpSrv := &http.Server{
 		Addr:              addr,
@@ -54,5 +69,6 @@ func startWorkersAndServe(ctx context.Context, cancel context.CancelFunc, addr s
 		log.Printf("shutdown: chờ tác vụ Studio và workflow đang chạy...")
 		studioInst.Shutdown(30 * time.Second)
 	}
+	webai.CleanupOrphanedHeadlessBrowsers()
 	log.Printf("shutdown: complete")
 }
