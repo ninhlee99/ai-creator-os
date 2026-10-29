@@ -83,7 +83,7 @@ func pickTikTokSessionAndIdentity(cookies []cdpCookie) (session, identity string
 		if !strings.Contains(c.Domain, "tiktok.com") {
 			continue
 		}
-		if (c.Name == "sessionid" || c.Name == "sessionid_ss" || c.Name == "sid_guard") && len(c.Value) > 6 {
+		if (c.Name == "sessionid" || c.Name == "sessionid_ss" || c.Name == "sid_guard" || c.Name == "sid_tt") && len(c.Value) > 6 {
 			if session == "" || c.Name == "sessionid" || c.Name == "sessionid_ss" {
 				session = c.Value
 			}
@@ -97,7 +97,7 @@ func pickTikTokSessionAndIdentity(cookies []cdpCookie) (session, identity string
 
 func (tikTokLoginAdapter) validateSession(ctx context.Context, client *http.Client, auth *CapturedWebAuth) error {
 	raw := strings.TrimSpace(auth.CookieHeader)
-	if !strings.Contains(raw, "sessionid=") && !strings.Contains(raw, "sessionid_ss=") && !strings.Contains(raw, "sid_guard=") {
+	if !strings.Contains(raw, "sessionid=") && !strings.Contains(raw, "sessionid_ss=") && !strings.Contains(raw, "sid_guard=") && !strings.Contains(raw, "sid_tt=") {
 		return fmt.Errorf("chưa tìm thấy cookie sessionid của TikTok")
 	}
 	return nil

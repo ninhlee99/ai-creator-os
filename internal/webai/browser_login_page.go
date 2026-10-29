@@ -37,7 +37,7 @@ func cdpHasLandingHost(port int, host string) bool {
 			continue
 		}
 		actualHost := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
-		isMatch := actualHost == host
+		isMatch := actualHost == host || strings.HasSuffix(actualHost, "."+host)
 		if host == "flow.google.com" || host == "labs.google" {
 			isMatch = actualHost == "flow.google.com" || actualHost == "labs.google" || actualHost == "aitestkitchen.withgoogle.com"
 		}
@@ -46,6 +46,10 @@ func cdpHasLandingHost(port int, host string) bool {
 		}
 		if !isMatch {
 			continue
+		}
+
+		if host == "tiktok.com" {
+			return true
 		}
 
 		// Đang ở màn hình chọn tài khoản Google, trang login hoặc trang giới thiệu công khai thì CHƯA được coi là xong!
