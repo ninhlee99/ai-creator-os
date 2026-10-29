@@ -2802,7 +2802,6 @@
       pollOnce();
       this.pollInterval = setInterval(pollOnce, 800);
     }
-    }
 
     async cancelFlow() {
       if (!this.currentRunId) return;
