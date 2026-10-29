@@ -315,7 +315,12 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		_ = s.Ledger.Decide("human", "viral_source_replace", nil, fmt.Sprintf("Tạo video thay nhân vật trên nguồn đã chọn job=%s genre=%s: %s", jobID, genre, topic), nil)
 	}
 
-	http.Redirect(w, r, "/studio/jobs?msg=created&job_id="+url.QueryEscape(jobID)+"#job-"+url.QueryEscape(jobID), http.StatusSeeOther)
+	msg := "Đang khởi chạy tạo video TikTok ngay!"
+	if active, err := s.Studio.CountActiveJobs(); err == nil && active > 1 {
+		msg = "Đã thêm video TikTok vào hàng đợi (đang chờ các job trước hoàn thành)!"
+	}
+
+	http.Redirect(w, r, "/studio/jobs?msg="+url.QueryEscape(msg)+"&job_id="+url.QueryEscape(jobID)+"#job-"+url.QueryEscape(jobID), http.StatusSeeOther)
 }
 
 func writeViralCreateError(w http.ResponseWriter, r *http.Request, analysisOnly bool, status int, message string) {

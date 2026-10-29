@@ -156,5 +156,10 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	seeOther(w, r, "/studio/jobs?tab=running&msg="+url.QueryEscape("Đã thêm video cho sản phẩm \""+prod.Title+"\" vào hàng đợi!")+"&job_id="+url.QueryEscape(jobID)+"#job-"+url.QueryEscape(jobID))
+	msg := "Đang khởi chạy tạo video ngay cho sản phẩm \"" + prod.Title + "\"!"
+	if active, err := s.Studio.CountActiveJobs(); err == nil && active > 1 {
+		msg = "Đã thêm video cho sản phẩm \"" + prod.Title + "\" vào hàng đợi (đang chờ các job trước hoàn thành)!"
+	}
+
+	seeOther(w, r, "/studio/jobs?tab=running&msg="+url.QueryEscape(msg)+"&job_id="+url.QueryEscape(jobID)+"#job-"+url.QueryEscape(jobID))
 }

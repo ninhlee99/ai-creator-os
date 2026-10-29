@@ -748,11 +748,17 @@ document.addEventListener('keydown', function(e) {
          hx-trigger="{{if .CoveragePending}}load delay:2s, every 4s{{else}}every 15m{{end}}"
          hx-target="this" hx-swap="outerHTML">
   {{if .TrendErr}}
-  <div style="background: var(--err-bg); border: 1px solid var(--err); border-radius: 12px; padding: 12px 16px; color: var(--err-text); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-    <div><strong>Không lấy được dữ liệu:</strong> {{.TrendErr}}</div>
+  <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 12px 16px; color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px;">
+    <div style="font-size: 13px; display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 16px;">📡</span>
+      <div>
+        <strong>Đang đồng bộ dữ liệu xu hướng:</strong>
+        <span style="color: var(--muted); font-size: 12px;">Đang kết nối trình duyệt thu thập danh sách video mới nhất cho chủ đề "{{.Topic}}".</span>
+      </div>
+    </div>
     <form method="post" action="/studio/trends/refresh" style="margin: 0;">
       <input type="hidden" name="topic" value="{{.Topic}}">
-      <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 8px;">↻ Thử lại</button>
+      <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 8px; font-weight: 700; font-size: 12px; white-space: nowrap;">↻ Thử lại</button>
     </form>
   </div>
   {{end}}
@@ -792,130 +798,80 @@ document.addEventListener('keydown', function(e) {
       data-comments="{{if or .CommentCountKnown .CommentKnown}}{{.Comments}}{{else}}—{{end}}"
       data-shares="{{if .ShareCountKnown}}{{.Shares}}{{else}}—{{end}}"
       data-analysis-summary="{{if .Analysis}}{{.Analysis.Summary}} {{.Analysis.Evidence}}{{end}}"
-      data-rank="{{.Rank}}">
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        {{if eq .Rank 1}}<span class="rank-badge rank-gold">👑 TOP 01</span>
-        {{else if eq .Rank 2}}<span class="rank-badge rank-silver">🥈 TOP 02</span>
-        {{else if eq .Rank 3}}<span class="rank-badge rank-bronze">🥉 TOP 03</span>
-        {{else}}<span class="rank-badge rank-default">TOP {{printf "%02d" .Rank}}</span>{{end}}
+      data-rank="{{.Rank}}"
+      style="display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:var(--bg2);border:1px solid var(--border);transition:transform 0.2s,box-shadow 0.2s;">
 
-        {{if $.DanceFilterEnabled}}
-        {{if .DanceVerified}}
-        <span class="badge badge-ok" style="font-size: 11px; padding: 4px 7px; font-weight: 700;">✓ Đã xác nhận vũ đạo</span>
-        {{else}}
-        <span class="badge badge-warn" style="font-size: 11px; padding: 4px 7px; font-weight: 700;">Cần xem trước khi dùng sound</span>
-        {{end}}
-        {{end}}
-      </div>
-
-      <div style="display:flex;flex-wrap:wrap;gap:5px;">
-        {{if $.DanceFilterEnabled}}
-        {{if .Analysis.DanceDetected}}
-        <span class="badge badge-ok" style="font-size:10px;">💃 AI phát hiện vũ đạo · {{printf "%.2f" .Analysis.DanceConfidence}}</span>
-        {{else}}
-        <span class="badge badge-dim" style="font-size:10px;">AI chưa xác nhận vũ đạo</span>
-        {{end}}
-        {{end}}
-        <span class="badge badge-info" style="font-size:10px;">Khớp chủ đề {{printf "%.2f" .Analysis.TopicRelevance}}</span>
-        {{if .Analysis.Providers}}<span class="badge badge-dim" style="font-size:9px;">AI: {{join ", " .Analysis.Providers}}</span>{{end}}
-      </div>
-      {{if .Analysis.Summary}}<small class="hint" style="font-size:9.5px;line-height:1.4;">{{.Analysis.Summary}} {{.Analysis.Evidence}}</small>{{end}}
-
-      <!-- Thumbnail có nút bấm Xem trực tiếp trên màn hình -->
-      <div class="thumb-container" onclick="openRadarPlayerFromCard(this)" title="Bấm để xem video ngay trên màn hình">
+      <!-- 1. Thumbnail ở trên cùng với Badge Xếp hạng và Thống kê trực quan -->
+      <div class="thumb-container" onclick="openRadarPlayerFromCard(this)" title="Bấm để xem video ngay" style="position:relative;width:100%;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:#000;cursor:pointer;">
         {{if .CoverURL}}
-        <img src="{{.CoverURL}}" alt="Ảnh bìa video TikTok" loading="lazy" decoding="async">
+        <img src="{{.CoverURL}}" alt="Ảnh bìa video TikTok" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;">
         {{else}}
         <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;">▶</div>
         {{end}}
+
+        <!-- Floating Rank Badge ở góc trên trái -->
+        <div style="position:absolute;top:8px;left:8px;z-index:2;">
+          {{if eq .Rank 1}}<span class="rank-badge rank-gold" style="font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">👑 TOP 01</span>
+          {{else if eq .Rank 2}}<span class="rank-badge rank-silver" style="font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">🥈 TOP 02</span>
+          {{else if eq .Rank 3}}<span class="rank-badge rank-bronze" style="font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">🥉 TOP 03</span>
+          {{else}}<span class="rank-badge rank-default" style="font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">TOP {{printf "%02d" .Rank}}</span>{{end}}
+        </div>
+
+        <!-- Floating Dance Badge ở góc trên phải nếu có -->
+        {{if .Analysis.DanceDetected}}
+        <div style="position:absolute;top:8px;right:8px;z-index:2;">
+          <span style="font-size:10px;font-weight:700;padding:3px 7px;border-radius:6px;background:rgba(16,185,129,0.9);color:#fff;backdrop-filter:blur(4px);box-shadow:0 2px 6px rgba(0,0,0,0.3);">💃 Vũ đạo</span>
+        </div>
+        {{end}}
+
+        <!-- Play overlay khi hover -->
         <div class="play-btn-overlay">
           <div class="play-circle">▶</div>
           <span style="color:#fff;font-size:11px;font-weight:700;margin-top:6px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">Xem video</span>
         </div>
-        <div style="position: absolute; bottom: 6px; left: 6px; right: 6px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-size: 10.5px; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.9); pointer-events:none;">
-          <span>🇻🇳 VN</span>
-          <span>▶ Xem</span>
+
+        <!-- Thống kê Views & Tym mờ phủ dưới đáy ảnh -->
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:24px 8px 8px;background:linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:11px;font-weight:700;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,0.8);">
+          <span style="display:flex;align-items:center;gap:3px;">👁️ {{if .PlayCountKnown}}{{.Views}}{{else}}—{{end}}</span>
+          <span style="display:flex;align-items:center;gap:3px;color:#f43f5e;">❤️ {{if .DiggCountKnown}}{{.Likes}}{{else}}—{{end}}</span>
         </div>
       </div>
 
-      <!-- Hộp số liệu views và tym -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-        <div class="metric-box views">
-          <div style="font-size: 9.5px; font-weight: 700; color: #6366f1; text-transform: uppercase;">XEM</div>
-          <div class="metric-val">{{if .PlayCountKnown}}{{.Views}}{{else}}—{{end}}</div>
-        </div>
-        <div class="metric-box likes">
-          <div style="font-size: 9.5px; font-weight: 700; color: #ec4899; text-transform: uppercase;">TYM</div>
-          <div class="metric-val">{{if .DiggCountKnown}}{{.Likes}}{{else}}—{{end}}</div>
-        </div>
-      </div>
-      {{if .VelocityKnown}}
-      <small class="hint" style="font-size:10px;">↗ {{printf "%.0f" .ViewsPerHour}} view/giờ · snapshot gần đây</small>
-      {{else if .EngagementKnown}}
-      <small class="hint" style="font-size:10px;">Engagement {{printf "%.1f%%" (mul .EngagementRate 100)}} · chưa đủ snapshot tăng trưởng</small>
-      {{end}}
-
-      <!-- Tiêu đề & Author -->
-      <div>
-        <strong style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; line-height: 1.35; color: var(--text);" title="{{.Title}}">
+      <!-- 2. Tiêu đề và Kênh Creator -->
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <div style="font-weight:700;font-size:12.5px;line-height:1.35;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px;" title="{{.Title}}">
           {{.Title}}
-        </strong>
-        <div class="hint" style="font-size: 10.5px; margin-top: 1px;">
+        </div>
+        <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
           {{if .UniqueID}}@{{.UniqueID}}{{else if .Author}}{{.Author}}{{else}}Creator TikTok{{end}}
         </div>
       </div>
 
-      <!-- Âm thanh -->
-      <div style="font-size: 10.5px; background: var(--bg3); padding: 5px 7px; border-radius: 6px;">
-        <small class="hint" style="display: block; font-size: 9.5px; font-weight: 600;">♫ SOUND GỐC</small>
-        <span style="font-weight: 600; color: var(--text); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{.Music}}">
-          {{if .Music}}{{.Music}}{{else}}Chưa có metadata sound{{end}}
+      <!-- 3. Sound Metadata ngắn gọn -->
+      <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;background:var(--bg3);padding:5px 8px;border-radius:6px;overflow:hidden;">
+        <span style="font-size:11px;color:var(--accent);flex-shrink:0;">🎵</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text);" title="{{.Music}}">
+          {{if .Music}}{{.Music}}{{else}}Sound TikTok gốc{{end}}
         </span>
       </div>
 
-      {{if and $.DanceFilterEnabled .DanceVerified}}
-      <form method="post" action="/studio/trends/{{.VideoID}}/dance" style="margin: 0;">
-        <input type="hidden" name="verified" value="0">
-        <input type="hidden" name="topic" value="{{$.Topic}}">
-        <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">Bỏ xác nhận video nhảy</button>
-      </form>
-      {{else if $.DanceFilterEnabled}}
-      <form method="post" action="/studio/trends/{{.VideoID}}/dance" style="display: grid; gap: 6px; margin: 0;">
-        <input type="hidden" name="verified" value="1">
-        <input type="hidden" name="topic" value="{{$.Topic}}">
-        <small class="hint" style="font-size: 10.5px; line-height: 1.35;">AI phân tích vũ đạo; cần xem video trước khi xác nhận để dùng sound.</small>
-        <label style="display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.35; font-weight: 600;">
-          <input type="checkbox" name="confirm_dance_content" value="1" required style="margin: 1px 0 0;">
-          <span>Tôi đã mở và xem video; nội dung có vũ đạo.</span>
-        </label>
-        <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; font-weight: 700;">Xác nhận vũ đạo</button>
-      </form>
-      {{end}}
-
-      <!-- Nút hành động trực tiếp -->
-      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 5px; padding-top: 6px; border-top: 1px solid var(--border);">
-        <button type="button" class="btn btn-primary btn-sm" onclick="openRadarPlayerFromCard(this)" style="width: 100%; font-size: 11px; padding: 6px; background: linear-gradient(135deg, #4f46e5, #7c3aed); border: none; font-weight: 700;">
-          ▶ Xem video
-        </button>
-        {{if $.DanceFilterEnabled}}
-        {{if .DanceVerified}}
-        <div style="display: flex; gap: 5px;">
-          <a href="/studio?source_music_title={{urlquery .Music}}&amp;source_music_video_url={{urlquery .VideoURL}}" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 10.5px; padding: 5px; text-align: center;" title="Ghép sound này vào video Affiliate">
-            ♫ Dùng nhạc
-          </a>
-          <a href="/viral?source_video_url={{urlquery .VideoURL}}&amp;source_music_title={{urlquery .Music}}&amp;topic={{urlquery .Title}}" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 10.5px; padding: 5px; text-align: center;" title="Làm video viral theo video này">
-            🎬 Làm mẫu
+      <!-- 4. Nút hành động trực tiếp -->
+      <div style="margin-top:auto;padding-top:8px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);">
+        <a href="/viral?tiktok_link={{urlquery .VideoURL}}&source_video_url={{urlquery .VideoURL}}&source_music_title={{urlquery .Music}}&topic={{urlquery .Title}}"
+           class="btn btn-primary"
+           style="width:100%;font-size:12px;font-weight:700;padding:8px 10px;border-radius:8px;text-align:center;background:linear-gradient(135deg, #2563eb, #7c3aed);border:none;box-shadow:0 2px 8px rgba(124,58,237,0.3);text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span>⚡</span> Tạo video theo trend
+        </a>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openRadarPlayerFromCard(this)" style="font-size:11px;font-weight:600;padding:6px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:4px;">
+            <span>▶</span> Xem trước
+          </button>
+          <a href="/studio?source_music_title={{urlquery .Music}}&source_music_video_url={{urlquery .VideoURL}}" class="btn btn-secondary btn-sm" style="font-size:11px;font-weight:600;padding:6px;border-radius:6px;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;" title="Ghép sound vào video Affiliate">
+            <span>♫</span> Dùng sound
           </a>
         </div>
-        {{else}}
-        <div class="hint" style="font-size: 10.5px; text-align: center;">Mở xem và xác nhận vũ đạo để bật hành động dùng nguồn.</div>
-        {{end}}
-        {{else}}
-        <a href="/viral?source_video_url={{urlquery .VideoURL}}&amp;source_music_title={{urlquery .Music}}&amp;topic={{urlquery .Title}}" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 10.5px; padding: 5px; text-align: center;" title="Dùng video làm mẫu; không cần xác nhận dance cho topic tùy chỉnh">
-          🎬 Làm mẫu video
-        </a>
-        {{end}}
       </div>
+
     </article>
     {{end}}
   </div>

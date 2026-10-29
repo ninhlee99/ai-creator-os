@@ -172,15 +172,11 @@
 
       <input type="hidden" name="confirm_flow_credits" value="1">
 
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button type="submit" class="btn btn-primary" style="flex:1;min-width:240px;padding:13px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);box-shadow:0 4px 14px rgba(124,58,237,0.35);border:none;cursor:pointer">
-          🚀 Khởi chạy Workflow Tạo Video TikTok
-        </button>
-        <button type="button" id="viral-analyze-button" class="btn btn-secondary" onclick="analyzeViralSource()" style="padding:13px 18px;font-weight:700;font-size:13px">
-          🔍 Phân tích Storyboard
+      <div style="margin-top:4px">
+        <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);box-shadow:0 4px 14px rgba(124,58,237,0.35);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span>🚀</span> Khởi chạy Workflow Tạo Video TikTok
         </button>
       </div>
-      <div id="viral-analysis-result" role="status" aria-live="polite" style="margin-top:12px"></div>
     </div>
 
   </div>
@@ -276,38 +272,6 @@ function pasteFromClipboard(id) {
   }).catch(() => {
     alert('Không thể đọc clipboard. Hãy nhấn Cmd+V / Ctrl+V.');
   });
-}
-
-function analyzeViralSource() {
-  var link = document.getElementById('viral-tiktok-link').value.trim();
-  if (!link) {
-    alert('Nhập link video TikTok trước khi phân tích storyboard.');
-    return;
-  }
-  var btn = document.getElementById('viral-analyze-button');
-  var res = document.getElementById('viral-analysis-result');
-  btn.disabled = true;
-  btn.textContent = '⏳ Đang phân tích...';
-  res.innerHTML = '<div style="font-size:12px;color:var(--muted)">Đang đọc khung hình và phân tích vũ đạo...</div>';
-
-  var form = document.getElementById('viral-dance-form');
-  var data = new FormData(form);
-  fetch('/viral/create?analyze=1', { method: 'POST', body: data })
-    .then(r => r.json())
-    .then(d => {
-      btn.disabled = false;
-      btn.textContent = '🔍 Phân tích Storyboard';
-      if (d.error) {
-        res.innerHTML = `<div style="color:#ef4444;font-size:12px">❌ Lỗi: ${d.error}</div>`;
-      } else {
-        res.innerHTML = `<div style="background:var(--bg3);padding:10px;border-radius:8px;font-size:12px;line-height:1.5"><strong>✓ Phân tích hoàn tất:</strong> ${d.scenes ? d.scenes.length : 0} phân cảnh được trích xuất.</div>`;
-      }
-    })
-    .catch(err => {
-      btn.disabled = false;
-      btn.textContent = '🔍 Phân tích Storyboard';
-      res.innerHTML = `<div style="color:#ef4444;font-size:12px">❌ Lỗi kết nối: ${err.message}</div>`;
-    });
 }
 
 document.addEventListener('DOMContentLoaded', function() {

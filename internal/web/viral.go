@@ -95,15 +95,19 @@ func viralStatusVN(st string) string {
 
 func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	srcURL := strings.TrimSpace(q.Get("tiktok_link"))
+	if srcURL == "" {
+		srcURL = strings.TrimSpace(q.Get("source_video_url"))
+	}
 	v := viralView{
 		StudioOK:         s.Studio != nil,
 		Error:            q.Get("err"),
 		Notice:           q.Get("notice"),
 		Warning:          q.Get("warn"),
 		AvailableModels:  s.listModelPhotoCards(),
-		SourceVideoURL:   q.Get("source_video_url"),
-		SourceMusicTitle: q.Get("source_music_title"),
-		Topic:            q.Get("topic"),
+		SourceVideoURL:   srcURL,
+		SourceMusicTitle: strings.TrimSpace(q.Get("source_music_title")),
+		Topic:            strings.TrimSpace(q.Get("topic")),
 		SelectedWorkflowID: q.Get("workflow_id"),
 	}
 	if v.SelectedWorkflowID == "" {
@@ -125,8 +129,12 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if msg := q.Get("msg"); msg == "created" {
-		v.Notice = "Tác vụ sản xuất video viral AI đã được đưa vào hàng đợi thành công!"
+	if msg := q.Get("msg"); msg != "" {
+		if msg == "created" {
+			v.Notice = "Tác vụ sản xuất video viral AI đã được đưa vào hàng đợi thành công!"
+		} else {
+			v.Notice = msg
+		}
 	}
 
 	// Channel selection scopes every identity photo shown and accepted below.
