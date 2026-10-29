@@ -483,6 +483,8 @@ func Collect(activeNodes []ActiveNodeInfo) *SystemSnapshot {
 		}
 	}
 
+	diskTotal, diskUsed, diskFree, diskPct, diskStatus := ReadDiskUsage(".")
+
 	snap := &SystemSnapshot{
 		Timestamp:      time.Now(),
 		TotalRAMMB:     totalRAM,
@@ -495,6 +497,11 @@ func Collect(activeNodes []ActiveNodeInfo) *SystemSnapshot {
 		CPULoad1m:      load1,
 		CPULoad5m:      load5,
 		CPUStatus:      cpuStatus,
+		DiskTotalGB:    diskTotal,
+		DiskUsedGB:     diskUsed,
+		DiskFreeGB:     diskFree,
+		DiskPercent:    diskPct,
+		DiskStatus:     diskStatus,
 		AppAllocMB:     m.Alloc / (1024 * 1024),
 		AppSysMB:       m.Sys / (1024 * 1024),
 		AppGoroutines:  runtime.NumGoroutine(),

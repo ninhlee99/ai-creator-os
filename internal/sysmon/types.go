@@ -17,6 +17,12 @@ type SystemSnapshot struct {
 	CPULoad5m     float64          `json:"cpu_load_5m"`
 	CPUStatus     string           `json:"cpu_status"` // "ok", "warn", "danger"
 
+	DiskTotalGB   float64          `json:"disk_total_gb"`
+	DiskUsedGB    float64          `json:"disk_used_gb"`
+	DiskFreeGB    float64          `json:"disk_free_gb"`
+	DiskPercent   float64          `json:"disk_percent"`
+	DiskStatus    string           `json:"disk_status"` // "ok", "warn", "danger"
+
 	AppAllocMB    uint64           `json:"app_alloc_mb"`
 	AppSysMB      uint64           `json:"app_sys_mb"`
 	AppGoroutines int              `json:"app_goroutines"`

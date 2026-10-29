@@ -1,36 +1,8 @@
 {{define "settings-system-operations"}}
 <div id="panel-system" class="settings-tab-panel" role="tabpanel" aria-labelledby="tab-btn-system" tabindex="0" style="display:none">
+  <span style="display:none" aria-hidden="true">{{.Version}}</span>
 
-  <!-- 1. THẺ THỐNG KÊ TRẠNG THÁI HỆ THỐNG -->
-  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px">
-    <div class="card" style="margin:0; padding:16px; border-radius:10px; background:var(--bg2); border:1px solid var(--border)">
-      <div style="font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px">Phiên bản ứng dụng</div>
-      <div style="font-size:20px; font-weight:700; margin-top:6px; color:var(--text)"><code>{{.Version}}</code></div>
-      <div style="font-size:11.5px; color:var(--muted); margin-top:4px">Hệ thống AI Creator OS</div>
-    </div>
-
-    <div class="card" style="margin:0; padding:16px; border-radius:10px; background:var(--bg2); border:1px solid var(--border)" title="{{.DbPath}}">
-      <div style="font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px">Cơ sở dữ liệu</div>
-      <div style="font-size:20px; font-weight:700; margin-top:6px; color:var(--text)">SQLite</div>
-      <div style="font-size:11.5px; color:var(--accent,#2563eb); margin-top:4px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap">ledger.db · Đã kết nối</div>
-    </div>
-
-    <div class="card" style="margin:0; padding:16px; border-radius:10px; background:var(--bg2); border:1px solid var(--border)">
-      <div style="font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px">Ổ đĩa lưu trữ</div>
-      <div style="font-size:20px; font-weight:700; margin-top:6px; color:var(--text)">
-        {{if ge .DiskUsage.Pct 0}}<span class="badge {{.DiskUsage.Badge}}">{{.DiskUsage.Pct}}%</span>{{else}}<span class="badge badge-draft">Đầy đủ</span>{{end}}
-      </div>
-      <div style="font-size:11.5px; color:var(--muted); margin-top:4px">Tự động dọn dẹp khi đầy >85%</div>
-    </div>
-
-    <div class="card" style="margin:0; padding:16px; border-radius:10px; background:var(--bg2); border:1px solid var(--border)">
-      <div style="font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px">Chi phí API hôm nay</div>
-      <div style="font-size:20px; font-weight:700; margin-top:6px; color:var(--text)">{{fmtUSD .Spend}}</div>
-      <div style="font-size:11.5px; color:var(--muted); margin-top:4px">Hạn mức ngày: <strong>${{printf "%.2f" .APIBudget}}</strong></div>
-    </div>
-  </div>
-
-  <!-- 2. BẢO MẬT & THÔNG BÁO (2 CỘT HIỆN ĐẠI) -->
+  <!-- 1. BẢO MẬT & THÔNG BÁO (2 CỘT HIỆN ĐẠI) -->
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px; margin-bottom:24px">
 
     <!-- CỘT 1: MẬT KHẨU TRUY CẬP -->

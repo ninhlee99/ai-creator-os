@@ -279,6 +279,23 @@
         </div>
       </div>
 
+      <!-- TIẾN TRÌNH Ổ ĐĨA -->
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:12px">
+          <span style="font-weight:700;color:var(--text)">Ổ đĩa lưu trữ</span>
+          <span style="font-weight:800;color:{{if eq .Metrics.DiskStatus "danger"}}#ef4444{{else if eq .Metrics.DiskStatus "warn"}}#f59e0b{{else}}var(--text){{end}}">
+            {{if gt .Metrics.DiskTotalGB 0.0}}{{fmtFloat1 .Metrics.DiskUsedGB}} GB <span style="font-weight:500;color:var(--muted)">/ {{fmtFloat1 .Metrics.DiskTotalGB}} GB</span> ({{fmtFloat1 .Metrics.DiskPercent}}%){{else}}—{{end}}
+          </span>
+        </div>
+        <div style="width:100%;height:7px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="width:{{fmtFloat1 .Metrics.DiskPercent}}%;height:100%;background:{{if eq .Metrics.DiskStatus "danger"}}#ef4444{{else if eq .Metrics.DiskStatus "warn"}}#f59e0b{{else}}#8b5cf6{{end}};transition:width 0.3s ease"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:3px">
+          <span>Khả dụng: <strong style="color:var(--text)">{{if gt .Metrics.DiskTotalGB 0.0}}{{fmtFloat1 .Metrics.DiskFreeGB}} GB{{else}}—{{end}}</strong></span>
+          <span>{{if eq .Metrics.DiskStatus "danger"}}Sắp đầy!{{else if eq .Metrics.DiskStatus "warn"}}Khá đầy{{else}}Dồi dào{{end}}</span>
+        </div>
+      </div>
+
       <!-- FOOTER APP TIẾN TRÌNH NHỎ GỌN -->
       <div style="padding-top:8px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted)">
         <span>App PID: <strong style="color:var(--text)">{{.Metrics.AppPID}}</strong> · RSS: <strong style="color:var(--text)">{{fmtMB .Metrics.AppRSSMB}}</strong></span>

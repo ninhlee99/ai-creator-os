@@ -193,13 +193,24 @@ body.aicos-dialog-open{overflow:hidden}
   </div>
 
   <!-- CPU METER -->
-  <div style="margin-bottom:6px">
+  <div style="margin-bottom:5px">
     <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:2px">
       <span style="font-weight:600">CPU ({{if .Metrics}}{{.Metrics.CPUCores}}C{{else}}—{{end}})</span>
       <span style="font-weight:700;color:var(--text)">{{if .Metrics}}{{fmtFloat1 .Metrics.CPULoad1m}} ({{fmtFloat1 .Metrics.CPUPercent}}%){{else}}—{{end}}</span>
     </div>
     <div style="width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
       <div style="width:{{if .Metrics}}{{if gt .Metrics.CPUPercent 100.0}}100{{else}}{{fmtFloat1 .Metrics.CPUPercent}}{{end}}{{else}}0{{end}}%;height:100%;background:{{if eq .Metrics.CPUStatus "danger"}}#ef4444{{else if eq .Metrics.CPUStatus "warn"}}#f59e0b{{else}}#3b82f6{{end}};transition:width 0.3s ease"></div>
+    </div>
+  </div>
+
+  <!-- DISK METER -->
+  <div style="margin-bottom:6px">
+    <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:2px">
+      <span style="font-weight:600">Ổ đĩa</span>
+      <span style="font-weight:700;color:var(--text)">{{if and .Metrics (gt .Metrics.DiskTotalGB 0.0)}}{{fmtFloat1 .Metrics.DiskUsedGB}} GB / {{fmtFloat1 .Metrics.DiskTotalGB}} GB ({{fmtFloat1 .Metrics.DiskPercent}}%){{else}}—{{end}}</span>
+    </div>
+    <div style="width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+      <div style="width:{{if .Metrics}}{{fmtFloat1 .Metrics.DiskPercent}}{{else}}0{{end}}%;height:100%;background:{{if eq .Metrics.DiskStatus "danger"}}#ef4444{{else if eq .Metrics.DiskStatus "warn"}}#f59e0b{{else}}#8b5cf6{{end}};transition:width 0.3s ease"></div>
     </div>
   </div>
 
