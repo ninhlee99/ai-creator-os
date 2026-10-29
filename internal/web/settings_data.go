@@ -78,6 +78,26 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 					if acc.Email != "" && acc.Email != "manual" && acc.Email != "TikTok User" {
 						tikTokAccountName = acc.Email
 					}
+					// Dùng username thật từ kênh (ví dụ @Meow) nếu account_name rỗng hoặc mang mã tạm uid_
+					if strings.HasPrefix(tikTokAccountName, "@uid_") || strings.HasPrefix(tikTokAccountName, "uid_") || tikTokAccountName == "" || tikTokAccountName == "TikTok User" || tikTokAccountName == "TikTok (@user)" {
+						if s.Mgr != nil {
+							if accts, err := s.Mgr.List(); err == nil {
+								for _, a := range accts {
+									if strings.TrimSpace(a.Username) != "" {
+										realUser := strings.TrimSpace(a.Username)
+										if !strings.HasPrefix(realUser, "@") {
+											realUser = "@" + realUser
+										}
+										tikTokAccountName = realUser
+										acc.AccountName = realUser
+										acc.Email = realUser
+										_ = s.WebAI.UpdateAccount(acc)
+										break
+									}
+								}
+							}
+						}
+					}
 					tikTokCookieCount = len(acc.CookieJar)
 					if tikTokCookieCount == 0 && acc.Cookie != "" {
 						tikTokCookieCount = strings.Count(acc.Cookie, ";") + 1

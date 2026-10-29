@@ -50,3 +50,23 @@ func (s *Server) handleTikTokCookieDelete(w http.ResponseWriter, r *http.Request
 	}
 	seeOther(w, r, "/settings/system?ok=Đã+xóa+cookie+TikTok#tab-social")
 }
+
+func (s *Server) handleTikTokAccountNameUpdate(w http.ResponseWriter, r *http.Request) {
+	if s.WebAI == nil {
+		seeOther(w, r, "/settings/system#tab-social")
+		return
+	}
+	newName := strings.TrimSpace(r.FormValue("account_name"))
+	if newName != "" && !strings.HasPrefix(newName, "@") {
+		newName = "@" + newName
+	}
+	if newName != "" {
+		accounts, _ := s.WebAI.GetAccounts(webai.PlatformTikTok)
+		for _, acc := range accounts {
+			acc.AccountName = newName
+			acc.Email = newName
+			_ = s.WebAI.UpdateAccount(acc)
+		}
+	}
+	seeOther(w, r, "/settings/system?ok=Đã+cập+nhật+tên+tài+khoản+TikTok#tab-social")
+}

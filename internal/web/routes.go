@@ -178,6 +178,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /settings/notify-discord-test", s.handleNotifyDiscordTest)
 	mux.HandleFunc("POST /settings/tiktok/cookie/save", s.handleTikTokCookieSave)
 	mux.HandleFunc("POST /settings/tiktok/cookie/delete", s.handleTikTokCookieDelete)
+	mux.HandleFunc("POST /settings/tiktok/account-name", s.handleTikTokAccountNameUpdate)
 	mux.HandleFunc("POST /kill", s.handleKill)
 	mux.HandleFunc("POST /unkill", s.handleUnkill)
 

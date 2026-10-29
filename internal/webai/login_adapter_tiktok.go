@@ -88,9 +88,6 @@ func pickTikTokSessionAndIdentity(cookies []cdpCookie) (session, identity string
 				session = c.Value
 			}
 		}
-		if (c.Name == "uid_tt" || c.Name == "uid_tt_ss") && c.Value != "" && identity == "" {
-			identity = "uid_" + c.Value
-		}
 	}
 	return session, identity
 }

@@ -111,13 +111,33 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 			}
 			accountName := tgt.Name
 			if tgt.Platform == webai.PlatformTikTok {
-				if email != "" && email != "TikTok User" {
+				if email != "" && email != "TikTok User" && !strings.HasPrefix(email, "uid_") && !strings.HasPrefix(email, "@uid_") {
 					if !strings.HasPrefix(email, "@") {
 						email = "@" + email
 					}
 					accountName = email
 				} else {
-					accountName = "TikTok (@user)"
+					resolved := ""
+					if s.Mgr != nil {
+						if accts, err := s.Mgr.List(); err == nil {
+							for _, a := range accts {
+								if strings.TrimSpace(a.Username) != "" {
+									u := strings.TrimSpace(a.Username)
+									if !strings.HasPrefix(u, "@") {
+										u = "@" + u
+									}
+									resolved = u
+									break
+								}
+							}
+						}
+					}
+					if resolved != "" {
+						email = resolved
+						accountName = resolved
+					} else {
+						accountName = "TikTok (@user)"
+					}
 				}
 			} else if email != "" {
 				accountName = fmt.Sprintf("%s (%s)", tgt.Name, email)
