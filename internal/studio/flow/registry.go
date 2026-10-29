@@ -413,21 +413,29 @@ func registerAllBuiltinNodes() {
 	// 13b. Web AI Product Extractor & Analyzer
 	RegisterNode(NodeDefinition{
 		Type:        "webai_product_extractor",
-		Title:       "Web AI · Bóc tách & Phân tích sản phẩm",
+		Title:       "Web AI · Bóc tách & Phân tích sản phẩm (ChatGPT)",
 		Category:    CategoryAI,
-		Description: "Dùng Web AI (ChatGPT, Gemini, Claude, Grok) bóc tách sản phẩm từ ảnh, trích xuất vật liệu, màu sắc và tự động tạo prompt Image-to-Image",
+		Description: "Bóc tách sản phẩm độc lập khỏi nền và người mẫu bằng AI Vision/Segmentation, loại bỏ hoàn toàn phông nền (transparent PNG) và sinh prompt chuẩn",
 		Icon:        "crop",
 		Inputs: []FlowPort{
-			{ID: "image_in", Name: "Ảnh sản phẩm", Type: PortTypeImage, Required: true},
+			{ID: "image_in", Name: "Ảnh sản phẩm", Type: PortTypeImage, Required: false},
+			{ID: "source_image", Name: "Ảnh nguồn", Type: PortTypeImage, Required: false},
 			{ID: "task", Name: "Yêu cầu thêm", Type: PortTypeText, Required: false},
 		},
 		Outputs: []FlowPort{
+			{ID: "cutout_image", Name: "Ảnh sản phẩm đã tách", Type: PortTypeImage, Description: "Sản phẩm độc lập đã xóa phông nền trong suốt (PNG)"},
+			{ID: "product_image", Name: "Sản phẩm đầu ra", Type: PortTypeImage, Description: "Tương thích nối tiếp với các node nhận product_image/garment_image"},
+			{ID: "mask_image", Name: "Mặt nạ (Mask)", Type: PortTypeImage, Description: "Ảnh mặt nạ phục vụ inpainting"},
 			{ID: "description", Name: "Mô tả sản phẩm", Type: PortTypeText, Description: "Mô tả chi tiết kiểu dáng, chất liệu, màu sắc"},
 			{ID: "clean_prompt", Name: "Prompt tái tạo", Type: PortTypeText, Description: "Prompt tối ưu dùng cho tạo ảnh/video tái tạo sản phẩm"},
 			{ID: "product_profile", Name: "Dữ liệu thuộc tính", Type: PortTypeConfig, Description: "Dữ liệu JSON bóc tách"},
 		},
 		DefaultParams: map[string]any{
-			"provider": "gemini",
+			"provider":        "chatgpt",
+			"isolate_garment": true,
+			"remove_skin":     true,
+			"refine_edges":    true,
+			"auto_crop":       true,
 		},
 		Executor: executeWebAIProductExtractor,
 	})

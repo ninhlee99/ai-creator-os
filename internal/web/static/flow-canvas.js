@@ -275,6 +275,123 @@
       requestAnimationFrame(() => this.renderWires());
     }
 
+    beautifyWorkflow() {
+      if (!this.graph.nodes || !this.graph.nodes.length) {
+        window.showAppNotice('Chưa có node nào trên canvas để làm đẹp.');
+        return;
+      }
+
+      const nodes = this.graph.nodes;
+      const edges = this.graph.edges || [];
+      const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+      // 1. Xây dựng đồ thị có hướng (DAG adjacency)
+      const outgoing = new Map();
+      const incoming = new Map();
+      nodes.forEach(n => {
+        outgoing.set(n.id, []);
+        incoming.set(n.id, []);
+      });
+
+      edges.forEach(e => {
+        const from = e.from_node || e.fromNode;
+        const to = e.to_node || e.toNode;
+        if (outgoing.has(from) && incoming.has(to)) {
+          outgoing.get(from).push(to);
+          incoming.get(to).push(from);
+        }
+      });
+
+      // 2. Tính bậc layer (longest path layering trong DAG)
+      const layers = new Map();
+      const roots = nodes.filter(n => (incoming.get(n.id) || []).length === 0);
+      if (roots.length === 0 && nodes.length > 0) {
+        roots.push(nodes[0]);
+      }
+
+      roots.forEach(r => layers.set(r.id, 0));
+
+      let changed = true;
+      let iterations = 0;
+      const maxIterations = nodes.length * 3;
+      while (changed && iterations < maxIterations) {
+        changed = false;
+        iterations++;
+        edges.forEach(e => {
+          const from = e.from_node || e.fromNode;
+          const to = e.to_node || e.toNode;
+          const srcLayer = layers.get(from);
+          if (srcLayer !== undefined) {
+            const targetLayer = layers.get(to);
+            const neededLayer = srcLayer + 1;
+            if (targetLayer === undefined || targetLayer < neededLayer) {
+              layers.set(to, neededLayer);
+              changed = true;
+            }
+          }
+        });
+      }
+
+      nodes.forEach(n => {
+        if (layers.get(n.id) === undefined) {
+          layers.set(n.id, 0);
+        }
+      });
+
+      // 3. Gom các node theo từng cột Layer
+      const layerBuckets = new Map();
+      nodes.forEach(n => {
+        const l = layers.get(n.id) || 0;
+        if (!layerBuckets.has(l)) layerBuckets.set(l, []);
+        layerBuckets.get(l).push(n);
+      });
+
+      const sortedLayerKeys = Array.from(layerBuckets.keys()).sort((a, b) => a - b);
+
+      // Sắp xếp thứ tự các node trong mỗi layer để giảm thiểu cắt chéo dây (Barycenter / Predecessor Y)
+      sortedLayerKeys.forEach(l => {
+        const bucket = layerBuckets.get(l);
+        if (l > 0) {
+          bucket.sort((a, b) => {
+            const aParents = incoming.get(a.id) || [];
+            const bParents = incoming.get(b.id) || [];
+            const aAvgY = aParents.length
+              ? aParents.reduce((sum, pid) => sum + (Number(nodeMap.get(pid)?.y) || 0), 0) / aParents.length
+              : (Number(a.y) || 0);
+            const bAvgY = bParents.length
+              ? bParents.reduce((sum, pid) => sum + (Number(nodeMap.get(pid)?.y) || 0), 0) / bParents.length
+              : (Number(b.y) || 0);
+            return aAvgY - bAvgY;
+          });
+        }
+      });
+
+      // 4. Tính toán tọa độ không gian (Spacing chuẩn ComfyUI / n8n)
+      const COL_WIDTH = 420;
+      const ROW_HEIGHT = 280;
+      const START_X = 80;
+      const START_Y = 80;
+
+      const maxColLength = Math.max(...sortedLayerKeys.map(k => layerBuckets.get(k).length));
+      const totalCanvasHeight = maxColLength * ROW_HEIGHT;
+
+      sortedLayerKeys.forEach((layerKey, colIndex) => {
+        const bucket = layerBuckets.get(layerKey);
+        const colHeight = bucket.length * ROW_HEIGHT;
+        const colStartY = START_Y + Math.max(0, (totalCanvasHeight - colHeight) / 2);
+
+        bucket.forEach((node, rowIndex) => {
+          node.x = Math.round(START_X + colIndex * COL_WIDTH);
+          node.y = Math.round(colStartY + rowIndex * ROW_HEIGHT);
+        });
+      });
+
+      this.render();
+      this.renderWires();
+      requestAnimationFrame(() => this.fitCanvas());
+      window.showAppNotice('✨ Đã làm đẹp và sắp xếp workflow tự động theo chuẩn studio!');
+    }
+
     render() {
       this.nodesLayer.innerHTML = '';
       if (this.graph.nodes && this.graph.nodes.length > 0) {
@@ -1504,18 +1621,15 @@
     }
 
     addEdge(fromNode, fromPort, toNode, toPort) {
-	  const source = this.graph.nodes.find(n => n.id === fromNode);
-	  const target = this.graph.nodes.find(n => n.id === toNode);
-	  const sourcePort = source && this.getNodePorts(source, true).find(p => p.id === fromPort);
-	  const targetPort = target && this.getNodePorts(target, false).find(p => p.id === toPort);
-	  if (!sourcePort || !targetPort) {
-	    window.showAppNotice('Không thể nối dây: cổng không còn tồn tại. Tải lại contract workflow con.');
-	    return false;
-	  }
-	  if (!this.isPortTypeCompatible(sourcePort.type, targetPort.type)) {
-	    window.showAppNotice(`Không thể nối ${sourcePort.type} vào ${targetPort.type}. Chọn cổng cùng kiểu dữ liệu.`);
-	    return false;
-	  }
+      if (fromNode === toNode) {
+        window.showAppNotice('Không thể tự nối một node vào chính nó.');
+        return false;
+      }
+      const source = this.graph.nodes.find(n => n.id === fromNode);
+      const target = this.graph.nodes.find(n => n.id === toNode);
+      if (!source || !target) {
+        return false;
+      }
 
       // Remove any existing edge to the same input port
       this.graph.edges = this.graph.edges.filter(e => !(e.to_node === toNode && e.to_port === toPort));
@@ -1748,12 +1862,13 @@
 
       // Auto-connect if pending from '+' handle
       if (this.pendingConnect) {
-        const { fromNode, fromPort } = this.pendingConnect;
-        const matchingInput = this.getNodePorts(newNode, false).find(inp => this.isPortTypeCompatible(this.pendingConnect.portType, inp.type));
+        const { fromNode, fromPort, portType } = this.pendingConnect;
+        const targetPorts = this.getNodePorts(newNode, false);
+        const matchingInput = targetPorts.find(inp => inp.type === portType) ||
+          targetPorts.find(inp => inp.id.includes(fromPort) || fromPort.includes(inp.id)) ||
+          targetPorts[0];
         if (matchingInput) {
           this.addEdge(fromNode, fromPort, id, matchingInput.id);
-        } else {
-          window.showAppNotice('Node đã thêm nhưng không có cổng input tương thích để tự nối.');
         }
         this.pendingConnect = null;
       }
@@ -2080,7 +2195,8 @@
     }
 
     isPortTypeCompatible(from, to) {
-      return !from || !to || from === 'any' || to === 'any' || from === to || (from === 'image' && to === 'image_list');
+      // Cho phép kéo dây nối tự do linh hoạt giữa các cổng tương tự ComfyUI / n8n
+      return true;
     }
 
     getCategoryIcon(cat) {
@@ -2129,6 +2245,11 @@
           this.pendingConnect = null;
           this.openAddNodeModal();
         });
+      }
+
+      const btnBeautifyGraph = document.getElementById('btn-beautify-graph');
+      if (btnBeautifyGraph) {
+        btnBeautifyGraph.addEventListener('click', () => this.beautifyWorkflow());
       }
 
       const btnCopyCanvas = document.getElementById('btn-copy-canvas');
@@ -5114,10 +5235,6 @@
             return;
           }
         }
-        if (this.pendingConnect) {
-          const compatible = (def.inputs || []).some(port => this.isPortTypeCompatible(this.pendingConnect.portType, port.type));
-          if (!compatible) return;
-        }
         if (filterText) {
           const query = filterText.toLowerCase();
           const matchTitle = def.title.toLowerCase().includes(query);
@@ -5148,11 +5265,14 @@
         card.addEventListener('click', () => {
           let posX = 200, posY = 200;
           if (this.pendingConnect) {
-            // Position near the source node
+            // Position neatly to the right of the source node
             const parentNode = this.graph.nodes.find(n => n.id === this.pendingConnect.fromNode);
             if (parentNode) {
-              posX = (parentNode.x || 100) + 320;
-              posY = (parentNode.y || 100);
+              posX = (Number(parentNode.x) || 100) + 380;
+              posY = Number(parentNode.y) || 100;
+              while (this.graph.nodes.some(n => Math.abs((Number(n.x) || 0) - posX) < 80 && Math.abs((Number(n.y) || 0) - posY) < 80)) {
+                posY += 260;
+              }
             }
           } else {
             // Place near screen center

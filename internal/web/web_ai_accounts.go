@@ -150,23 +150,21 @@ func probeGoogleFlowSession(ctx context.Context, acc *webai.Account, onCookieUpd
 	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	// 1. Kiểm tra qua Flow API lịch sử nếu có cookie labs
-	if err := webai.ProbeGoogleFlowSessionWithCookieSnapshot(ctx, cookie, acc.CookieJar, onCookieUpdate); err == nil {
-		return accountProbeAlive, "Phiên Google Flow hợp lệ; lịch sử đã phản hồi"
+
+	var flowErr error
+	// 1. Kiểm tra trực tiếp qua Flow API
+	if flowErr = webai.ProbeGoogleFlowSessionWithCookieSnapshot(ctx, cookie, acc.CookieJar, onCookieUpdate); flowErr == nil {
+		return accountProbeAlive, "Phiên Google Flow hợp lệ; API Flow đã phản hồi"
 	}
 
 	// 2. Xác thực phiên tài khoản Google từ cookie
 	client := &http.Client{Timeout: 8 * time.Second}
 	if email := webai.ProbeGoogleLoginAccountEmail(ctx, client, cookie); email != "" {
-		return accountProbeAlive, fmt.Sprintf("Phiên Google Flow hợp lệ (%s)", email)
+		return accountProbeAlive, fmt.Sprintf("Phiên Google hợp lệ (%s), nhưng Flow API báo: %v", email, flowErr)
 	}
 
-	// 3. Nếu có cookie xác thực của Google hoặc Flow, giữ kết nối
-	if strings.Contains(cookie, "__Secure-1PSID=") || strings.Contains(cookie, "SID=") || strings.Contains(cookie, "OSID=") {
-		return accountProbeAlive, "Phiên Google Flow hợp lệ (đã lưu cookie)"
-	}
-
-	return accountProbeExpired, "Google Flow từ chối phiên đăng nhập"
+	// 3. Nếu cả Flow API và Google Account đều từ chối, phiên đã hết hạn thực sự
+	return accountProbeExpired, fmt.Sprintf("Phiên Google Flow đã hết hạn: %v (Vui lòng đăng nhập lại)", flowErr)
 }
 
 func applyWebAIProbeStatus(account *webai.Account, outcome accountProbeOutcome) {

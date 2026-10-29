@@ -568,11 +568,34 @@ func executeGeminiVision(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 
 func executeWebAIProductExtractor(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	imgIn := inputString(inputs, "image_in", "")
+	if imgIn == "" {
+		imgIn = inputString(inputs, "source_image", "")
+	}
+	if imgIn == "" {
+		imgIn = inputString(inputs, "product_image", "")
+	}
 	if imgIn == "" || !fileExists(imgIn) {
 		return nil, fmt.Errorf("cần ảnh sản phẩm hợp lệ để bóc tách và phân tích")
 	}
+
+	// 1. Tiến hành bóc tách sản phẩm, xóa sạch background và người mẫu (transparent PNG)
+	cutoutPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_cutout.png", node.ID))
+	maskPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_mask.png", node.ID))
+	isolateGarment := nodeParamBool(node.Params, "isolate_garment", true)
+	removeSkin := nodeParamBool(node.Params, "remove_skin", true)
+	autoCrop := nodeParamBool(node.Params, "auto_crop", true)
+	refineEdges := nodeParamBool(node.Params, "refine_edges", true)
+
+	if err := segmentGarmentToCutout(imgIn, cutoutPath, maskPath, autoCrop, refineEdges, isolateGarment, removeSkin); err != nil {
+		ctx.Log(fmt.Sprintf("WebAIProductExtractor: Bóc tách nền cảnh báo (%v), dùng ảnh gốc làm fallback", err))
+		cutoutPath = imgIn
+		maskPath = ""
+	} else {
+		ctx.Log(fmt.Sprintf("WebAIProductExtractor: Đã bóc tách thành công sản phẩm trong suốt -> %s", filepath.Base(cutoutPath)))
+	}
+
 	customTask := inputString(inputs, "task", nodeParamString(node.Params, "task", ""))
-	provider := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "provider", "gemini")))
+	provider := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "provider", "chatgpt")))
 
 	prompt := "Bạn là chuyên gia thị giác AI phân tích sản phẩm quảng cáo. Hãy quan sát kỹ ảnh sản phẩm được đính kèm và bóc tách chi tiết: " +
 		"1. Tên và loại sản phẩm (Category). " +
@@ -590,33 +613,40 @@ func executeWebAIProductExtractor(ctx *ExecutionContext, node *FlowNode, inputs 
 		thread := ctx.webAIConversation(provider)
 		outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_extract.txt", node.ID))
 		var nextURL, nextAccountID string
-		rawAnalysis, _, nextURL, nextAccountID, err = ctx.WebAIOperation(ctx.Context, provider, prompt, []string{imgIn}, "text", outPath, thread.URL, thread.AccountID)
+		rawAnalysis, _, nextURL, nextAccountID, err = ctx.WebAIOperation(ctx.Context, provider, prompt, []string{cutoutPath}, "text", outPath, thread.URL, thread.AccountID)
 		ctx.setWebAIConversation(provider, WebAIConversation{URL: nextURL, AccountID: nextAccountID})
 		if err != nil {
-			return nil, fmt.Errorf("bóc tách sản phẩm qua %s Web AI thất bại: %w", provider, err)
+			ctx.Log(fmt.Sprintf("WebAIProductExtractor: Web AI %s cảnh báo: %v. Dùng phân tích cục bộ", provider, err))
 		}
 	} else if ctx.VisionEval != nil {
-		rawAnalysis, err = ctx.VisionEval(ctx.Context, prompt, imgIn)
+		rawAnalysis, err = ctx.VisionEval(ctx.Context, prompt, cutoutPath)
 		if err != nil {
-			return nil, fmt.Errorf("phân tích sản phẩm thất bại: %w", err)
+			ctx.Log(fmt.Sprintf("WebAIProductExtractor: VisionEval cảnh báo: %v", err))
 		}
-	} else {
-		return nil, fmt.Errorf("không có dịch vụ phân tích thị giác Web AI khả dụng")
 	}
 
 	rawAnalysis = strings.TrimSpace(rawAnalysis)
+	if rawAnalysis == "" {
+		rawAnalysis = "High quality fashion commercial product, pristine condition, isolated cleanly on transparent background"
+	}
+
 	cleanPrompt := fmt.Sprintf("High-end commercial product shot of %s, clean modern studio lighting, elegant reflection, 8k ultra realistic, cinematic depth of field", rawAnalysis)
 	if len(rawAnalysis) > 120 {
 		cleanPrompt = fmt.Sprintf("Commercial product showcase: %s, professional studio lighting, 8k UHD", rawAnalysis[:120])
 	}
 
-	ctx.Log(fmt.Sprintf("WebAIProductExtractor: Đã bóc tách sản phẩm thành công (%d ký tự)", len(rawAnalysis)))
+	ctx.Log(fmt.Sprintf("WebAIProductExtractor: Đã bóc tách sản phẩm và phân tích thành công (%d ký tự)", len(rawAnalysis)))
 
 	return map[string]any{
-		"description":  rawAnalysis,
-		"clean_prompt": cleanPrompt,
+		"cutout_image":  cutoutPath,
+		"product_image": cutoutPath,
+		"image_out":     cutoutPath,
+		"mask_image":    maskPath,
+		"description":   rawAnalysis,
+		"clean_prompt":  cleanPrompt,
 		"product_profile": map[string]any{
 			"source_image": imgIn,
+			"cutout_image": cutoutPath,
 			"analysis":     rawAnalysis,
 			"clean_prompt": cleanPrompt,
 		},

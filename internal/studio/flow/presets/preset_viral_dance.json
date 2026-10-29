@@ -10,8 +10,8 @@
       "type": "video_source",
       "title": "1. Video TikTok Radar",
       "category": "input",
-      "x": 40,
-      "y": 340,
+      "x": 80,
+      "y": 80,
       "params": {
         "require_radar_dance": true,
         "video_path": "",
@@ -23,8 +23,8 @@
       "type": "dance_motion_extractor",
       "title": "2. Phân tích chuyển động nguồn",
       "category": "process",
-      "x": 360,
-      "y": 160,
+      "x": 460,
+      "y": 360,
       "params": {
         "dance_style": "",
         "keyframe_count": 12,
@@ -39,8 +39,8 @@
       "type": "video_split",
       "title": "3. Chia video thành shot Muse",
       "category": "process",
-      "x": 360,
-      "y": 520,
+      "x": 1980,
+      "y": 500,
       "params": {
         "max_segment_seconds": 10,
         "min_segment_seconds": 3,
@@ -53,8 +53,8 @@
       "type": "character_input",
       "title": "4. Ảnh nhân vật kênh",
       "category": "input",
-      "x": 40,
-      "y": 40,
+      "x": 80,
+      "y": 360,
       "params": {
         "account_id": 0,
         "model_name": "",
@@ -66,8 +66,8 @@
       "type": "virtual_tryon",
       "title": "5. Hướng trang phục",
       "category": "process",
-      "x": 360,
-      "y": 40,
+      "x": 460,
+      "y": 640,
       "params": {
         "outfit_name": "",
         "prompt": "Replace the performer's face, hair and body proportions with the selected channel character, using the character photos as the only identity source. Preserve the source clothing, colors, fit and non-identity accessories. Do not copy the source face, hairline, bangs or eyewear unless the same features appear in the selected character photos. Match the source pose after replacing identity. Do not add logos or redesign wardrobe. Wardrobe direction: {{fit_style}}."
@@ -78,8 +78,8 @@
       "type": "scene_environment",
       "title": "6. Bối cảnh",
       "category": "process",
-      "x": 700,
-      "y": 40,
+      "x": 840,
+      "y": 500,
       "params": {
         "location_type": "custom",
         "custom_location": "the exact original source-video location, background, visible objects and spatial layout",
@@ -92,8 +92,8 @@
       "type": "lighting_atmosphere",
       "title": "7. Ánh sáng",
       "category": "lighting",
-      "x": 1040,
-      "y": 40,
+      "x": 1220,
+      "y": 500,
       "params": {
         "color_temperature": "preserve source video",
         "light_intensity": "preserve source video",
@@ -106,8 +106,8 @@
       "type": "dance_retarget",
       "title": "8. Prompt chuyển động có thể tùy chỉnh",
       "category": "process",
-      "x": 1380,
-      "y": 200,
+      "x": 1600,
+      "y": 500,
       "params": {
         "dance_type": "reproduce the source choreography exactly",
         "expression": "match the source performer's visible expression",
@@ -119,8 +119,8 @@
       "type": "workflow_map",
       "title": "9. Muse AI render từng shot",
       "category": "workflow",
-      "x": 1740,
-      "y": 380,
+      "x": 2360,
+      "y": 500,
       "params": {
         "workflow_id": "preset_muse_viral_shot",
         "item_input_map": {
@@ -143,8 +143,8 @@
       "type": "concat_scenes",
       "title": "10. Ghép shot theo thứ tự",
       "category": "process",
-      "x": 2100,
-      "y": 380,
+      "x": 2740,
+      "y": 500,
       "params": {
         "fit_mode": "cover"
       }
@@ -154,8 +154,8 @@
       "type": "audio_merge",
       "title": "11. Giữ âm thanh video Radar",
       "category": "process",
-      "x": 2440,
-      "y": 380,
+      "x": 3120,
+      "y": 500,
       "params": {
         "audio_codec": "aac"
       }
@@ -165,8 +165,8 @@
       "type": "cinematic_color_grading",
       "title": "12. Cân màu",
       "category": "post",
-      "x": 2780,
-      "y": 380,
+      "x": 3500,
+      "y": 500,
       "params": {
         "contrast_boost": 1.0,
         "saturation": 1.0
@@ -177,8 +177,8 @@
       "type": "video_upscale",
       "title": "13. Xuất độ phân giải",
       "category": "process",
-      "x": 3120,
-      "y": 380,
+      "x": 3880,
+      "y": 500,
       "params": {
         "resolution": "4k",
         "crf": 18,
@@ -190,8 +190,8 @@
       "type": "video_output",
       "title": "14. Xuất video Viral",
       "category": "output",
-      "x": 3460,
-      "y": 380,
+      "x": 4260,
+      "y": 500,
       "params": {
         "title": "TikTok Dance Video"
       }
@@ -201,8 +201,8 @@
       "type": "workflow_input",
       "title": "Phong cách trang phục",
       "category": "workflow",
-      "x": 40,
-      "y": 700,
+      "x": 80,
+      "y": 640,
       "params": {
         "key": "fit_style",
         "label": "Phong cách trang phục",
@@ -216,8 +216,8 @@
       "type": "workflow_input",
       "title": "Độ phân giải đầu ra",
       "category": "workflow",
-      "x": 700,
-      "y": 700,
+      "x": 80,
+      "y": 920,
       "params": {
         "key": "resolution",
         "label": "Độ phân giải",
@@ -236,8 +236,8 @@
       "type": "workflow_output",
       "title": "Video thành phẩm",
       "category": "workflow",
-      "x": 3800,
-      "y": 380,
+      "x": 4640,
+      "y": 500,
       "params": {
         "key": "video",
         "label": "Video thành phẩm",

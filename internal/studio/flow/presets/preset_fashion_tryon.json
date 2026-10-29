@@ -10,7 +10,7 @@
       "type": "character_input",
       "title": "1. Ảnh nhân vật",
       "category": "input",
-      "x": 60,
+      "x": 80,
       "y": 80,
       "params": {
         "account_id": 0,
@@ -23,8 +23,8 @@
       "type": "product_input",
       "title": "2. Sản phẩm thời trang",
       "category": "input",
-      "x": 60,
-      "y": 490,
+      "x": 80,
+      "y": 360,
       "params": {
         "affiliate_url": "",
         "preview_url": "",
@@ -34,13 +34,18 @@
     },
     {
       "id": "node_extract",
-      "type": "product_extractor",
-      "title": "3. Bóc tách phom váy lụa",
-      "category": "process",
-      "x": 430,
-      "y": 490,
+      "type": "webai_product_extractor",
+      "title": "3. Bóc tách sản phẩm (ChatGPT)",
+      "category": "ai",
+      "x": 460,
+      "y": 500,
       "params": {
-        "refine_edges": true
+        "provider": "chatgpt",
+        "model": "gpt-4o",
+        "isolate_garment": true,
+        "remove_skin": true,
+        "refine_edges": true,
+        "auto_crop": true
       }
     },
     {
@@ -48,8 +53,8 @@
       "type": "virtual_tryon",
       "title": "4. Chuẩn bị outfit tham chiếu",
       "category": "process",
-      "x": 790,
-      "y": 180,
+      "x": 840,
+      "y": 500,
       "params": {
         "prompt": "Describe reference outfit {{outfit_name}} in style {{fit_style}}. Preserve garment details from the reference image and never change the model identity. Return one concise visual description in English."
       }
@@ -59,8 +64,8 @@
       "type": "scene_environment",
       "title": "5. Bối cảnh boutique",
       "category": "process",
-      "x": 1120,
-      "y": 180,
+      "x": 1220,
+      "y": 500,
       "params": {
         "depth_of_field": "cinematic_bokeh",
         "location_type": "fashion_boutique",
@@ -72,8 +77,8 @@
       "type": "lighting_atmosphere",
       "title": "6. Ánh sáng lookbook",
       "category": "process",
-      "x": 1120,
-      "y": 420,
+      "x": 1600,
+      "y": 500,
       "params": {
         "color_temperature": "warm_golden",
         "light_intensity": "soft_diffused",
@@ -86,8 +91,8 @@
       "type": "camera_angles_director",
       "title": "7. Đạo diễn 3 góc quay điện ảnh",
       "category": "camera",
-      "x": 1480,
-      "y": 180,
+      "x": 1980,
+      "y": 500,
       "params": {
         "shot_style": "high-fashion editorial",
         "full_prompt_template": "High-fashion vertical 9:16 full-body campaign shot. Show {{character_name}} presenting {{product_title}}; outfit: {{outfit_desc}}. Scene: {{environment_desc}}. Lighting: {{lighting_desc}}. Natural confident movement, stable camera, photorealistic details.",
@@ -100,8 +105,8 @@
       "type": "google_flow_video",
       "title": "8a. Render toàn thân",
       "category": "ai",
-      "x": 1840,
-      "y": 80,
+      "x": 2360,
+      "y": 220,
       "params": {
         "aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
         "prompt": "Create a vertical 9:16 high-fashion campaign video, full-body framing. Preserve the same adult model, face, body proportions, and garment design. Use graceful runway movement, stable camera, natural fabric motion. Direction: {{input}}. No cuts, captions, logos, or extra subjects."
@@ -112,8 +117,8 @@
       "type": "google_flow_video",
       "title": "8b. Render bán thân",
       "category": "ai",
-      "x": 1840,
-      "y": 260,
+      "x": 2360,
+      "y": 500,
       "params": {
         "aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
         "prompt": "Create a vertical 9:16 high-fashion campaign video, medium framing. Preserve the same adult model and exact garment details. Show a natural turn and confident presentation, elegant camera motion, realistic fabric movement. Direction: {{input}}. No cuts, captions, logos, or extra subjects."
@@ -124,8 +129,8 @@
       "type": "google_flow_video",
       "title": "8c. Render cận cảnh chất liệu",
       "category": "ai",
-      "x": 1840,
-      "y": 440,
+      "x": 2360,
+      "y": 780,
       "params": {
         "aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
         "prompt": "Create a vertical 9:16 close-up fashion video focused on garment texture and construction. Keep reference design and colors exact; use a slow editorial camera move and realistic material motion. Direction: {{input}}. No cuts, captions, logos, or extra subjects."
@@ -136,8 +141,8 @@
       "type": "audio_source",
       "title": "9. Nhạc nền",
       "category": "input",
-      "x": 1840,
-      "y": 650,
+      "x": 80,
+      "y": 640,
       "params": {
         "audio_path": "",
         "audio_title": ""
@@ -148,8 +153,8 @@
       "type": "concat_scenes",
       "title": "10. Ghép ba phân cảnh",
       "category": "process",
-      "x": 2220,
-      "y": 180,
+      "x": 2740,
+      "y": 500,
       "params": {}
     },
     {
@@ -157,8 +162,8 @@
       "type": "audio_merge",
       "title": "11. Lồng nhạc",
       "category": "process",
-      "x": 2600,
-      "y": 280,
+      "x": 3120,
+      "y": 500,
       "params": {
         "audio_codec": "aac"
       }
@@ -168,8 +173,8 @@
       "type": "video_upscale",
       "title": "12. Làm nét & Nâng chuẩn 4K UHD",
       "category": "process",
-      "x": 2980,
-      "y": 280,
+      "x": 3500,
+      "y": 500,
       "params": {
         "resolution": "4k"
       }
@@ -179,8 +184,8 @@
       "type": "video_output",
       "title": "13. Xuất video Lookbook 9:16",
       "category": "output",
-      "x": 3360,
-      "y": 280,
+      "x": 3880,
+      "y": 500,
       "params": {
         "title": "Fashion Lookbook"
       }
@@ -190,8 +195,8 @@
       "type": "workflow_input",
       "title": "Phong cách cho lần chạy",
       "category": "workflow",
-      "x": 490,
-      "y": 680,
+      "x": 80,
+      "y": 920,
       "params": {
         "key": "fit_style",
         "label": "Phong cách trang phục",
@@ -215,8 +220,8 @@
       "type": "workflow_output",
       "title": "Video thành phẩm",
       "category": "workflow",
-      "x": 3720,
-      "y": 280,
+      "x": 4260,
+      "y": 500,
       "params": {
         "key": "video",
         "label": "Video thành phẩm",
