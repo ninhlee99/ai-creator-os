@@ -39,7 +39,7 @@ func findPython311() string {
 		".venv/bin/python3",
 		"data/venv/bin/python3",
 		filepath.Join(os.Getenv("HOME"), ".local/bin/python3.11"),
-		"/Users/ninh.le/.local/bin/python3.11",
+		filepath.Join(os.Getenv("HOME"), ".local/bin/python3"),
 		"/opt/homebrew/bin/python3.11",
 		"/usr/local/bin/python3.11",
 		"/opt/homebrew/bin/python3",

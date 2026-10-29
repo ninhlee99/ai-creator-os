@@ -61,12 +61,4 @@ func (s *Server) handleStaticSampleVideo(w http.ResponseWriter, r *http.Request)
 	http.ServeFile(w, r, p)
 }
 
-// handleStaticAgentImage serves static agent/character illustrations for node previews.
-func (s *Server) handleStaticAgentImage(w http.ResponseWriter, r *http.Request) {
-	file := filepath.Base(r.PathValue("file"))
-	p := filepath.Join("internal", "web", "static", "agents", file)
-	w.Header().Set("Cache-Control", "public, max-age=86400")
-	http.ServeFile(w, r, p)
-}
-
 // --------------------------------------------------------------- dashboard

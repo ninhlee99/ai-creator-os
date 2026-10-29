@@ -173,8 +173,38 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 			outFilename := fmt.Sprintf("affiliate_prod_%d_%d.mp4", prod.ID, time.Now().Unix())
 			finalPath := s.Studio.OutputPath(outFilename)
 
-			// If imgPath exists, render standard 9:16 video clip using ffmpeg
-			if imgPath != "" && fileExists(imgPath) {
+			var flowDone bool
+			if workflowID != "" && s.Studio != nil {
+				if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
+					if graph, err := fs.GetGraph(workflowID); err == nil && graph != nil {
+						progress(50, "Đang chạy workflow canvas: "+graph.Name+"...")
+						flowInputs := map[string]any{
+							"product_name": prod.Title,
+							"product_id":   prod.ID,
+							"price":        prod.Price,
+							"category":     prod.Category,
+							"product_url":  prod.ProductURL,
+							"image":        imgPath,
+						}
+						if len(uploadedPhotos) > 0 {
+							flowInputs["model_photo"] = uploadedPhotos[0]
+							flowInputs["character_photos"] = uploadedPhotos
+						}
+						runID := fmt.Sprintf("aff-fast-%d-%d", prod.ID, time.Now().Unix())
+						run, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs)
+						if runErr == nil && run != nil && run.Status == "completed" {
+							if vid, ok := run.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {
+								if err := copyFile(vid, finalPath); err == nil {
+									flowDone = true
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// If workflow did not produce a final video, fallback to rendering standard 9:16 clip from product image
+			if !flowDone && imgPath != "" && fileExists(imgPath) {
 				_ = studio.FFmpegRun(ctx,
 					"-loop", "1", "-i", imgPath,
 					"-c:v", "libx264", "-t", "5",

@@ -16,7 +16,7 @@ func TestWebAIProductExtractorNode(t *testing.T) {
 		},
 	}
 
-	sampleImg := filepath.Join("..", "..", "web", "static", "agents", "qc.jpg")
+	sampleImg := filepath.Join("..", "..", "web", "static", "presets", "char_01.jpg")
 	ctx := &ExecutionContext{
 		Context: context.Background(),
 		WorkDir: t.TempDir(),
@@ -59,7 +59,7 @@ func TestWebAIImg2ImgNode(t *testing.T) {
 		},
 	}
 
-	sampleImg := filepath.Join("..", "..", "web", "static", "agents", "qc.jpg")
+	sampleImg := filepath.Join("..", "..", "web", "static", "presets", "char_01.jpg")
 	ctx := &ExecutionContext{
 		Context: context.Background(),
 		WorkDir: t.TempDir(),

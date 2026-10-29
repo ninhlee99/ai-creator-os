@@ -9,13 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
-	"github.com/ninhlee99/ai-creator-os/internal/ticksup"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
 )
 
-func startWorkersAndServe(ctx context.Context, cancel context.CancelFunc, addr string, srv *web.Server, settings automation.LedgerSettings, tickSup *ticksup.Supervisor, autopilotArmed bool, studioInst *studio.Studio) {
+func startWorkersAndServe(ctx context.Context, cancel context.CancelFunc, addr string, srv *web.Server, studioInst *studio.Studio) {
 	log.Printf("daemon: đã tắt toàn bộ tiến trình daemon ngầm lúc khởi động (hệ thống hoạt động on-demand)")
 
 	httpSrv := &http.Server{

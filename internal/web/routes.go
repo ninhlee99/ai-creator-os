@@ -17,7 +17,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /static/preview.mp3", s.handleStaticPreviewAudio)
 	mux.HandleFunc("GET /static/presets/{file}", s.handleStaticPresetImage)
 	mux.HandleFunc("GET /static/sample_916.mp4", s.handleStaticSampleVideo)
-	mux.HandleFunc("GET /static/agents/{file}", s.handleStaticAgentImage)
 
 	// Đợt S: health endpoint cho watchdog ngoài — không qua onboardGate.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)

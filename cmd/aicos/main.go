@@ -142,7 +142,6 @@ func main() {
 	mgr := webRuntime.manager
 	srv := webRuntime.server
 	autoSettings := webRuntime.settings
-	tickSup := webRuntime.tickSup
 	outDir := webRuntime.outDir
 	defer func() {
 		if err := mgr.Close(); err != nil {
@@ -177,7 +176,7 @@ func main() {
 	}
 
 	// Ticks arm after every store and service has been wired.
-	pstore, autopilotArmed := initializeProducts(srv, mgr, autoSettings, *dataDir)
+	pstore, _ := initializeProducts(srv, mgr, autoSettings, *dataDir)
 	if pstore != nil {
 		defer func() {
 			if err := pstore.Close(); err != nil {
@@ -195,5 +194,5 @@ func main() {
 		}()
 	}
 
-	startWorkersAndServe(ctx, cancel, *addr, srv, autoSettings, tickSup, autopilotArmed, studioInst)
+	startWorkersAndServe(ctx, cancel, *addr, srv, studioInst)
 }

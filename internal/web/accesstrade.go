@@ -224,5 +224,3 @@ func (s *Server) atCachedCount() int {
 	}
 	return len(cs)
 }
-
-// handleSettingsAccesstrade: "Accesstrade đã nối chưa, key còn sống không?"

@@ -42,7 +42,7 @@ var videoEncoder = sync.OnceValue(func() []string {
 	if videoToolboxH264Available() {
 		return []string{"-c:v", "h264_videotoolbox", "-b:v", "12M", "-maxrate", "16M"}
 	}
-	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "18"}
+	return []string{"-c:v", "libx264", "-preset", "medium", "-crf", "18"}
 })
 
 // VideoEncoderArgs trả về args encoder H.264 đã chọn cho process này —
@@ -53,7 +53,7 @@ var videoEncoder2K = sync.OnceValue(func() []string {
 	if videoToolboxH264Available() {
 		return []string{"-c:v", "h264_videotoolbox", "-b:v", "20M", "-maxrate", "26M"}
 	}
-	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "18", "-b:v", "20M"}
+	return []string{"-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-b:v", "20M"}
 })
 
 // VideoEncoderArgs2K trả về args encoder H.264 chất lượng Master 2K QHD với bitrate 20M.

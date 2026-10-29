@@ -83,8 +83,8 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	minPct := resolveMinCommission(theme, r.URL.Query().Get("min"))
 	var results []products.Product
 	var rerr error
-	if tab == "affiliate" {
-		// Affiliate operations have their own tab; do not load product candidates.
+	if tab == "affiliate" || tab == "shelf" {
+		// Affiliate operations and shelf tab have their own dedicated views; do not load discovery candidates.
 	} else if tab == "pending" {
 		results, rerr = s.Products.ReviewList(products.ReviewPending, keyword, theme, 100)
 	} else if tab == "rejected" {
@@ -131,8 +131,10 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	results = s.attachProductSalesChange(results)
-	results = s.attachTikTokRadarEvidence(r.Context(), results)
+	if len(results) > 0 {
+		results = s.attachProductSalesChange(results)
+		results = s.attachTikTokRadarEvidence(r.Context(), results)
+	}
 	s.renderProductResults(w, r, s.ctx(
 		"AT", s.atPageData(),
 		"Tab", tab,

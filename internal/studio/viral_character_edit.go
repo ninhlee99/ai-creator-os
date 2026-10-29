@@ -53,6 +53,7 @@ func (s *Studio) runViralFullCharacterEdit(ctx context.Context, jobID string, p 
 		return
 	}
 	defer func() { <-sem }()
+	ctx = WithRenderSlotHeld(ctx)
 
 	jobDir := filepath.Join(s.workRoot, jobID)
 	if err := os.MkdirAll(jobDir, 0o755); err != nil {

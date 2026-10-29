@@ -8,28 +8,22 @@ Hai flow hiện hành: TikTok affiliate và TikTok viral. Truyện audio ở pha
 
 ```mermaid
 flowchart LR
-  AT[Affiliate provider] --> PR[Product Radar]
-  PR --> EV[Evidence + evaluation]
-  EV -->|approved| AF[Affiliate campaign]
-  EV -->|rejected| RJ[Rejected list]
-  TR[TikTok Radar · Web Crawler] --> VA[Viral analysis]
-  TR -->|dance source selected| AU[Audio extraction]
-  AU --> AF
-  AU --> VF[Viral remake]
-  AF --> QC[QC + preview]
+  IMP[1-Link Import / URL] --> SH[Affiliate Shelf]
+  AT[AccessTrade / Provider] --> SH
+  SH --> AF[Affiliate Video Production]
+  TR[TikTok Radar · Web Crawler] --> VA[Trend & Audio Analysis]
+  VA --> AF
+  VA --> VF[Viral Video Remake]
+  WF[Workflow Canvas & Presets] --> AF
+  WF --> VF
+  AF --> QC[QC + Preview]
   VF --> QC
-  QC --> RV[Publish review + consent]
-  RV -->|Shop access| SP[Shoppable video + product anchor]
-  RV -->|approved Direct Post| DP[Direct Post]
-  RV -->|fallback| DR[TikTok Draft]
-  SP --> PM[Post metrics]
-  DP --> PM
-  DR --> PM
-  AT --> OM[Orders + commission]
-  PM --> FB[Feedback + bounded adjustments]
+  QC --> RV[Publish Review & Consent]
+  RV -->|Draft / Direct Post| TP[TikTok Post / Draft]
+  TP --> PM[Post Metrics & Growth]
+  AT --> OM[Orders & Commission]
+  PM --> FB[Performance Feedback]
   OM --> FB
-  FB --> PR
-  FB --> TR
 ```
 
 ## Thành phần

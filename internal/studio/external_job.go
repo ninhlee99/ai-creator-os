@@ -40,6 +40,7 @@ func (s *Studio) CreateExternalJob(kind, title string, params any, run ExternalJ
 			return
 		}
 		defer func() { <-sem }()
+		ctx = WithRenderSlotHeld(ctx)
 		s.setStatus(id, StatusRunning, 1)
 		progress := func(percent int, line string) {
 			if percent < 1 {

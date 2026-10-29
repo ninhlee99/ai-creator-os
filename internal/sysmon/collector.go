@@ -346,20 +346,31 @@ var (
 	cachedAt       time.Time
 )
 
-// CollectFast trả về snapshot gần nhất đã cache nếu còn mới (<2s), giúp render trang siêu nhanh.
+// CollectFast trả về snapshot gần nhất đã cache nếu còn mới (<3s), giúp render trang siêu nhanh.
 func CollectFast() *SystemSnapshot {
-	cacheMu.RLock()
-	if cachedSnapshot != nil && time.Since(cachedAt) < 2*time.Second {
-		s := cachedSnapshot
-		cacheMu.RUnlock()
-		return s
-	}
-	cacheMu.RUnlock()
 	return Collect(nil)
 }
 
 // Collect thu thập toàn bộ ảnh chụp hệ thống, CPU, RAM, node và tiến trình.
+// Có in-memory cache TTL 3s để tránh spawn liên tục subprocess (vm_stat, sysctl, ps)
+// khi nhiều tab trình duyệt poll qua HTMX.
 func Collect(activeNodes []ActiveNodeInfo) *SystemSnapshot {
+	cacheMu.RLock()
+	if cachedSnapshot != nil && time.Since(cachedAt) < 3*time.Second {
+		// Tái sử dụng dữ liệu OS nặng từ cache, chỉ cập nhật danh sách activeNodes
+		base := *cachedSnapshot
+		cacheMu.RUnlock()
+
+		base.Timestamp = time.Now()
+		base.ActiveNodes = activeNodes
+		if len(activeNodes) > 0 && base.OverallStatus == "ok" {
+			base.OverallStatus = "warn"
+			base.StatusMessage = fmt.Sprintf("⚡ ĐANG CHẠY: Có %d node workflow đang xử lý, hệ thống đang tiêu thụ tài nguyên.", len(activeNodes))
+		}
+		return &base
+	}
+	cacheMu.RUnlock()
+
 	totalRAM := GetTotalRAMMB()
 	usedRAM, freeRAM, ramPct := ReadMemoryUsage(totalRAM)
 	cores := runtime.NumCPU()

@@ -200,7 +200,7 @@ func validatedBackupEntryName(name string) (string, error) {
 			continue
 		}
 		parts := strings.Split(strings.TrimPrefix(name, prefix), "/")
-		if dir == "output/studio/uploads" && len(parts) == 1 && validStudioUploadAsset(parts[0]) {
+		if (dir == "output/studio/uploads" || dir == "uploads") && len(parts) == 1 && validStudioUploadAsset(parts[0]) {
 			return name, nil
 		}
 		if dir == "output/studio/models" && len(parts) == 2 && positiveAccountDirectory(parts[0]) && validModelPhotoName(parts[1]) {

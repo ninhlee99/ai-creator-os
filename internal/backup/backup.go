@@ -38,9 +38,9 @@ var snapshotDBs = []string{"ledger.db", "studio.db", "products.db", "accesstrade
 // snapshotFiles là các file đơn lẻ được đưa vào ảnh chụp.
 var snapshotFiles = []string{"content_jobs.json"}
 
-// snapshotTreeDirs contains user-owned inputs referenced by studio.db.
+// snapshotTreeDirs contains user-owned inputs referenced by studio.db and web uploads.
 // Render outputs and run caches remain excluded.
-var snapshotTreeDirs = []string{"output/studio/models", "output/studio/uploads"}
+var snapshotTreeDirs = []string{"output/studio/models", "output/studio/uploads", "uploads"}
 
 // sqliteMagic là 16 byte đầu của mọi file SQLite hợp lệ.
 var sqliteMagic = []byte("SQLite format 3\x00")

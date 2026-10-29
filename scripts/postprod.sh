@@ -47,12 +47,20 @@ slugify() {
 
 latest_video() {
 	local f
-	f=$(ls -t "$OUT_DIR"/studio-*.mp4 2>/dev/null | head -1 || true)
-	[ -n "$f" ] || die "chưa có video nào trong $OUT_DIR/studio-*.mp4 — chạy autopilot/Studio trong app trước."
+	f=$(ls -t "$OUT_DIR"/studio-*.mp4 "$OUT_DIR"/affiliate_*.mp4 "$OUT_DIR"/flow_video_run_*.mp4 2>/dev/null | head -1 || true)
+	[ -n "$f" ] || die "chưa có video nào trong $OUT_DIR (studio-*.mp4, affiliate_*.mp4, flow_video_run_*.mp4) — chạy autopilot/Studio trong app trước."
 	printf '%s' "$f"
 }
 
-job_id_of() { local b; b=$(basename "$1" .mp4); printf '%s' "${b#studio-}"; }
+job_id_of() {
+	local b
+	b=$(basename "$1" .mp4)
+	b="${b#studio-}"
+	b="${b#affiliate_prod_}"
+	b="${b#affiliate_}"
+	b="${b#flow_video_run_}"
+	printf '%s' "$b"
+}
 
 caption_of() {
 	local db="$DATA_DIR/studio.db" id="$1"

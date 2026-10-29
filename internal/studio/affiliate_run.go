@@ -68,6 +68,7 @@ func (s *Studio) runAffiliate(ctx context.Context, id string, p AffiliateParams,
 		return
 	}
 	defer func() { <-sem }()
+	ctx = WithRenderSlotHeld(ctx)
 
 	s.setStatus(id, StatusRunning, 5)
 	fail := func(err error) {

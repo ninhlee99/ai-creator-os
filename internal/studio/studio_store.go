@@ -75,9 +75,35 @@ func (s *Studio) reserveFlowAdmission(insert func() error) error {
 	return nil
 }
 
+type renderSlotContextKey struct{}
+
+// WithRenderSlotHeld marks ctx as already holding a renderSlot, preventing nested deadlocks.
+func WithRenderSlotHeld(ctx context.Context) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, renderSlotContextKey{}, true)
+}
+
+// IsRenderSlotHeld checks if ctx already holds a renderSlot.
+func IsRenderSlotHeld(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	held, _ := ctx.Value(renderSlotContextKey{}).(bool)
+	return held
+}
+
 func (s *Studio) renderSlot(ctx context.Context) (chan struct{}, error) {
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	if IsRenderSlotHeld(ctx) {
+		// Slot is already held upstream in this call chain. Provide a pre-filled channel
+		// so defer func() { <-sem }() succeeds without re-locking or deadlocking.
+		bypass := make(chan struct{}, 1)
+		bypass <- struct{}{}
+		return bypass, nil
 	}
 	// Admission bounds accepted work; render semaphore caps active CPU/RAM use.
 	sem := s.jobSlot()

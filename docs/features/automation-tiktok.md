@@ -1,12 +1,14 @@
-# Tác vụ nền hỗ trợ flow TikTok
+# Tác vụ hỗ trợ flow TikTok
 
-## Tác vụ liên quan
+## Kiến trúc On-Demand & Hiệu năng
 
-- AccessTrade: product hunt lưu offer chờ duyệt; chỉ offer được duyệt và có sales/rating evidence còn hạn mới vào hàng video tự động; campaign check và order sync theo cấu hình.
-- Growth: đồng bộ/lập kế hoạch theo dữ liệu hiện có; không tự tạo video TikTok nếu producer chưa hỗ trợ input.
-- Studio maintenance: đánh dấu job treo, dọn work lỗi và sao lưu dữ liệu.
-- Notification: gửi cảnh báo theo cấu hình.
+Để đảm bảo hệ thống vận hành ổn định trên các máy cá nhân (kể cả macOS Intel 8-16GB RAM), toàn bộ các tiến trình crawler/worker nền nặng nề lúc khởi động đều đã chuyển sang chế độ **On-Demand**:
+
+- **Sản phẩm & Affiliate**: Người dùng chủ động thêm sản phẩm qua link hoặc tìm kiếm theo nhu cầu, không quét tự động ngầm gây nghẽn băng thông và RAM.
+- **TikTok Trends / Radar**: Kích hoạt theo yêu cầu người dùng trên giao diện để thu thập âm thanh, hashtag và video thịnh hành mới nhất.
+- **Studio Maintenance & Jobs**: Hàng đợi công việc được quản lý bởi Studio worker có giới hạn luồng đồng thời (tối đa 2 jobs render cùng lúc, có cơ chế giải phóng render slot tránh deadlock), kiểm soát tải bộ nhớ chặt chẽ.
+- **Growth & Kênh**: Đồng bộ số liệu khi người dùng truy cập hoặc theo cấu hình tài khoản.
 
 ## Ranh giới
 
-Tick tồn tại không chứng minh từng provider call thành công. Trạng thái scheduler, heartbeat, job và API result phải được hiển thị riêng. Flow affiliate không được claim sản xuất tự động khi thiếu offer evidence, clip/provider hợp lệ hoặc source audio Radar. Dữ liệu sản phẩm hiện chưa có phân tích xu hướng/tệp tuổi tự động. TikTok Display API source đọc follower và counters video công khai khi được cấp scope. Growth tính engagement từ like/comment/share/view và so với các video Studio cùng flow trên cùng kênh; khuyến nghị là hướng thử nghiệm dựa trên snapshot đó. Đơn affiliate được ghép bằng mã sub2 của job với dữ liệu AccessTrade đã đồng bộ. Chưa có dữ liệu click, watch-time hay demographics để xác định nguyên nhân chuyển đổi hoặc hành vi người xem.
+Trạng thái scheduler, heartbeat, job và API result được phân tách rõ ràng. Flow affiliate lấy dữ liệu thực tế từ link sản phẩm và mẫu nhân vật của kênh. Dữ liệu tương tác video được đồng bộ khi có quyền TikTok Display API.

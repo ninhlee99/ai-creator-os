@@ -438,7 +438,7 @@ func executeCustomAPIWebhook(ctx *ExecutionContext, node *FlowNode, inputs map[s
 	}
 	defer resp.Body.Close()
 
-	bodyBytes, _ := io.ReadAll(resp.Body)
+	bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
 	var respJSON any
 	if json.Unmarshal(bodyBytes, &respJSON) != nil {
 		respJSON = string(bodyBytes)

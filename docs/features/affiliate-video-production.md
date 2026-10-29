@@ -11,13 +11,13 @@
 
 ## Hiện trạng
 
-Shot plan, tải clip, dựng video và một số QC đã có. Manual flow còn cần clip chuyển động cho mỗi shot. Provider generation có thể dùng credits; consent trong UI không chứng minh dịch vụ miễn phí. Chưa chứng minh affiliate video miễn phí end-to-end.
+Shot plan, tải clip, dựng video và visual QC đã sẵn sàng. Flow tạo video affiliate hỗ trợ 2 cơ chế:
+1. **1-Link Import & Quick Video**: Dán link sản phẩm (Shopee, TikTok Shop, Lazada...), hệ thống tự động bóc tách ảnh sản phẩm, giá bán, platform PID và lưu vào Kệ hàng. Từ Kệ hàng, người dùng chọn workflow canvas (như `preset_affiliate_daily` hoặc custom workflow), model kênh, tải ảnh nhân vật và bấm tạo video 1-click.
+2. **Affiliate Studio Workflow**: Chạy qua graph workflow với các node Character, Product, Audio Radar, Ghép shot 9:16, kiểm định QC và xuất bản.
 
-AccessTrade TikTok Shop feed trả commission, giá và units sold khi publisher được chia sẻ số liệu; không trả rating/review. Chỉ số có nguồn mới được dùng; rating và fit thị trường giữ chưa biết nếu không có dữ liệu.
+Hệ thống hoạt động on-demand, không chạy background crawler gây ngốn RAM hay CPU của máy host (tối ưu mượt mà cho macOS Intel 8-16GB RAM). Nguồn audio có thể lấy từ TikTok Radar hoặc audio tải lên.
 
-Radar lưu sản phẩm mới ở trạng thái chờ duyệt. Sản phẩm bị loại giữ cùng lý do trong danh sách riêng. Studio từ chối lập shot plan từ product ID chưa duyệt. Sales/rating thiếu nguồn hoặc hết hạn chặn sản xuất tự động. Nguồn audio phải là video nhảy đã xác nhận và Radar đã thu thập trong 7 ngày; không tự rơi về sound cũ.
-
-TikTok product attachment chưa được nối qua API; draft cần người dùng gắn sản phẩm trong TikTok. Job hiển thị tên/ID listing, chỉ dẫn gắn product card, link AccessTrade riêng để sao chép và mã `sub2` đối chiếu đơn. Link tracking không thay thế product card.
+TikTok product attachment: Draft cần người dùng gắn sản phẩm hoặc link affiliate khi đăng trên TikTok Creator. Job hiển thị tên/ID listing và link tracking để dễ dàng đối soát đơn.
 
 Với offer TikTok Shop từ AccessTrade, mỗi job affiliate tạo một tracking link riêng. `sub1` giữ product ID, `sub2` trùng job ID; mã và link hiển thị trên job, còn `sub2` AccessTrade trả về mở đúng job khi job còn được lưu. Đơn chỉ quy được về video khi bài đó dùng đúng link và AccessTrade trả lại `sub2`. TikTok Shop product card vẫn phải gắn thủ công trong Creator.
 

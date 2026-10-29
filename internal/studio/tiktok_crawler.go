@@ -302,7 +302,9 @@ func runTikTokCrawlerBrowserBatch(ctx context.Context, bin string, targetURLs []
 		select {
 		case videos := <-resultChan:
 			readerStop.Store(true)
+			_ = conn.SetReadDeadline(time.Now().Add(-time.Second))
 			<-readerDone
+			_ = conn.SetReadDeadline(time.Time{})
 			allVideos = mergeTikTokRadarCandidates(allVideos, videos)
 			if len(allVideos) >= tikTokRadarCandidateLimit {
 				return allVideos[:tikTokRadarCandidateLimit], nil
@@ -322,6 +324,7 @@ func runTikTokCrawlerBrowserBatch(ctx context.Context, bin string, targetURLs []
 			}
 		case <-ctx.Done():
 			readerStop.Store(true)
+			_ = conn.SetReadDeadline(time.Now().Add(-time.Second))
 			return allVideos, ctx.Err()
 		}
 	}

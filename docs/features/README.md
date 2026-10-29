@@ -6,13 +6,13 @@ AI Creator OS tập trung vào tự động hóa sáng tạo nội dung video v�
 |---|---|---|
 | **TikTok** | Khám phá xu hướng thịnh hành, phân tích âm thanh/video | [Xu hướng TikTok](tiktok-web-crawler.md) |
 | **Affiliate** | Thêm sản phẩm từ 1 link, tự bóc tách ảnh/giá, tạo video 1-click | [Sản phẩm & Kệ hàng](products.md) |
-| **Workflow** | Canvas trực quan kéo-thả, Universal Video Studio, Lịch sử tác vụ | [Workflow Canvas](studio-ai.md), [Tạo Video AI](video-viral.md) |
+| **Workflow** | Canvas trực quan kéo-thả, Universal Video Studio, Lịch sử tác vụ | [Workflow Canvas](studio-ai.md), [Tạo Video AI](video-create.md) |
 | **Hệ thống** | Quản lý kênh, tăng trưởng, tài khoản Web AI, chuỗi provider & an toàn | [Kênh](accounts.md), [Tăng trưởng](channel-growth.md), [Cài đặt](settings.md) |
 
 ## Hạ tầng dùng chung
 
 - [Quản lý Kênh TikTok](accounts.md)
-- [Universal Workflow Studio](video-viral.md)
+- [Universal Workflow Studio](video-create.md)
 - [Web AI providers & Session manager](web-ai.md)
 - [Cài đặt hệ thống](settings.md)
 - [Backup & Restore](backup-restore.md)
