@@ -13,7 +13,7 @@ Khôi phục bằng cách upload file — file thật chỉ bị thay khi app ch
 1. **Tạo** (`backup.CreateValidatedToFile`): chụp DB SQLite qua online backup,
    nén vào file tạm, kiểm tra archive trên đĩa rồi stream/tái đặt file — không
    cần giữ toàn bộ ZIP (tới 512 MiB) trong RAM.
-   - 4 database: `ledger.db`, `studio.db`, `products.db`, `accesstrade.db`; `webai.db` bị loại vì chứa cookie/session bearer. SQLite online backup nên archive không cần `-wal`/`-shm`.
+   - 3 database: `ledger.db`, `studio.db`, `products.db`; `webai.db` bị loại vì chứa cookie/session bearer. SQLite online backup nên archive không cần `-wal`/`-shm`.
    - Từ `ledger.db` bị lược `env:*`, API key, notification secret, webhook và password hash; cấu hình provider còn lại được giữ nhưng JSON credential fields bị xóa. Snapshot được `secure_delete` + `VACUUM` trước ZIP.
    - file đơn: `content_jobs.json`
    - input do người dùng tải lên và DB còn tham chiếu: `output/studio/models/` và

@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -113,22 +114,6 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"MasterOn":   automation.MasterOn(s.settings()),
 		"APIBudget":  automation.APIBudgetUSD(s.settings(), s.Cfg.DailyAPIBudgetUSD),
 		"BudgetFrom": s.apiBudgetFrom(),
-		// Accesstrade (Đợt B): key + trạng thái kết nối cho tab Cài đặt · Accesstrade.
-		"ATKeySet":    s.atKeySet(),
-		"ATMasked":    s.atMasked(),
-		"ATCampaigns": s.atCachedCount(),
-		"ATStoreOK":   s.AT != nil,
-		// Accesstrade automation (Đợt G): interval tick cho tab Cài đặt ·
-		// Accesstrade (công tắc on/off nằm ở trang Affiliate, POST /at/settings).
-		"ATHunterHours": s.atSettingInt(automation.KeyATHunterIntervalHrs, 24),
-		// Đợt AK: bật/tắt tick AT gộp về đây (trước nằm rời ở trang Affiliate).
-		"ATAuto": map[string]any{
-			"HunterOn":      s.atSettingOn(automation.KeyATHunterEnabled, true),
-			"OrderSyncOn":   s.atSettingOn(automation.KeyATOrderSyncEnabled, true),
-			"CampaignChkOn": s.atSettingOn(automation.KeyATCampaignCheckOn, true),
-			"HunterVideos":  s.atSettingInt(automation.KeyATHunterVideos, 3),
-		},
-		"ATOrderSyncMins": s.atSettingInt(automation.KeyATOrderSyncIntervalM, 30),
 		// R2-W7: legacy /api/* switch (default OFF), app version, runtime
 		// probes, pending-restore flag — all shown in Settings · Hệ thống.
 		"APIEnabled":     automation.APIEnabled(s.settings()),
@@ -299,4 +284,30 @@ func (s *Server) handleModelsUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = s.Ledger.Decide("human", "model_update_check", nil, msg, map[string]any{"updated": rep.Updated, "total": rep.TotalModels})
 	seeOther(w, r, "/settings/system?ok="+url.QueryEscape(msg))
+}
+
+func (s *Server) atSettingOn(key string, def bool) bool {
+	if s.Ledger == nil {
+		return def
+	}
+	v, ok, err := s.Ledger.GetSetting(key)
+	if err != nil || !ok {
+		return def
+	}
+	return v == "1" || strings.EqualFold(v, "true")
+}
+
+func (s *Server) atSettingInt(key string, def int) int {
+	if s.Ledger == nil {
+		return def
+	}
+	v, ok, err := s.Ledger.GetSetting(key)
+	if err != nil || !ok {
+		return def
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || n < 0 {
+		return def
+	}
+	return n
 }

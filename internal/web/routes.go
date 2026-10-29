@@ -139,12 +139,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /products", s.handleProducts)
 	mux.HandleFunc("POST /products/import-link", s.handleProductsImportLink)
 	mux.HandleFunc("POST /products/create-video", s.handleProductsCreateVideo)
-	mux.HandleFunc("POST /products/search", s.handleProductsSearch)
-	mux.HandleFunc("POST /products/add", s.handleProductsAdd)
 	mux.HandleFunc("POST /products/shelf/add", s.handleProductsShelfAdd)
 	mux.HandleFunc("POST /products/shelf/toggle", s.handleProductsShelfToggle)
-	mux.HandleFunc("POST /products/review", s.handleProductsReview)
-	mux.HandleFunc("GET /products/{id}/history", s.handleProductHistory)
 
 	mux.HandleFunc("GET /growth", s.handleGrowth)
 	mux.HandleFunc("POST /growth/sync", s.handleGrowthSync)
@@ -178,16 +174,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /kill", s.handleKill)
 	mux.HandleFunc("POST /unkill", s.handleUnkill)
 
-	mux.HandleFunc("GET /settings/accesstrade", s.handleSettingsAccesstrade)
-	mux.HandleFunc("POST /settings/accesstrade/key", s.handleATKeySave)
-	mux.HandleFunc("POST /settings/accesstrade/test", s.handleATTest)
-	mux.HandleFunc("POST /settings/accesstrade/automation", s.handleATAutomationSave)
-	// Accesstrade (Đợt B): sync campaign + tạo tracking link.
-	mux.HandleFunc("POST /at/campaigns/sync", s.handleATSyncCampaigns)
-	mux.HandleFunc("POST /at/links/create", s.handleATCreateLink)
-	// Accesstrade (Đợt C): hunter + order sync + công tắc tick.
-	mux.HandleFunc("POST /at/hunt", s.handleATHunt)
-	mux.HandleFunc("POST /at/orders/sync", s.handleATOrderSync)
 	// Universal Workflow Video Creation Studio (Tạo Video AI Bằng 1 Câu Lệnh)
 	mux.HandleFunc("GET /workflow/create", s.handleVideoCreate)
 	mux.HandleFunc("POST /workflow/create", s.handleVideoCreateSubmit)

@@ -33,7 +33,7 @@ var errBackupArchiveTooLarge = errors.New("file sao lưu vượt giới hạn 51
 // webai.db deliberately excluded: it contains provider cookies and bearer
 // sessions. Until encrypted credential storage and key recovery are wired,
 // copying it into a plaintext ZIP would leak account access.
-var snapshotDBs = []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"}
+var snapshotDBs = []string{"ledger.db", "studio.db", "products.db"}
 
 // snapshotFiles là các file đơn lẻ được đưa vào ảnh chụp.
 var snapshotFiles = []string{"content_jobs.json"}

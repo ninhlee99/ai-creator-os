@@ -17,8 +17,6 @@ Shot plan, tải clip, dựng video và visual QC đã sẵn sàng. Flow tạo v
 
 Hệ thống hoạt động on-demand, không chạy background crawler gây ngốn RAM hay CPU của máy host (tối ưu mượt mà cho macOS Intel 8-16GB RAM). Nguồn audio có thể lấy từ TikTok Radar hoặc audio tải lên.
 
-TikTok product attachment: Draft cần người dùng gắn sản phẩm hoặc link affiliate khi đăng trên TikTok Creator. Job hiển thị tên/ID listing và link tracking để dễ dàng đối soát đơn.
+TikTok product attachment: Draft cần người dùng gắn sản phẩm hoặc link affiliate khi đăng trên TikTok Creator. Job hiển thị tên/ID listing để người dùng dễ dàng gắn giỏ hàng TikTok Shop hoặc Shopee.
 
-Với offer TikTok Shop từ AccessTrade, mỗi job affiliate tạo một tracking link riêng. `sub1` giữ product ID, `sub2` trùng job ID; mã và link hiển thị trên job, còn `sub2` AccessTrade trả về mở đúng job khi job còn được lưu. Đơn chỉ quy được về video khi bài đó dùng đúng link và AccessTrade trả lại `sub2`. TikTok Shop product card vẫn phải gắn thủ công trong Creator.
-
-Sau khi tự đăng video công khai, dán URL vào job hoàn tất để Growth ghép counters TikTok theo account/video ID. TikTok Display API không cung cấp orders hoặc retention; số thiếu giữ unknown. Doanh số chỉ đối chiếu qua báo cáo AccessTrade có `sub2` đúng job.
+Sau khi tự đăng video công khai, dán URL vào job hoàn tất để Growth ghép counters TikTok theo account/video ID. TikTok Display API cung cấp số liệu tương tác video thực tế (views, likes, comments, shares).

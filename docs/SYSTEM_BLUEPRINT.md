@@ -8,8 +8,7 @@ Hai flow hiện hành: TikTok affiliate và TikTok viral. Truyện audio ở pha
 
 ```mermaid
 flowchart LR
-  IMP[1-Link Import / URL] --> SH[Affiliate Shelf]
-  AT[AccessTrade / Provider] --> SH
+  IMP[1-Link Import / Affiliate URL] --> SH[Affiliate Shelf]
   SH --> AF[Affiliate Video Production]
   TR[TikTok Radar · Web Crawler] --> VA[Trend & Audio Analysis]
   VA --> AF
@@ -21,17 +20,14 @@ flowchart LR
   QC --> RV[Publish Review & Consent]
   RV -->|Draft / Direct Post| TP[TikTok Post / Draft]
   TP --> PM[Post Metrics & Growth]
-  AT --> OM[Orders & Commission]
   PM --> FB[Performance Feedback]
-  OM --> FB
 ```
 
 ## Thành phần
 
 | Thành phần | Trách nhiệm |
 |---|---|
-| `internal/accesstrade` | Campaign, offer, affiliate link, order/commission sync khi provider hỗ trợ |
-| `internal/products` | Candidate snapshots, category/rule evaluation, approved/rejected state, product usage |
+| `internal/products` | Quản lý sản phẩm kệ hàng, bóc tách link affiliate, lưu trữ ảnh & giá |
 | `internal/studio` | Affiliate/viral plan, media generation, Radar audio extraction, QC, job/artifact provenance |
 | `internal/growth` | TikTok video snapshots, account baselines, funnel analysis, recommendations and rollback history |
 | `internal/tiktok` + `internal/publishers` | TikTok OAuth, draft/direct-post adapters, Shop shoppable-video adapter, provider state/reconciliation |

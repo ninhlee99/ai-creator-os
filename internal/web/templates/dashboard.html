@@ -62,18 +62,18 @@
     </div>
   </div>
 
-  <!-- STAT 3: HOA HỒNG ACCESSTRADE -->
+  <!-- STAT 3: SẢN PHẨM TRÊN KỆ HÀNG -->
   <div class="card" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;justify-content:space-between">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Hoa hồng Accesstrade đã duyệt</span>
-      <span style="width:32px;height:32px;border-radius:8px;background:rgba(245,158,11,0.1);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:16px">💰</span>
+      <span style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Sản phẩm Kệ hàng (1-Link)</span>
+      <span style="width:32px;height:32px;border-radius:8px;background:rgba(245,158,11,0.1);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:16px">🛍️</span>
     </div>
     <div style="font-size:24px;font-weight:900;color:#10b981;margin:8px 0 4px">
-      {{if .ATOrders.Synced}}{{fmtVND .ATOrders.Stats.ApprovedTotal}}{{else}}—{{end}}
+      {{.ShelfCount}}
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px">
-      <span style="color:var(--muted)">{{if .ATOrders.Synced}}{{.ATOrders.Stats.ApprovedCount}} đơn đã duyệt · {{.ATOrders.Stats.PendingCount}} chờ duyệt · {{fmtVN .ATOrders.SyncedAt}} UTC{{else}}Chưa có dữ liệu đơn{{end}}</span>
-      <a href="/products?tab=affiliate" style="color:var(--accent);font-weight:600">Đối soát ↗</a>
+      <span style="color:var(--muted)">Sẵn sàng tạo video 1-click</span>
+      <a href="/products" style="color:var(--accent);font-weight:600">Quản lý kệ hàng ↗</a>
     </div>
   </div>
 

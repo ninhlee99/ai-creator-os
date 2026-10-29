@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
@@ -92,19 +91,12 @@ type Service struct {
 	Producer  Producer
 	Autopilot AutopilotRunner
 
-	// Accesstrade automation (Đợt C): hunter + order sync + campaign check.
-	// Nil AT/Products = tick bỏ qua im lặng (chưa cấu hình key).
-	AT           *accesstrade.Store
 	Products     *products.Store
 	StudioRunner StudioRunner
 	Maintenance  StudioMaintenance
-	// ATWorkDir thư mục tải ảnh sản phẩm cho video hunter.
-	ATWorkDir string
 	// DataDir thư mục dữ liệu app — disk guard (Đợt L) đo % đĩa đã dùng
 	// tại đây để tự dọn khi đầy.
 	DataDir string
-	// ATBaseURL override API base URL (test hook; "" = production).
-	ATBaseURL string
 
 	// CommissionSource overrides the affiliate-orders feed (tests inject a
 	// fake). Nil = build the real one from the current env.

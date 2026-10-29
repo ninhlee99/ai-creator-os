@@ -70,7 +70,6 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.Products == nil {
 		s.renderProductResults(w, r, s.ctx(
-			"AT", s.atPageData(),
 			"Tab", tab,
 			"Themes", themeOptions(),
 			"Shelf", s.shelfViews(),
@@ -97,7 +96,6 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	results = excludeSource(results, "market_verified")
 	if rerr != nil {
 		s.renderProductResults(w, r, s.ctx(
-			"AT", s.atPageData(),
 			"Tab", tab,
 			"Themes", themeOptions(),
 			"Theme", theme,
@@ -136,7 +134,6 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		results = s.attachTikTokRadarEvidence(r.Context(), results)
 	}
 	s.renderProductResults(w, r, s.ctx(
-		"AT", s.atPageData(),
 		"Tab", tab,
 		"Themes", themeOptions(),
 		"Theme", theme,

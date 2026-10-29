@@ -91,8 +91,6 @@ func (s *Server) automation() *automation.Service {
 		svc.Maintenance = s.Studio
 	}
 	svc.CommissionSource = s.CommissionSource
-	// Accesstrade automation (Đợt C): hunter + order sync + campaign check.
-	svc.AT = s.AT
 	svc.Products = s.Products
 	if s.Studio != nil {
 		svc.StudioRunner = s.Studio
@@ -102,7 +100,6 @@ func (s *Server) automation() *automation.Service {
 		if dataDir == "" || dataDir == "." {
 			dataDir = "."
 		}
-		svc.ATWorkDir = filepath.Join(dataDir, "at-hunter")
 		// Disk guard (Đợt L): đo % đĩa đã dùng tại thư mục dữ liệu.
 		svc.DataDir = dataDir
 	}

@@ -119,7 +119,6 @@ func (s *Server) tickBeatViews() []TickBeatView {
 var tickLabels = map[string]string{
 	"autopilot":    "Affiliate Autopilot",
 	"growth":       "Phát triển kênh",
-	"accesstrade":  "Affiliate Accesstrade",
 	"viral":        "Video Viral: sản xuất video",
 	"selfheal":     "Tự hồi phục",
 	"backup":       "Sao lưu tự động",

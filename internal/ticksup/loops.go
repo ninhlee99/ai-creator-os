@@ -20,7 +20,6 @@ type Deps struct {
 	NewService func() *automation.Service
 	Autopilot  bool // studio + products sẵn sàng
 	Growth     bool
-	AT         bool
 	Studio     bool // studio sẵn sàng cho tự chữa và sao lưu
 }
 
@@ -49,13 +48,6 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 				func(c context.Context) []string { return auto.GrowthTick(c, false) })
 		})
 		log.Printf("growth: automation tick armed (mặc định bật ở /growth; dry-run là cổng an toàn)")
-	}
-	if d.AT {
-		sup.Watch("accesstrade", 5*time.Minute, 15*time.Minute)
-		go loop(ctx, 5*time.Minute, func() {
-			sup.Dispatch(ctx, "accesstrade", 15*time.Minute, d.NewService().ATTick)
-		})
-		log.Printf("accesstrade: automation tick armed (hunter daily, order sync 30m, campaign check daily)")
 	}
 	if d.Studio {
 		for _, n := range []string{"selfheal", "backup", "notify"} {

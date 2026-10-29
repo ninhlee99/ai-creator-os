@@ -4,31 +4,16 @@ package web
 // kill switch and provider chain configuration storage.
 
 import (
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
+
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 )
 
 // settingsPage renders one settings sub-page with its nav key and the
 // requested data keys.
 func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request, page, key string, keys ...string) {
 	data := s.settingsData(r)
-	if page == "accesstrade" {
-		var accounts any
-		if s.Mgr != nil {
-			accounts, _ = s.Mgr.List()
-		}
-		var accountID int64
-		if s.Ledger != nil {
-			if raw, ok, _ := s.Ledger.GetSetting(automation.KeyATHunterAccountID); ok {
-				accountID, _ = strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
-			}
-		}
-		data["ATHunterAccounts"] = accounts
-		data["ATHunterAccountID"] = accountID
-	}
 	ctx := s.ctx("SettingsPage", page)
 	for _, k := range keys {
 		ctx[k] = data[k]

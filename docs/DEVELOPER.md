@@ -16,7 +16,7 @@
 | internal/web | HTTP, UI và static assets |
 | internal/network, internal/tiktok | Kênh và TikTok OAuth |
 | internal/studio | Radar, tạo video, audio, QC |
-| internal/products, internal/accesstrade | Offer, hoa hồng, link |
+| internal/products | Sản phẩm kệ hàng, bóc tách link affiliate, lưu trữ ảnh & giá |
 | internal/publishers | TikTok Draft |
 | internal/growth | Metrics và tăng trưởng TikTok |
 | internal/webai | Phiên provider dùng cho tạo video |

@@ -67,7 +67,6 @@ var pageFiles = map[string]string{
 	"settings_system":      "settings/system.html",
 	"settings_providers":   "settings/providers.html",
 	"settings_safety":      "settings/safety.html",
-	"settings_accesstrade": "settings/accesstrade.html",
 	"onboard":              "onboard.html",
 }
 

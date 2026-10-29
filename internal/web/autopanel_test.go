@@ -11,7 +11,7 @@ import (
 func TestAutoPanelToggle(t *testing.T) {
 	s := newTestServer(t)
 	body := get(t, s, "/dashboard").Body.String()
-	if !strings.Contains(body, "Tự động hóa") || !strings.Contains(body, "Quét sản phẩm Accesstrade") {
+	if !strings.Contains(body, "Tự động hóa") || !strings.Contains(body, "Lịch autopilot affiliate") {
 		t.Fatal("Trang chủ thiếu bảng tự động hóa")
 	}
 	rec := postForm(t, s, "/automation/switch", url.Values{"key": {"autopilot_enabled"}, "on": {"0"}})

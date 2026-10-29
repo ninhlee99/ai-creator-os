@@ -3,41 +3,16 @@ package web
 import (
 	"context"
 	"fmt"
-	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
-	"github.com/ninhlee99/ai-creator-os/internal/products"
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/ninhlee99/ai-creator-os/internal/products"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
 func (s *Server) attachAffiliateVideoTracking(ctx context.Context, p *studio.AffiliateParams, jobID string) error {
-	if p == nil || p.ProductID <= 0 {
-		return nil
-	}
-	if s.Products == nil {
-		return fmt.Errorf("kho sản phẩm chưa sẵn sàng để tạo tracking riêng cho video")
-	}
-	product, err := s.Products.GetByID(p.ProductID)
-	if err != nil || product.ReviewStatus != products.ReviewApproved {
-		return fmt.Errorf("sản phẩm không còn ở trạng thái đã duyệt")
-	}
-	if product.Source != accesstrade.HunterSource {
-		return nil
-	}
-	client, err := s.atClient()
-	if err != nil {
-		return err
-	}
-	linkCtx, cancel := context.WithTimeout(ctx, atTimeout)
-	defer cancel()
-	link, err := client.CreateTikTokVideoTrackingLink(linkCtx, product, jobID)
-	if err != nil {
-		return fmt.Errorf("không tạo được link AccessTrade riêng cho video: %w", err)
-	}
-	p.AffLink = link.TrackingURL
-	p.AffiliateAttributionID = jobID
 	return nil
 }
 

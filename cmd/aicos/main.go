@@ -166,15 +166,6 @@ func main() {
 		}()
 	}
 
-	atStore := initializeAccesstrade(srv, *dataDir)
-	if atStore != nil {
-		defer func() {
-			if err := atStore.Close(); err != nil {
-				log.Printf("accesstrade close: %v", err)
-			}
-		}()
-	}
-
 	// Ticks arm after every store and service has been wired.
 	pstore, _ := initializeProducts(srv, mgr, autoSettings, *dataDir)
 	if pstore != nil {

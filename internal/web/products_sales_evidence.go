@@ -4,7 +4,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
@@ -14,14 +13,14 @@ const (
 )
 
 // attachProductSalesChange adds an observed units_sold delta only when two
-// recent AccessTrade snapshots support a time comparison.
+// recent product snapshots support a time comparison.
 func (s *Server) attachProductSalesChange(items []products.Product) []products.Product {
 	if s == nil || s.Products == nil {
 		return items
 	}
 	now := time.Now()
 	for i := range items {
-		if items[i].Source != accesstrade.HunterSource || !items[i].SoldCountKnown {
+		if !items[i].SoldCountKnown {
 			continue
 		}
 		history, err := s.Products.History(items[i].ID, 2)

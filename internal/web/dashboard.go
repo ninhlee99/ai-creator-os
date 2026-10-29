@@ -24,9 +24,11 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "list accounts")
 		return
 	}
-	atOrders, err := s.atOrderSummary()
-	if err != nil {
-		log.Printf("web: dashboard Accesstrade order stats: %v", err)
+	shelfCount := 0
+	if s.Products != nil {
+		if shelf, err := s.Products.Shelf(100); err == nil {
+			shelfCount = len(shelf)
+		}
 	}
 	recentDecisions, err := s.recentDashboardDecisions(6)
 	if err != nil {
@@ -101,7 +103,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"Error", r.URL.Query().Get("err"),
 		"Metrics", sysSnapshot,
 		"Accounts", accounts,
-		"ATOrders", atOrders,
+		"ShelfCount", shelfCount,
 		"RecentDecisions", recentDecisions,
 		"GrowthKnown", s.Growth != nil,
 		"RecentGrowthAlerts", recentGrowthAlerts,

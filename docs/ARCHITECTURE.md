@@ -10,7 +10,7 @@ MiuNova phục vụ hai flow TikTok: affiliate và viral. Xem [System blueprint]
 | `internal/web` | Go templates, HTMX routes/partials và operator controls |
 | `internal/network`, `internal/tiktok` | Kênh, account và TikTok OAuth |
 | `internal/studio` | Radar video, job, media, audio, QC và artifact |
-| `internal/products`, `internal/accesstrade` | Product Radar, evidence, offer, link, order |
+| `internal/products` | Kho sản phẩm kệ hàng, bóc tách link affiliate, lưu trữ ảnh & giá |
 | `internal/publishers` | TikTok Draft và trạng thái provider |
 | `internal/growth` | TikTok snapshots, attribution, insights và feedback |
 | `internal/webai`, `internal/engines` | Media providers cần cho hai flow |

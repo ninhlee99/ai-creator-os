@@ -24,16 +24,11 @@ func (s *Server) moneyReadiness() []moneyRow {
 		tiktokPartial = tiktokPartial || row.TiktokClient || row.TiktokToken
 	}
 
-	atKey := s.atKeySet()
 	return []moneyRow{
 		readinessRow("TikTok", tiktokReady, tiktokPartial,
 			"Có client và token; đăng Draft mặc định, quyền public chưa xác minh.",
 			"Thiếu client hoặc token.", "Chưa cấu hình TikTok.",
 			"Kết nối account và duyệt Draft trong TikTok.", "/publishers"),
-		readinessRow("AccessTrade", atKey && s.AT != nil, atKey,
-			"Có API key và store cục bộ; publisher approval và API live cần xác minh.",
-			"Có API key nhưng store chưa sẵn sàng.", "Chưa có AccessTrade API key.",
-			"Kết nối AccessTrade để tìm offer và đồng bộ đơn.", "/settings/accesstrade"),
 	}
 }
 

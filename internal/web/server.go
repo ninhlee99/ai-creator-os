@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
@@ -49,10 +48,6 @@ type Server struct {
 	Autopilot        *studio.Autopilot
 	Products         *products.Store
 	ProductProviders []products.Provider
-	// AT is the Accesstrade cache store (campaigns + created links).
-	// Injected by cmd wiring; nil when its DB could not be opened —
-	// handlers then fail closed with an honest message.
-	AT *accesstrade.Store
 	// OnGeminiKeys nhận bộ key Gemini dùng chung mỗi khi đổi (main nối vào
 	// phần tạo ảnh của Studio).
 	OnGeminiKeys func(keys []string)

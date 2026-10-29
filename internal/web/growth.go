@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
@@ -53,6 +52,14 @@ type growthVideoMetricRow struct {
 	Shares      string
 }
 
+type OrderAttributionSummary struct {
+	TotalCount         int64
+	PendingCount       int64
+	ApprovedCount      int64
+	RejectedCount      int64
+	ApprovedCommission float64
+}
+
 type growthStudioVideoRow struct {
 	accountID             int64
 	viewsValue            int64
@@ -73,7 +80,7 @@ type growthStudioVideoRow struct {
 	MetricsFresh          bool
 	TikTokAccountVerified bool
 	AttributionID         string
-	Orders                accesstrade.OrderAttributionSummary
+	Orders                OrderAttributionSummary
 	OrdersKnown           bool
 	OrdersSyncedAt        string
 	EngagementRate        string
@@ -154,11 +161,6 @@ func (s *Server) growthView() map[string]any {
 	var totalViews30d float64
 	allViews30dKnown := len(accounts) > 0
 	hasTikTokMetrics := false
-	atOrdersSyncedAt := ""
-	atOrdersSynced := false
-	if s.AT != nil {
-		atOrdersSyncedAt, atOrdersSynced = s.AT.GetSyncState("orders.until")
-	}
 	for _, account := range accounts {
 		profile, err := s.Growth.EnsureProfile(account.ID)
 		if err != nil || profile == nil {
@@ -263,13 +265,6 @@ func (s *Server) growthView() map[string]any {
 							row.engagement = (float64(*metric.Likes) + float64(*metric.Comments) + float64(*metric.Shares)) / float64(*metric.Views)
 							row.engagementKnown = true
 							row.EngagementRate = fmt.Sprintf("%.1f%%", row.engagement*100)
-						}
-					}
-					if row.KindLabel == "Affiliate TikTok" && row.TikTokAccountVerified && row.AttributionID != "" && s.AT != nil && atOrdersSynced {
-						if orders, err := s.AT.OrderAttributionBySub2(row.AttributionID); err == nil {
-							row.Orders = orders
-							row.OrdersKnown = true
-							row.OrdersSyncedAt = shortMetricTimeString(atOrdersSyncedAt)
 						}
 					}
 					studioVideoMetrics = append(studioVideoMetrics, row)

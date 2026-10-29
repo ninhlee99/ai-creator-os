@@ -22,7 +22,7 @@ func seedData(t *testing.T, dir string) map[string][]byte {
 	t.Helper()
 	// DB thật (SQLite) — Stage() integrity_check mọi *.db nên file giả
 	// chỉ có magic header sẽ không qua được.
-	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"} {
+	for _, db := range []string{"ledger.db", "studio.db", "products.db"} {
 		p := filepath.Join(dir, db)
 		sdb, err := sql.Open("sqlite", p)
 		if err != nil {
@@ -60,7 +60,7 @@ func seedData(t *testing.T, dir string) map[string][]byte {
 	}
 	// Đọc lại bytes DB thật để so sánh sau round-trip.
 	out := map[string][]byte{}
-	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"} {
+	for _, db := range []string{"ledger.db", "studio.db", "products.db"} {
 		raw, err := os.ReadFile(filepath.Join(dir, db))
 		if err != nil {
 			t.Fatal(err)
@@ -710,9 +710,9 @@ func TestApplyStagedPreservesPendingRestoreWhenOldWALCannotBeRemoved(t *testing.
 	}
 }
 
-// TestCreateIncludesAllFourDBs: ảnh chụp phải gồm đủ 4 DB đang mở
-// (ledger.db, studio.db, products.db, accesstrade.db).
-func TestCreateIncludesAllFourDBs(t *testing.T) {
+// TestCreateIncludesAllThreeDBs: ảnh chụp phải gồm đủ 3 DB đang mở
+// (ledger.db, studio.db, products.db).
+func TestCreateIncludesAllThreeDBs(t *testing.T) {
 	dir := t.TempDir()
 	seedData(t, dir)
 	var buf bytes.Buffer
@@ -724,7 +724,7 @@ func TestCreateIncludesAllFourDBs(t *testing.T) {
 	for _, f := range zr.File {
 		names[f.Name] = true
 	}
-	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"} {
+	for _, db := range []string{"ledger.db", "studio.db", "products.db"} {
 		if !names[db] {
 			t.Errorf("thiếu %s trong ảnh chụp", db)
 		}

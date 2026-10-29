@@ -6,8 +6,6 @@ package web
 import (
 	"net/http"
 	"net/url"
-
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 )
 
 type autoSwitch struct {
@@ -26,7 +24,6 @@ var autoSwitchDefs = []struct {
 }{
 	{"growth.production_enabled", "Lịch xử lý kế hoạch TikTok", "Cho phép xử lý kế hoạch đến hạn; trạng thái và metrics chỉ được cập nhật khi có evidence từ provider.", "/growth", true},
 	{"autopilot_enabled", "Lịch autopilot affiliate", "Producer hiện dừng trước khi tạo video vì thiếu xác nhận dùng Muse AI credits; bật lịch không làm video chạy.", "/studio/jobs?tab=schedule", true},
-	{automation.KeyATHunterEnabled, "Quét sản phẩm Accesstrade", "Feed hiện thiếu sales/rating evidence nên chưa đủ điều kiện tự tạo video.", "/products", true},
 }
 
 func (s *Server) autoSwitches() []autoSwitch {

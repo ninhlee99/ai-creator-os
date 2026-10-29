@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
 type fakeJob struct{ status, output string }
@@ -190,64 +190,28 @@ func TestGrowthTickKillSwitchWins(t *testing.T) {
 
 // ------------------------------------------------------------- homepage
 
-func TestDashboardUsesSyncedAccesstradeStats(t *testing.T) {
+func TestDashboardShelfCount(t *testing.T) {
 	s := newTestServer(t)
-	atStore, err := accesstrade.NewStore(filepath.Join(t.TempDir(), "accesstrade.db"))
+	pstore, err := products.NewStore(filepath.Join(t.TempDir(), "products.db"))
 	if err != nil {
-		t.Fatalf("open Accesstrade store: %v", err)
+		t.Fatalf("open products store: %v", err)
 	}
-	t.Cleanup(func() { _ = atStore.Close() })
-	s.AT = atStore
-	if err := s.Ledger.SetSetting(accesstrade.KeySetting, "test-access-key"); err != nil {
-		t.Fatalf("set Accesstrade test key: %v", err)
-	}
-	if _, err := s.Ledger.RecordCommission("2026-10", 999000, "legacy-source"); err != nil {
-		t.Fatalf("record legacy commission: %v", err)
-	}
-	beforeSync := get(t, s, "/dashboard")
-	if beforeSync.Code != http.StatusOK {
-		t.Fatalf("GET / before order sync = %d, want 200", beforeSync.Code)
-	}
-	if body := beforeSync.Body.String(); !strings.Contains(body, "Chưa có dữ liệu đơn") || strings.Contains(body, "999.000 ₫") {
-		t.Fatalf("dashboard treated legacy commission as current Accesstrade stats: %s", body)
-	}
-	productsBeforeSync := get(t, s, "/products?tab=affiliate")
-	if !strings.Contains(productsBeforeSync.Body.String(), "Chưa đồng bộ") {
-		t.Fatal("products page treated unsynced Accesstrade orders as known zero")
-	}
+	t.Cleanup(func() { _ = pstore.Close() })
+	s.Products = pstore
 
-	_, _, err = s.AT.UpsertOrders([]accesstrade.Order{
-		{OrderID: "approved-1", Status: accesstrade.OrderApproved, PubCommission: 150000},
-		{OrderID: "pending-1", Status: accesstrade.OrderPending, PubCommission: 25000},
-	})
-	if err != nil {
-		t.Fatalf("save Accesstrade orders: %v", err)
-	}
-	if err := s.AT.SetSyncState("orders.until", "2026-10-23T05:00:00Z"); err != nil {
-		t.Fatalf("save sync marker: %v", err)
-	}
 	rec := get(t, s, "/dashboard")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET / = %d, want 200", rec.Code)
+		t.Fatalf("GET /dashboard = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Hoa hồng Accesstrade đã duyệt", "150.000 ₫", "1 đơn đã duyệt · 1 chờ duyệt", "23/10/2026 05:00 UTC"} {
+	for _, want := range []string{"Sản phẩm Kệ hàng (1-Link)", "Quản lý kệ hàng ↗"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("dashboard missing synced Accesstrade stat %q", want)
+			t.Errorf("dashboard missing shelf stat %q", want)
 		}
 	}
-	if strings.Contains(body, "999.000 ₫") {
-		t.Error("dashboard rendered legacy commission as current Accesstrade revenue")
-	}
-	productsAfterSync := get(t, s, "/products?tab=affiliate")
-	for _, want := range []string{"Đã duyệt: 1 đơn · 150.000 ₫", "Chờ duyệt: 1 đơn · 25.000 ₫", "Cập nhật 23/10/2026 05:00 UTC"} {
-		if !strings.Contains(productsAfterSync.Body.String(), want) {
-			t.Errorf("products page missing synced order summary %q", want)
-		}
-	}
-	for _, gone := range []string{"Phiên live", "Lịch live", "Slot live"} {
+	for _, gone := range []string{"Phiên live", "Lịch live", "Slot live", "Hoa hồng Accesstrade"} {
 		if strings.Contains(body, gone) {
-			t.Errorf("dashboard still shows live remnant %q", gone)
+			t.Errorf("dashboard still shows remnant %q", gone)
 		}
 	}
 }
