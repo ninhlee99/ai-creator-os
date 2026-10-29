@@ -83,10 +83,12 @@
         </div>
 
         {{if .TikTokCookieActive}}
-        <div style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:16px; font-size:13px; margin-top:14px">
-          <div style="font-weight:600; color:var(--text); display:flex; align-items:center; gap:8px">
-            <span>Tài khoản:</span>
-            <span style="color:var(--accent,#2563eb); font-weight:700">{{.TikTokAccountName}}</span>
+        <div style="background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:16px; font-size:13px; margin-top:14px; overflow:hidden">
+          <div style="font-weight:600; color:var(--text); display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; margin-bottom:6px">
+            <span style="color:var(--muted); flex-shrink:0">Tài khoản:</span>
+            <span style="color:var(--accent,#2563eb); font-weight:700; word-break:break-all; overflow-wrap:anywhere; min-width:0; max-width:100%" title="{{.TikTokAccountName}}">
+              {{.TikTokAccountName}}
+            </span>
           </div>
           <div style="color:var(--muted); font-size:12px; margin-top:4px">
             Trạng thái: Cookie đang hoạt động ({{.TikTokCookieCount}} cookies lưu trong hệ thống)

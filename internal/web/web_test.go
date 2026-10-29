@@ -70,11 +70,8 @@ func serveLocalTestRoute(s *Server, w http.ResponseWriter, r *http.Request) {
 func TestDashboard(t *testing.T) {
 	s := newTestServer(t)
 	rec := get(t, s, "/")
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("GET / = %d, want 303 See Other", rec.Code)
-	}
-	if loc := rec.Header().Get("Location"); loc != "/workflow/create" {
-		t.Fatalf("GET / redirect location = %q, want /workflow/create", loc)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET / = %d, want 200 OK", rec.Code)
 	}
 }
 
@@ -280,9 +277,9 @@ func TestAllPagesRender(t *testing.T) {
 		}
 	}
 
-	// / redirects 303 to /workflow.
-	if rec := get(t, s, "/"); rec.Code != http.StatusSeeOther {
-		t.Errorf("GET / = %d, want 303", rec.Code)
+	// / renders 200 OK for 1-prompt video studio conversation.
+	if rec := get(t, s, "/"); rec.Code != http.StatusOK {
+		t.Errorf("GET / = %d, want 200", rec.Code)
 	}
 
 	// /settings redirects 303 to the first sub-page (system).

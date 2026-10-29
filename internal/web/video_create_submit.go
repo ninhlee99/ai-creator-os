@@ -427,7 +427,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		if s.Ledger != nil {
 			_ = s.Ledger.Decide("human", "affiliate_create", nil, fmt.Sprintf("Tạo video affiliate job=%s: %s", jobID, topic), nil)
 		}
-		seeOther(w, r, "/workflow/create?msg=created&job_id="+url.QueryEscape(jobID)+"#chat-feed")
+		seeOther(w, r, "/?msg=created&job_id="+url.QueryEscape(jobID)+"#chat-feed")
 		return
 	}
 
@@ -492,7 +492,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		if s.Ledger != nil {
 			_ = s.Ledger.Decide("human", "viral_source_replace", nil, fmt.Sprintf("Tạo video viral job=%s: %s", jobID, topic), nil)
 		}
-		seeOther(w, r, "/workflow/create?msg=created&job_id="+url.QueryEscape(jobID)+"#chat-feed")
+		seeOther(w, r, "/?msg=created&job_id="+url.QueryEscape(jobID)+"#chat-feed")
 		return
 	}
 
@@ -606,7 +606,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		msg = "Đã thêm video TikTok vào hàng đợi (đang chờ các job trước hoàn thành)!"
 	}
 
-	http.Redirect(w, r, "/workflow/create?msg="+url.QueryEscape(msg)+"&job_id="+url.QueryEscape(jobID)+"#chat-feed", http.StatusSeeOther)
+	http.Redirect(w, r, "/?msg="+url.QueryEscape(msg)+"&job_id="+url.QueryEscape(jobID)+"#chat-feed", http.StatusSeeOther)
 }
 
 // handleViralCreate giữ tương thích ngược cho route cũ.
@@ -615,7 +615,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeVideoCreateError(w http.ResponseWriter, r *http.Request, message string) {
-	target := "/workflow/create"
+	target := "/"
 	http.Redirect(w, r, target+"?err="+url.QueryEscape(message), http.StatusSeeOther)
 }
 

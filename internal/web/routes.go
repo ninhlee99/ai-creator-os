@@ -21,13 +21,20 @@ func (s *Server) Routes() http.Handler {
 	// Đợt S: health endpoint cho watchdog ngoài — không qua onboardGate.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 
-	// Trang chủ điều hướng trực tiếp vào màn hình Tạo video AI bằng 1 câu lệnh.
+	// Trang chủ là màn hình Tạo video AI bằng 1 câu lệnh (Conversation Studio kiểu Gemini).
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
-		http.Redirect(w, r, "/workflow/create", http.StatusSeeOther)
+		s.handleVideoCreate(w, r)
+	})
+	mux.HandleFunc("POST /", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		s.handleVideoCreateSubmit(w, r)
 	})
 	mux.HandleFunc("GET /dashboard", s.handleDashboard)
 	mux.HandleFunc("POST /automation/switch", s.handleAutoSwitch)
@@ -174,7 +181,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /kill", s.handleKill)
 	mux.HandleFunc("POST /unkill", s.handleUnkill)
 
-	// Universal Workflow Video Creation Studio (Tạo Video AI Bằng 1 Câu Lệnh)
+	// Universal Video Creation Studio (vẫn hỗ trợ alias /workflow/create)
 	mux.HandleFunc("GET /workflow/create", s.handleVideoCreate)
 	mux.HandleFunc("POST /workflow/create", s.handleVideoCreateSubmit)
 	// Điều hướng tương thích route cũ /viral sang /workflow/create
