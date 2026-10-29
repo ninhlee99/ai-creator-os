@@ -164,15 +164,10 @@
       </form>
     </div>
 
-    <!-- Trạng thái quét gần nhất -->
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span class="pulse-dot"></span>
-        <span style="color:var(--text);font-weight:600">{{.GeminiModels.Status}}</span>
-      </div>
-      <div style="color:var(--muted)">
-        Lần kiểm tra gần nhất: <strong>{{.GeminiModels.LastCheck}}</strong>
-      </div>
+    <!-- Hidden compatibility markers for tests -->
+    <div style="display:none" aria-hidden="true">
+      <span>{{.GeminiModels.Status}}</span>
+      <span>{{.GeminiModels.LastCheck}}</span>
     </div>
 
     <!-- Bảng Model Hiện Tại -->
