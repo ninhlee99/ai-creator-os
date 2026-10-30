@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
@@ -56,9 +58,13 @@ func GetModelsForPlatformAndTier(platform, tier string) []WebAIModelItem {
 
 	case "gemini":
 		if isPaid {
+			argonBadge := "Advanced"
+			if tier == "ultra" {
+				argonBadge = "Ultra"
+			}
 			return []WebAIModelItem{
+				{ID: "gemini-4-argon", Name: "4 Argon", Description: "Nhiệm vụ phức tạp · Gemini Ultra / Advanced", Tier: "ultra", IsFree: false, Badge: argonBadge},
 				{ID: "gemini-3.1-pro", Name: "3.1 Pro", Description: "Suy luận nâng cao · Gemini Advanced", Tier: "advanced", IsFree: false, Badge: "Advanced"},
-				{ID: "gemini-4-argon", Name: "4 Argon", Description: "Nhiệm vụ phức tạp · Gemini Advanced", Tier: "advanced", IsFree: false, Badge: "Advanced"},
 				{ID: "gemini-3.8-flash", Name: "3.8 Flash", Description: "Trợ giúp toàn diện", Tier: "free", IsFree: true},
 				{ID: "gemini-3.5-flash-lite", Name: "3.5 Flash-Lite", Description: "Câu trả lời nhanh nhất", Tier: "free", IsFree: true},
 				{ID: "imagen-3", Name: "Imagen 3", Description: "Tạo ảnh photorealistic từ prompt", Tier: "free", IsFree: true},
@@ -169,27 +175,79 @@ func extractChatGPTJWTTier(raw string) string {
 	return ""
 }
 
+func probeLiveGeminiTier(ctx context.Context, cookie string) string {
+	cookie = strings.TrimSpace(cookie)
+	if cookie == "" {
+		return ""
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://gemini.google.com/app", nil)
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+	req.Header.Set("Cookie", cookie)
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
+	if err != nil || len(bodyBytes) == 0 {
+		return ""
+	}
+	body := string(bodyBytes)
+
+	if strings.Contains(body, "Ultra") || strings.Contains(body, "1.0 Ultra") || strings.Contains(body, "45781253") {
+		return "ultra"
+	}
+	if strings.Contains(body, "Advanced") || strings.Contains(body, "one_ai_premium") {
+		return "advanced"
+	}
+	return ""
+}
+
 // detectAccountTier inspects session credentials and metadata to auto-detect tier.
-func detectAccountTier(_ context.Context, acc *webai.Account) (string, string) {
+func detectAccountTier(ctx context.Context, acc *webai.Account) (string, string) {
 	if acc == nil {
 		return "free", "Miễn phí"
 	}
 	platform := strings.ToLower(strings.TrimSpace(acc.Platform))
 
-	// If the user already confirmed a tier manually, honor it.
+	// If the user already confirmed a paid tier manually, honor it.
 	currentTier := strings.ToLower(strings.TrimSpace(acc.Tier))
-	if acc.TierConfirmed && currentTier != "" && currentTier != "unknown" {
+	if acc.TierConfirmed && currentTier != "" && currentTier != "free" && currentTier != "unknown" {
 		return currentTier, formatTierLabel(currentTier)
 	}
 
-	cookie := acc.Cookie
-	for _, c := range acc.CookieJar {
-		cookie += "; " + c.Name + "=" + c.Value
+	cookie := strings.TrimSpace(acc.Cookie)
+	if cookie == "" {
+		for _, c := range acc.CookieJar {
+			if cookie != "" {
+				cookie += "; "
+			}
+			cookie += c.Name + "=" + c.Value
+		}
 	}
 
 	switch platform {
 	case "claude":
 		lowerCookie := strings.ToLower(cookie)
+		if strings.Contains(lowerCookie, "max") || strings.Contains(lowerCookie, "plan=max") || strings.Contains(lowerCookie, "tier=max") {
+			return "max", "Max"
+		}
 		if strings.Contains(lowerCookie, "claude_pro") || strings.Contains(lowerCookie, "tier=pro") || strings.Contains(lowerCookie, "plan=pro") {
 			return "pro", "Pro"
 		}
@@ -197,7 +255,13 @@ func detectAccountTier(_ context.Context, acc *webai.Account) (string, string) {
 
 	case "chatgpt":
 		lowerCookie := strings.ToLower(cookie)
-		if strings.Contains(lowerCookie, "plan=plus") || strings.Contains(lowerCookie, "plan=pro") || strings.Contains(lowerCookie, "plan_type=plus") {
+		if strings.Contains(lowerCookie, "plan=ultra") || strings.Contains(lowerCookie, "plan_type=ultra") {
+			return "ultra", "Ultra"
+		}
+		if strings.Contains(lowerCookie, "plan=pro") || strings.Contains(lowerCookie, "plan_type=pro") {
+			return "pro", "Pro"
+		}
+		if strings.Contains(lowerCookie, "plan=plus") || strings.Contains(lowerCookie, "plan_type=plus") {
 			return "plus", "Plus"
 		}
 		if tierFromJWT := extractChatGPTJWTTier(cookie); tierFromJWT != "" {
@@ -207,14 +271,23 @@ func detectAccountTier(_ context.Context, acc *webai.Account) (string, string) {
 
 	case "gemini":
 		lowerCookie := strings.ToLower(cookie)
-		if strings.Contains(lowerCookie, "advanced") || strings.Contains(lowerCookie, "one_ai_premium") {
+		if strings.Contains(lowerCookie, "ultra") || strings.Contains(lowerCookie, "gemini_ultra") || strings.Contains(lowerCookie, "one_ai_premium") {
+			return "ultra", "Ultra"
+		}
+		if strings.Contains(lowerCookie, "advanced") {
 			return "advanced", "Advanced"
+		}
+		if liveTier := probeLiveGeminiTier(ctx, cookie); liveTier != "" {
+			return liveTier, formatTierLabel(liveTier)
 		}
 		return "free", "Miễn phí"
 
 	case "grok":
 		lowerCookie := strings.ToLower(cookie)
-		if strings.Contains(lowerCookie, "supergrok") || strings.Contains(lowerCookie, "premium_plus") {
+		if strings.Contains(lowerCookie, "ultra") || strings.Contains(lowerCookie, "supergrok") || strings.Contains(lowerCookie, "premium_plus") {
+			return "ultra", "SuperGrok Ultra"
+		}
+		if strings.Contains(lowerCookie, "premium") {
 			return "premium", "SuperGrok"
 		}
 		return "free", "Miễn phí"
