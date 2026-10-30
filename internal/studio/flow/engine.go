@@ -356,12 +356,16 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 	portData := make(map[string]map[string]any)
 
 	var logBuilder strings.Builder
+	origCtxLog := ctx.Log
 	appendRunLog := func(msg string) {
 		line := fmt.Sprintf("[%s] %s\n", time.Now().Format("15:04:05"), msg)
 		logBuilder.WriteString(line)
-		if ctx.Log != nil {
-			ctx.Log(msg)
+		if origCtxLog != nil {
+			origCtxLog(msg)
 		}
+	}
+	ctx.Log = func(msg string) {
+		appendRunLog(msg)
 	}
 
 	appendRunLog(fmt.Sprintf("Khởi chạy đồ thị '%s' (gồm %d nodes, %d kết nối)...", graph.Name, len(graph.Nodes), len(graph.Edges)))

@@ -4231,7 +4231,7 @@
         const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url', 'workflow_id', 'workflow_name', 'item_input_key', 'index_input_key', 'result_output_key'];
 
         if (!isWorkflowBoundary && !isWorkflowCall) Object.keys(params).forEach(key => {
-          if (skipKeys.includes(key) || (node.type === 'virtual_tryon' && key === 'fit_style')) return;
+          if (skipKeys.includes(key) || (node.type === 'virtual_tryon' && key === 'fit_style') || (node.type === 'webai_product_extractor' && key === 'provider')) return;
 
           const val = params[key];
           const group = document.createElement('div');

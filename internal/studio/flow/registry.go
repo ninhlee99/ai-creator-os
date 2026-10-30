@@ -432,10 +432,10 @@ func registerAllBuiltinNodes() {
 		},
 		DefaultParams: map[string]any{
 			"provider":        "chatgpt",
-			"isolate_garment": true,
-			"remove_skin":     true,
+			"isolate_garment": false,
+			"remove_skin":     false,
 			"refine_edges":    true,
-			"auto_crop":       true,
+			"auto_crop":       false,
 		},
 		Executor: executeWebAIProductExtractor,
 	})

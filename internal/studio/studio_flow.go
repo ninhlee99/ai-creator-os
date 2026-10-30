@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -341,7 +342,7 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 		MuseAccountName:       services.MuseAccountName,
 		MuseRenderWithSession: museRender,
 		Log: func(msg string) {
-			// Callback ghi log
+			log.Printf("[Run %s] %s", runID, msg)
 		},
 		NodeStatus: func(nodeID string, state flow.NodeState) {
 			nodeStateMu.Lock()

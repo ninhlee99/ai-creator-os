@@ -426,37 +426,26 @@ func renderCinematicMotionShot(ctx *ExecutionContext, files []string, prompt, ou
 		}
 	}
 
-	// Chọn ảnh chính và ảnh phụ (badge) cho shot để đảm bảo sản phẩm luôn xuất hiện nổi bật
+	// Chọn ảnh chính cho shot: kết hợp luân phiên giữa người mẫu và sản phẩm
 	var srcImg string
-	var badgeImg string
-
-	if len(prodImages) > 0 && len(charImages) > 0 {
-		// Kết hợp luân phiên giữa sản phẩm và mẫu:
-		// Shot 0: Sản phẩm cận cảnh kèm huy hiệu người mẫu ở góc (endorsing)
-		// Shot 1: Cận cảnh sản phẩm / cutout chi tiết (không bị che)
-		// Shot 2: Người mẫu giới thiệu kèm huy hiệu sản phẩm
-		// Shot 3: Góc ảnh sản phẩm khác / chất liệu
-		// Shot 4: Sản phẩm chốt hạ (CTA)
-		switch shotIndex % 5 {
+	if len(charImages) > 0 && len(prodImages) > 0 {
+		switch shotIndex % 3 {
 		case 0:
-			srcImg = prodImages[0]
-			badgeImg = charImages[0]
-		case 1:
-			if len(prodImages) > 1 {
-				srcImg = prodImages[1]
-			} else {
-				srcImg = prodImages[0]
-			}
-		case 2:
+			// Shot 0: Người mẫu toàn thân giới thiệu trang phục
 			srcImg = charImages[0]
-			badgeImg = prodImages[0]
-		case 3:
-			pIdx := (shotIndex) % len(prodImages)
-			srcImg = prodImages[pIdx]
-		default:
+		case 1:
+			// Shot 1: Cận cảnh sản phẩm / outfit
 			srcImg = prodImages[0]
-			badgeImg = charImages[0]
+		case 2:
+			// Shot 2: Người mẫu bán thân tạo dáng
+			if len(charImages) > 1 {
+				srcImg = charImages[1]
+			} else {
+				srcImg = charImages[0]
+			}
 		}
+	} else if len(charImages) > 0 {
+		srcImg = charImages[shotIndex%len(charImages)]
 	} else if len(prodImages) > 0 {
 		srcImg = prodImages[shotIndex%len(prodImages)]
 	} else {
@@ -470,7 +459,7 @@ func renderCinematicMotionShot(ctx *ExecutionContext, files []string, prompt, ou
 		// Zoom in chậm, mượt
 		motionFilter = fmt.Sprintf("zoompan=z='min(zoom+0.0008,1.14)':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30", totalFrames)
 	case 1:
-		// Lướt nhẹ từ trên xuống dưới (quét dáng sản phẩm)
+		// Lướt nhẹ từ trên xuống dưới (quét dáng trang phục)
 		motionFilter = fmt.Sprintf("zoompan=z='1.10':d=%d:x='iw/2-(iw/zoom/2)':y='min(ih-ih/zoom,max(0,ih*0.08+on*0.35))':s=1080x1920:fps=30", totalFrames)
 	case 2:
 		// Lướt nhẹ từ dưới lên trên (nhấn mạnh chi tiết form)
@@ -480,33 +469,21 @@ func renderCinematicMotionShot(ctx *ExecutionContext, files []string, prompt, ou
 		motionFilter = fmt.Sprintf("zoompan=z='min(zoom+0.001,1.15)':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30", totalFrames)
 	}
 
-	var args []string
-	if badgeImg != "" && fileExists(badgeImg) {
-		badgeSize := 280
-		filterComplex := fmt.Sprintf(
-			"[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,%s,setsar=1[bg];"+
-				"[1:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[pip];"+
-				"[bg][pip]overlay=main_w-overlay_w-36:36[vout]",
-			motionFilter, badgeSize, badgeSize, badgeSize, badgeSize,
-		)
-		args = []string{
-			"-loop", "1", "-i", srcImg,
-			"-loop", "1", "-i", badgeImg,
-			"-filter_complex", filterComplex,
-			"-map", "[vout]",
-			"-t", strconv.Itoa(shotDuration),
-			"-c:v", "libx264", "-pix_fmt", "yuv420p",
-			"-y", outPath,
-		}
-	} else {
-		vf := fmt.Sprintf("scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black,%s,setsar=1", motionFilter)
-		args = []string{
-			"-loop", "1", "-i", srcImg,
-			"-vf", vf,
-			"-t", strconv.Itoa(shotDuration),
-			"-c:v", "libx264", "-pix_fmt", "yuv420p",
-			"-y", outPath,
-		}
+	// Đổ nền ambient mờ màu tự nhiên (boxblur) thay vì viền đen, khử hoàn toàn hiện tượng đen màn hình
+	filterComplex := fmt.Sprintf(
+		"[0:v]split=2[fg_raw][bg_raw];"+
+			"[bg_raw]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5[bg_blur];"+
+			"[fg_raw]scale=1080:1920:force_original_aspect_ratio=decrease[fg_scaled];"+
+			"[bg_blur][fg_scaled]overlay=(W-w)/2:(H-h)/2,setsar=1,%s[vout]",
+		motionFilter,
+	)
+	args := []string{
+		"-loop", "1", "-i", srcImg,
+		"-filter_complex", filterComplex,
+		"-map", "[vout]",
+		"-t", strconv.Itoa(shotDuration),
+		"-c:v", "libx264", "-pix_fmt", "yuv420p",
+		"-y", outPath,
 	}
 
 	if ctx.FFmpegRunner != nil {
@@ -581,9 +558,9 @@ func executeWebAIProductExtractor(ctx *ExecutionContext, node *FlowNode, inputs 
 	// 1. Tiến hành bóc tách sản phẩm, xóa sạch background và người mẫu (transparent PNG)
 	cutoutPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_cutout.png", node.ID))
 	maskPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_mask.png", node.ID))
-	isolateGarment := nodeParamBool(node.Params, "isolate_garment", true)
-	removeSkin := nodeParamBool(node.Params, "remove_skin", true)
-	autoCrop := nodeParamBool(node.Params, "auto_crop", true)
+	isolateGarment := nodeParamBool(node.Params, "isolate_garment", false)
+	removeSkin := nodeParamBool(node.Params, "remove_skin", false)
+	autoCrop := nodeParamBool(node.Params, "auto_crop", false)
 	refineEdges := nodeParamBool(node.Params, "refine_edges", true)
 
 	if err := segmentGarmentToCutout(imgIn, cutoutPath, maskPath, autoCrop, refineEdges, isolateGarment, removeSkin); err != nil {
