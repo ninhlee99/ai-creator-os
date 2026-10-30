@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -15,7 +16,35 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
+
+func TestTikTokCookieHeaderForURLScopesSavedSession(t *testing.T) {
+	store, err := webai.NewStore(filepath.Join(t.TempDir(), "webai.db"))
+	if err != nil {
+		t.Fatalf("webai.NewStore: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	_, err = store.UpsertAccountSessionWithCookieJar(webai.PlatformTikTok, "", "", []webai.BrowserCookie{{
+		Name: "session", Value: "logged-in", Domain: ".tiktok.com", Path: "/", Secure: true,
+	}}, "TikTok", "", "")
+	if err != nil {
+		t.Fatalf("save TikTok session: %v", err)
+	}
+	if got := tikTokCookieHeaderForURL(store, "https://shop.tiktok.com/product/1"); got != "session=logged-in" {
+		accounts, _ := store.GetAccounts(webai.PlatformTikTok)
+		t.Fatalf("TikTok cookie = %q, want scoped session cookie (accounts=%+v)", got, func() []string {
+			var state []string
+			for _, a := range accounts {
+				state = append(state, fmt.Sprintf("status=%s active=%t cookies=%d", a.Status, a.IsActive, len(a.CookieJar)))
+			}
+			return state
+		}())
+	}
+	if got := tikTokCookieHeaderForURL(store, "https://tiktok.com.evil.example/image.jpg"); got != "" {
+		t.Fatalf("unrelated host received TikTok cookie %q", got)
+	}
+}
 
 func TestProductSampleVideoUploadIsSavedForWorkflow(t *testing.T) {
 	var body bytes.Buffer

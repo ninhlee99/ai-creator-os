@@ -101,6 +101,12 @@ var downloadHTTP = &http.Client{Timeout: 60 * time.Second}
 // content-type + giới hạn 15MB). Dùng chung cho autopilot theo account
 // và hunter Accesstrade (không viết lại logic tải ở automation).
 func DownloadImage(ctx context.Context, url, dst string) error {
+	return DownloadImageWithCookie(ctx, url, dst, "")
+}
+
+// DownloadImageWithCookie tải ảnh listing với session cookie đã được caller
+// giới hạn theo domain đích. Cookie không được ghi log hoặc trả trong lỗi.
+func DownloadImageWithCookie(ctx context.Context, url, dst, cookie string) error {
 	if url == "" {
 		return fmt.Errorf("empty url")
 	}
@@ -109,6 +115,9 @@ func DownloadImage(ctx context.Context, url, dst string) error {
 		return err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")
+	if cookie != "" {
+		req.Header.Set("Cookie", cookie)
+	}
 	resp, err := downloadHTTP.Do(req)
 	if err != nil {
 		return err

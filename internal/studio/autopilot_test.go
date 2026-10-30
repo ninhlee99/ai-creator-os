@@ -123,6 +123,23 @@ func TestDownloadImageRejectsOversizedResponse(t *testing.T) {
 	}
 }
 
+func TestDownloadImageWithCookieSendsSessionCookie(t *testing.T) {
+	var gotCookie string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCookie = r.Header.Get("Cookie")
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write([]byte{137, 80, 78, 71, 13, 10, 26, 10})
+	}))
+	defer srv.Close()
+	dst := filepath.Join(t.TempDir(), "image.png")
+	if err := DownloadImageWithCookie(context.Background(), srv.URL+"/image.png", dst, "session=logged-in"); err != nil {
+		t.Fatalf("DownloadImageWithCookie() error = %v", err)
+	}
+	if gotCookie != "session=logged-in" {
+		t.Fatalf("Cookie header = %q, want logged-in session", gotCookie)
+	}
+}
+
 func TestAutopilotRun(t *testing.T) {
 	dir := t.TempDir()
 	l, err := ledger.New(filepath.Join(dir, "ledger.db"))

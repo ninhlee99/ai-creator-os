@@ -14,7 +14,59 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
+
+func tikTokCookieHeaderForURL(store *webai.Store, rawURL string) string {
+	if store == nil {
+		return ""
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Scheme != "https" || u.Hostname() == "" {
+		return ""
+	}
+	host := strings.ToLower(u.Hostname())
+	accounts, err := store.GetAccounts(webai.PlatformTikTok)
+	if err != nil {
+		return ""
+	}
+	var selected *webai.Account
+	for i := range accounts {
+		if accounts[i].IsActive && (accounts[i].Cookie != "" || len(accounts[i].CookieJar) > 0) {
+			selected = &accounts[i]
+			break
+		}
+	}
+	if selected == nil {
+		return ""
+	}
+	var pairs []string
+	now := float64(time.Now().Unix())
+	for _, c := range selected.CookieJar {
+		domain := strings.TrimPrefix(strings.ToLower(c.Domain), ".")
+		if c.Name == "" || domain == "" || (host != domain && !strings.HasSuffix(host, "."+domain)) ||
+			(c.Secure && u.Scheme != "https") || (c.Expires > 0 && c.Expires <= now) {
+			continue
+		}
+		path := c.Path
+		if path == "" {
+			path = "/"
+		}
+		if u.Path != path && !strings.HasPrefix(u.Path, strings.TrimRight(path, "/")+"/") {
+			continue
+		}
+		pairs = append(pairs, (&http.Cookie{Name: c.Name, Value: c.Value}).String())
+	}
+	if len(pairs) > 0 {
+		return strings.Join(pairs, "; ")
+	}
+	// Legacy flat cookie headers lack domain metadata. Restrict them to TikTok
+	// page hosts so they cannot leak to arbitrary seller image/CDN domains.
+	if host == "tiktok.com" || strings.HasSuffix(host, ".tiktok.com") {
+		return selected.Cookie
+	}
+	return ""
+}
 
 // handleProductsImportLink extracts product metadata from an affiliate link
 // (Shopee, TikTok Shop, Lazada, etc.), follows redirects, downloads the image,
@@ -58,7 +110,8 @@ func (s *Server) handleProductsImportLink(w http.ResponseWriter, r *http.Request
 				filename = fmt.Sprintf("aff_%s.jpg", extracted.PlatformPID)
 			}
 			localPath := filepath.Join(s.Studio.UploadDir(), filename)
-			if dlErr := studio.DownloadImage(dlCtx, imgURL, localPath); dlErr == nil && fileExists(localPath) {
+			cookie := tikTokCookieHeaderForURL(s.WebAI, imgURL)
+			if dlErr := studio.DownloadImageWithCookie(dlCtx, imgURL, localPath, cookie); dlErr == nil && fileExists(localPath) {
 				localImageURLs = append(localImageURLs, "/uploads/"+filename)
 			}
 		}
@@ -351,7 +404,8 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 					}
 					tmpImg := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("job_prod_%d_%d.jpg", prod.ID, idx))
 					dlCtx, dlCancel := context.WithTimeout(ctx, 15*time.Second)
-					if err := studio.DownloadImage(dlCtx, imgURL, tmpImg); err == nil && fileExists(tmpImg) {
+					cookie := tikTokCookieHeaderForURL(s.WebAI, imgURL)
+					if err := studio.DownloadImageWithCookie(dlCtx, imgURL, tmpImg, cookie); err == nil && fileExists(tmpImg) {
 						productImgPaths = append(productImgPaths, tmpImg)
 					}
 					dlCancel()
