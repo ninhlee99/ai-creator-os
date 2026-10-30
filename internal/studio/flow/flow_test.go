@@ -488,6 +488,28 @@ func TestTC06_ExecuteAssetNodes(t *testing.T) {
 	}
 }
 
+func TestProductInputSkipsUnverifiedCatalogImageURLs(t *testing.T) {
+	ctx := &ExecutionContext{Context: context.Background(), WorkDir: t.TempDir(), Log: func(string) {}}
+	primary := filepath.Join(ctx.WorkDir, "product.jpg")
+	if err := writeDummyImage(primary, 160, 160, "PRIMARY"); err != nil {
+		t.Fatal(err)
+	}
+	ctx.ResolveProduct = func(_ context.Context, id int64) (FlowProduct, error) {
+		return FlowProduct{ID: id, Title: "Dress", ImageURLs: []string{"https://shop.example/main.jpg", "https://shop.example/captcha.jpg"}}, nil
+	}
+	node := &FlowNode{ID: "product", Type: "product_input", Params: map[string]any{
+		"product_id": "650", "product_image": primary,
+	}}
+	out, err := executeProductInput(ctx, node, nil)
+	if err != nil {
+		t.Fatalf("executeProductInput: %v", err)
+	}
+	images := out["product_images"].([]string)
+	if len(images) != 1 || images[0] != primary {
+		t.Fatalf("product_images=%v, want only verified primary image %q", images, primary)
+	}
+}
+
 func TestTC07_ExecuteProcessNodes(t *testing.T) {
 	ctx, tmpDir := setupTestContext(t)
 	defer os.RemoveAll(tmpDir)

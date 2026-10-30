@@ -356,18 +356,7 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	productImages := []string{prodImg}
 	configuredProductImages := flowStringList(node.Params["product_images"])
 	if len(configuredProductImages) == 0 && len(productImageURLs) > 1 {
-		for _, imageURL := range productImageURLs[1:] {
-			if len(productImages) >= 4 {
-				break
-			}
-			imagePath, _, err := DownloadMediaResource(ctx.Context, imageURL, ctx.WorkDir, "image")
-			if err != nil || !fileExists(imagePath) || !isImageFile(imagePath) {
-				return nil, fmt.Errorf("không tải được ảnh phụ của sản phẩm %q", prodTitle)
-			}
-			if !containsString(productImages, imagePath) {
-				productImages = append(productImages, imagePath)
-			}
-		}
+		ctx.Log(fmt.Sprintf("ProductNode: Bỏ qua %d ảnh phụ catalog chưa xác minh; chỉ dùng ảnh listing chính để tránh ảnh captcha/placeholder.", len(productImageURLs)-1))
 	}
 	for _, imagePath := range configuredProductImages {
 		if len(productImages) >= 4 {

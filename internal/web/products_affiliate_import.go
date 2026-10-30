@@ -346,6 +346,9 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 						productImgPaths = append(productImgPaths, localPath)
 					}
 				} else if strings.HasPrefix(imgURL, "http://") || strings.HasPrefix(imgURL, "https://") {
+					if idx > 0 {
+						continue
+					}
 					tmpImg := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("job_prod_%d_%d.jpg", prod.ID, idx))
 					dlCtx, dlCancel := context.WithTimeout(ctx, 15*time.Second)
 					if err := studio.DownloadImage(dlCtx, imgURL, tmpImg); err == nil && fileExists(tmpImg) {
