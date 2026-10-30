@@ -3519,9 +3519,9 @@
           ['gemini-4-argon', 'Gemini 4 Argon (Gemini Web · Nhiệm vụ phức tạp)'],
           ['claude-5-5-sonet', 'Sonnet 5.5 (Claude Web · Miễn phí & Đa nhiệm)'],
           ['claude-5-5-haiku', 'Haiku 5.5 (Claude Web · Phản hồi nhanh nhất)'],
-          ['grok-3', 'Grok 3 (xAI Grok Web · Thông minh nhất)'],
-          ['grok-3-think', 'Grok 3 Think (xAI Grok Web · Suy luận sâu)'],
-          ['grok-2', 'Grok 2 (xAI Grok Web)'],
+          ['grok-4-7', 'Grok 4.7 (xAI Grok Web · Mới nhất 2026)'],
+          ['grok-4-fast', 'Grok 4 Fast (xAI Grok Web · Phản hồi nhanh)'],
+          ['grok-4-think', 'Grok 4 Think (xAI Grok Web · Suy luận sâu)'],
           ['veo-2', 'Google Veo 2 (Google Flow Video)'],
           ['veo-3.1-fast', 'Google Veo 3.1 Fast (Google Flow Video)'],
           ['muse-video', 'Muse AI Video Shot (Muse AI)'],
@@ -4543,6 +4543,12 @@
         'claude-3-7-sonnet': 'Claude 3.7',
         'claude-3-5-sonnet': 'Claude 3.5 Sonnet',
         'claude-3-5-haiku': 'Claude 3.5 Haiku',
+        'grok-4-7': 'Grok 4.7',
+        'grok-4.7': 'Grok 4.7',
+        'grok-4-fast': 'Grok 4 Fast',
+        'grok-4-think': 'Grok 4 Think',
+        'grok-4-deepsearch': 'Grok 4 DeepSearch',
+        'grok-4': 'Grok 4',
         'grok-3': 'Grok 3',
         'grok-3-think': 'Grok 3 Think',
         'grok-3-deepsearch': 'Grok 3 DeepSearch',
@@ -4629,11 +4635,10 @@
           name: 'xAI Grok (grok.com)',
           icon: '⚡',
           models: [
-            ['grok-3', 'Grok 3 (Mô hình thông minh nhất của xAI)'],
-            ['grok-3-think', 'Grok 3 Think (Chế độ suy luận & lập luận từng bước)'],
-            ['grok-3-deepsearch', 'Grok 3 DeepSearch (Tìm kiếm và tổng hợp thông tin sâu)'],
-            ['grok-2', 'Grok 2 (Mô hình ổn định, tự do sáng tạo)'],
-            ['flux-1', 'Flux 1 (Tạo hình ảnh chân thực của xAI)']
+            ['grok-4-7', 'Grok 4.7 (Mới nhất 2026 · Flagship 500k context & Lý luận sâu)'],
+            ['grok-4-fast', 'Grok 4 Fast (Chế độ Fast · Tốc độ phản hồi tức thì)'],
+            ['grok-4-think', 'Grok 4 Think (Tự sửa lỗi & Suy luận từng bước)'],
+            ['grok-4-deepsearch', 'Grok 4 DeepSearch (Tìm kiếm và tổng hợp sâu)']
           ]
         },
         googleflow: {
