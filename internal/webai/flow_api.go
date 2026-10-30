@@ -96,21 +96,20 @@ type flowClient struct {
 	snapshotJar    *cookieSnapshotJar
 }
 
-// ProbeGoogleFlowSession checks access to the authenticated Flow history API.
+// ProbeGoogleFlowSession checks access to the authenticated Flow service.
 func ProbeGoogleFlowSession(ctx context.Context, cookie string) error {
 	return ProbeGoogleFlowSessionWithCookieUpdate(ctx, cookie, nil)
 }
 
 // ProbeGoogleFlowSessionWithCookieUpdate persists cookies rotated by history.
 func ProbeGoogleFlowSessionWithCookieUpdate(ctx context.Context, cookie string, onCookieUpdate func(string) error) error {
-	if strings.TrimSpace(cookie) == "" {
-		return errors.New("Google Flow chưa có cookie phiên")
+	updater := func(header string, _ []BrowserCookie) error {
+		if onCookieUpdate != nil {
+			return onCookieUpdate(header)
+		}
+		return nil
 	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	_, err := newFlowClientWithCookieUpdate(cookie, onCookieUpdate).history(ctx, "PINHOLE", "", 1)
-	return err
+	return ProbeGoogleFlowSessionWithCookieSnapshot(ctx, cookie, nil, updater)
 }
 
 // ProbeGoogleFlowSessionWithCookieSnapshot probes Flow using scoped cookies and
@@ -126,6 +125,33 @@ func ProbeGoogleFlowSessionWithCookieSnapshot(ctx context.Context, cookie string
 	if err != nil {
 		return fmt.Errorf("không khởi tạo được cookie jar của Flow: %w", err)
 	}
+
+	// 1. Kiểm tra trực tiếp dịch vụ web Google Flow (https://flow.google.com/)
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, flowAppURL, nil)
+	if reqErr == nil {
+		req.Header.Set("User-Agent", museUserAgent)
+		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+		resp, doErr := client.http.Do(req)
+		if doErr == nil {
+			defer resp.Body.Close()
+			finalURL := ""
+			if resp.Request != nil && resp.Request.URL != nil {
+				finalURL = resp.Request.URL.String()
+			}
+			isLoginRedirect := strings.Contains(finalURL, "accounts.google.com") ||
+				strings.Contains(finalURL, "/signin") ||
+				strings.Contains(finalURL, "/login") ||
+				strings.Contains(finalURL, "/servicelogin")
+			if resp.StatusCode == http.StatusOK && !isLoginRedirect {
+				return nil
+			}
+			if resp.StatusCode == http.StatusUnauthorized || isLoginRedirect {
+				return &flowHTTPError{status: http.StatusUnauthorized}
+			}
+		}
+	}
+
+	// 2. Dự phòng kiểm tra qua Flow history API nếu labs.google khả dụng
 	_, err = client.history(ctx, "PINHOLE", "", 1)
 	return err
 }
