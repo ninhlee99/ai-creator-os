@@ -3515,9 +3515,10 @@
           ['gpt-4o-mini', 'GPT-4o mini (OpenAI · Nhanh & Nhẹ)'],
           ['o3-mini', 'o3-mini (OpenAI · Suy luận logic)'],
           ['o1', 'o1 (OpenAI · Tư duy chuyên sâu)'],
-          ['gemini-2.0-flash', 'Gemini 2.0 Flash (Google · Nhanh & Mạnh)'],
-          ['gemini-1.5-pro', 'Gemini 1.5 Pro (Google · Cửa sổ lớn 1M)'],
-          ['gemini-1.5-flash', 'Gemini 1.5 Flash (Google · Tối ưu tốc độ)'],
+          ['gemini-3.8-flash', 'Gemini 3.8 Flash (Google · Trợ giúp toàn diện)'],
+          ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (Google · Nhanh nhất)'],
+          ['gemini-3.1-pro', 'Gemini 3.1 Pro (Google · Suy luận nâng cao)'],
+          ['gemini-4-argon', 'Gemini 4 Argon (Google · Nhiệm vụ phức tạp)'],
           ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Anthropic · Hybrid Thinking)'],
           ['claude-3-5-sonnet', 'Claude 3.5 Sonnet (Anthropic)'],
           ['claude-3-5-haiku', 'Claude 3.5 Haiku (Anthropic)'],
@@ -4516,12 +4517,11 @@
     formatModelShortName(model) {
       if (!model) return '';
       const map = {
-        'gemini-2.5-pro': 'Gemini 2.5 Pro',
-        'gemini-2.5-flash': 'Gemini 2.5 Flash',
         'gemini-3.8-flash': 'Gemini 3.8',
+        'gemini-3.5-flash-lite': 'Gemini 3.5 Lite',
         'gemini-3.1-pro': 'Gemini 3.1 Pro',
-        'gemini_2_5_flash': 'Gemini 3.8',
-        'gemini_2_5_pro': 'Gemini 3.1 Pro',
+        'gemini-4-argon': 'Gemini 4 Argon',
+        'gemini-2.0-flash': 'Gemini 2.0 Flash',
         'gemini-1.5-pro': 'Gemini 1.5 Pro',
         'gemini-1.5-flash': 'Gemini 1.5 Flash',
         'gpt-4.5': 'GPT-4.5',
@@ -4598,9 +4598,10 @@
           name: 'Google Gemini (gemini.google.com)',
           icon: '✨',
           models: [
-            ['gemini-2.0-flash', 'Gemini 2.0 Flash (Mặc định siêu nhanh, phân tích hình ảnh)'],
-            ['gemini-1.5-pro', 'Gemini 1.5 Pro (Cửa sổ ngữ cảnh 1M token, phân tích sâu)'],
-            ['gemini-1.5-flash', 'Gemini 1.5 Flash (Phản hồi tức thì, tối ưu chi phí)'],
+            ['gemini-3.8-flash', '3.8 Flash (Trợ giúp toàn diện)'],
+            ['gemini-3.5-flash-lite', '3.5 Flash-Lite (Câu trả lời nhanh nhất)'],
+            ['gemini-3.1-pro', '3.1 Pro (Suy luận nâng cao)'],
+            ['gemini-4-argon', '4 Argon (Nhiệm vụ phức tạp)'],
             ['imagen-3', 'Imagen 3 (Tạo ảnh photorealistic từ prompt)']
           ]
         },

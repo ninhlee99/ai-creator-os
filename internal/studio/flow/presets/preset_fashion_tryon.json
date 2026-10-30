@@ -42,10 +42,11 @@
       "params": {
         "provider": "chatgpt",
         "model": "gpt-4o",
-        "isolate_garment": true,
-        "remove_skin": true,
+        "prompt": "Bóc tách sản phẩm độc lập khỏi nền và người mẫu, loại bỏ hoàn toàn phông nền (transparent PNG). Quan sát kỹ ảnh sản phẩm và bóc tách chi tiết: kiểu dáng, chất liệu, màu sắc, hoa văn, và tạo câu prompt tái tạo sản phẩm chuyên nghiệp.",
+        "isolate_garment": false,
+        "remove_skin": false,
         "refine_edges": true,
-        "auto_crop": true
+        "auto_crop": false
       }
     },
     {

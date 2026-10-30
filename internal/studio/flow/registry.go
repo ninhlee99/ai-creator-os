@@ -420,6 +420,7 @@ func registerAllBuiltinNodes() {
 		Inputs: []FlowPort{
 			{ID: "image_in", Name: "Ảnh sản phẩm", Type: PortTypeImage, Required: false},
 			{ID: "source_image", Name: "Ảnh nguồn", Type: PortTypeImage, Required: false},
+			{ID: "prompt", Name: "Prompt chỉ thị", Type: PortTypeText, Required: false},
 			{ID: "task", Name: "Yêu cầu thêm", Type: PortTypeText, Required: false},
 		},
 		Outputs: []FlowPort{
@@ -431,7 +432,8 @@ func registerAllBuiltinNodes() {
 			{ID: "product_profile", Name: "Dữ liệu thuộc tính", Type: PortTypeConfig, Description: "Dữ liệu JSON bóc tách"},
 		},
 		DefaultParams: map[string]any{
-			"provider":        "chatgpt",
+			"provider": "chatgpt",
+			"prompt":   "Bóc tách sản phẩm độc lập khỏi nền và người mẫu, loại bỏ hoàn toàn phông nền (transparent PNG). Quan sát kỹ ảnh sản phẩm và bóc tách chi tiết: kiểu dáng, chất liệu, màu sắc, hoa văn, và tạo câu prompt tái tạo sản phẩm chuyên nghiệp.",
 			"isolate_garment": false,
 			"remove_skin":     false,
 			"refine_edges":    true,

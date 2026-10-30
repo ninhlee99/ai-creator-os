@@ -571,18 +571,15 @@ func executeWebAIProductExtractor(ctx *ExecutionContext, node *FlowNode, inputs 
 		ctx.Log(fmt.Sprintf("WebAIProductExtractor: Đã bóc tách thành công sản phẩm trong suốt -> %s", filepath.Base(cutoutPath)))
 	}
 
-	customTask := inputString(inputs, "task", nodeParamString(node.Params, "task", ""))
 	provider := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "provider", "chatgpt")))
 
-	prompt := "Bạn là chuyên gia thị giác AI phân tích sản phẩm quảng cáo. Hãy quan sát kỹ ảnh sản phẩm được đính kèm và bóc tách chi tiết: " +
+	defaultPrompt := "Bạn là chuyên gia thị giác AI phân tích sản phẩm quảng cáo. Hãy quan sát kỹ ảnh sản phẩm được đính kèm và bóc tách chi tiết: " +
 		"1. Tên và loại sản phẩm (Category). " +
 		"2. Màu sắc chủ đạo, chất liệu, họa tiết, hình dáng đặc trưng. " +
 		"3. Điểm nhấn thương hiệu / logo / bao bì. " +
 		"4. Viết 1 đoạn mô tả chi tiết sản phẩm. " +
-		"5. Viết 1 câu prompt tiếng Anh (clean_prompt) để dùng trong AI image/video generator tái tạo sản phẩm trên nền studio sang trọng hoặc bối cảnh tự nhiên. "
-	if customTask != "" {
-		prompt += "Yêu cầu bổ sung: " + customTask
-	}
+		"5. Viết 1 câu prompt tiếng Anh (clean_prompt) để dùng trong AI image/video generator tái tạo sản phẩm trên nền studio sang trọng hoặc bối cảnh tự nhiên."
+	prompt := resolveNodePrompt(node, inputs, []string{"prompt", "task", "custom_task"}, defaultPrompt)
 
 	var rawAnalysis string
 	var err error
@@ -814,6 +811,7 @@ func isSupportedFlowModel(m string) bool {
 	}
 	switch m {
 	case "gpt-4o", "gpt-4o-mini", "o3-mini", "o1", "dall-e-3",
+		"gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro", "gemini-4-argon",
 		"gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash", "imagen-3",
 		"claude-3-7-sonnet", "claude-3-5-sonnet", "claude-3-5-haiku",
 		"grok-3", "grok-3-think", "grok-3-deepsearch", "grok-2", "flux-1", "flux-1-schnell",
