@@ -3510,26 +3510,25 @@
           ['museai', 'Muse AI']
         ],
         model: [
-          ['auto', 'Tự động chọn (Khuyên dùng)'],
-          ['gpt-4.5', 'GPT-4.5 (OpenAI 2026)'],
-          ['gpt-4o', 'GPT-4o (Đa nhiệm cao cấp)'],
-          ['gpt-4o-mini', 'GPT-4o Mini (Siêu tốc)'],
-          ['gemini-2.5-pro', 'Gemini 2.5 Pro (Google 2026)'],
-          ['gemini-2.5-flash', 'Gemini 2.5 Flash (Google 2026)'],
-          ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Anthropic 2026)'],
-          ['claude-3-5-sonnet', 'Claude 3.5 Sonnet'],
-          ['grok-3', 'Grok 3 (xAI 2026)'],
+          ['auto', 'Tự động chọn (Theo Web AI hoặc API)'],
+          ['gpt-4o', 'GPT-4o (OpenAI · Đa nhiệm & Xử lý ảnh)'],
+          ['gpt-4o-mini', 'GPT-4o mini (OpenAI · Nhanh & Nhẹ)'],
+          ['o3-mini', 'o3-mini (OpenAI · Suy luận logic)'],
+          ['o1', 'o1 (OpenAI · Tư duy chuyên sâu)'],
+          ['gemini-2.0-flash', 'Gemini 2.0 Flash (Google · Nhanh & Mạnh)'],
+          ['gemini-1.5-pro', 'Gemini 1.5 Pro (Google · Cửa sổ lớn 1M)'],
+          ['gemini-1.5-flash', 'Gemini 1.5 Flash (Google · Tối ưu tốc độ)'],
+          ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Anthropic · Hybrid Thinking)'],
+          ['claude-3-5-sonnet', 'Claude 3.5 Sonnet (Anthropic)'],
+          ['claude-3-5-haiku', 'Claude 3.5 Haiku (Anthropic)'],
+          ['grok-3', 'Grok 3 (xAI · Mô hình thông minh nhất)'],
           ['grok-2', 'Grok 2 (xAI)'],
-          ['veo-3.1-fast', 'Veo 3.1 Fast (Google Flow Video 2026)'],
-          ['muse-gen2', 'Muse Gen-2 (Muse AI 2026)'],
-          ['dall-e-3', 'DALL-E 3 (OpenAI Image)'],
-          ['imagen-3', 'Imagen 3 (Google Image)'],
-          ['flux-1-schnell', 'Flux 1 Schnell (Chi tiết sắc nét)'],
-          ['sdxl', 'Stable Diffusion XL'],
-          ['gen3a_turbo', 'Runway Gen-3 Alpha Turbo (Video API)'],
-          ['ray-2', 'Luma Ray-2 (Video API)'],
-          ['kling-1.5', 'Kling 1.5 Pro (Video API)'],
-          ['sora', 'OpenAI Sora (Video API 2026)']
+          ['veo-2', 'Google Veo 2 (Google Flow Video)'],
+          ['veo-3.1-fast', 'Google Veo 3.1 Fast (Google Flow Video)'],
+          ['muse-video', 'Muse AI Video Shot (Muse AI)'],
+          ['dall-e-3', 'DALL·E 3 (Tạo & bóc tách ảnh)'],
+          ['imagen-3', 'Imagen 3 (Tạo ảnh photorealistic)'],
+          ['flux-1', 'Flux 1 (Tạo ảnh nghệ thuật & chi tiết)']
         ],
         style_preset: [
           ['cinematic', 'Điện ảnh (Cinematic 4K lighting)'],
@@ -4569,7 +4568,7 @@
       if (m.includes('veo') || m.includes('flow')) return 'google_flow';
       if (m.includes('muse')) return 'muse_ai';
       if (m.includes('gemini') || m.includes('imagen')) return 'gemini';
-      if (m.includes('gpt') || m.includes('dall-e') || m.includes('chatgpt')) return 'chatgpt';
+      if (m.includes('gpt') || m.includes('dall-e') || m.includes('chatgpt') || m.includes('o1') || m.includes('o3')) return 'chatgpt';
       if (m.includes('claude')) return 'claude';
       if (m.includes('grok') || m.includes('flux')) return 'grok';
       if (m.includes('gen3') || m.includes('runway')) return 'runway';
@@ -4582,6 +4581,76 @@
     populateModelSelector(node, def, modelSelect, isAPIKeyMode) {
       if (!modelSelect) return;
       modelSelect.innerHTML = '';
+
+      const realWebPlatforms = {
+        chatgpt: {
+          name: 'ChatGPT (chatgpt.com)',
+          icon: '🤖',
+          models: [
+            ['gpt-4o', 'GPT-4o (Đa phương tiện, xử lý hình ảnh thông minh nhất)'],
+            ['gpt-4o-mini', 'GPT-4o mini (Phản hồi nhanh, tối ưu tác vụ thường ngày)'],
+            ['o3-mini', 'o3-mini (Mô hình tư duy suy luận logic mới nhất)'],
+            ['o1', 'o1 (Mô hình suy luận chuyên sâu & đa phương thức)'],
+            ['dall-e-3', 'DALL·E 3 (Tạo và bóc tách ảnh trực tiếp trong khung chat)']
+          ]
+        },
+        gemini: {
+          name: 'Google Gemini (gemini.google.com)',
+          icon: '✨',
+          models: [
+            ['gemini-2.0-flash', 'Gemini 2.0 Flash (Mặc định siêu nhanh, phân tích hình ảnh)'],
+            ['gemini-1.5-pro', 'Gemini 1.5 Pro (Cửa sổ ngữ cảnh 1M token, phân tích sâu)'],
+            ['gemini-1.5-flash', 'Gemini 1.5 Flash (Phản hồi tức thì, tối ưu chi phí)'],
+            ['imagen-3', 'Imagen 3 (Tạo ảnh photorealistic từ prompt)']
+          ]
+        },
+        claude: {
+          name: 'Anthropic Claude (claude.ai)',
+          icon: '🧠',
+          models: [
+            ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Mới nhất, chế độ Hybrid Thinking)'],
+            ['claude-3-5-sonnet', 'Claude 3.5 Sonnet (Chuẩn mực thông minh và viết code)'],
+            ['claude-3-5-haiku', 'Claude 3.5 Haiku (Tốc độ phản hồi cực nhanh)']
+          ]
+        },
+        grok: {
+          name: 'xAI Grok (grok.com)',
+          icon: '⚡',
+          models: [
+            ['grok-3', 'Grok 3 (Mô hình thông minh nhất của xAI)'],
+            ['grok-3-think', 'Grok 3 Think (Chế độ suy luận & lập luận từng bước)'],
+            ['grok-3-deepsearch', 'Grok 3 DeepSearch (Tìm kiếm và tổng hợp thông tin sâu)'],
+            ['grok-2', 'Grok 2 (Mô hình ổn định, tự do sáng tạo)'],
+            ['flux-1', 'Flux 1 (Tạo hình ảnh chân thực của xAI)']
+          ]
+        },
+        googleflow: {
+          name: 'Google Flow Video (flow.google.com)',
+          icon: '🎥',
+          models: [
+            ['veo-2', 'Google Veo 2 (Mô hình tạo video 1080p chuẩn của Flow)'],
+            ['veo-3.1-fast', 'Google Veo 3.1 Fast (Tạo video tốc độ cao 9:16)']
+          ]
+        },
+        museai: {
+          name: 'Muse AI Video (muse.ai)',
+          icon: '🎬',
+          models: [
+            ['muse-video', 'Muse AI Video Shot (Tạo cảnh video chuyển động đa góc)'],
+            ['muse-lipsync', 'Muse AI Lipsync (Đồng bộ khẩu hình nhân vật)']
+          ]
+        }
+      };
+
+      const nodeProv = String(node.params?.provider || node.params?.provider_name || def.default_params?.provider || def.default_params?.provider_name || '').toLowerCase().replace(/[\s_-]+/g, '');
+      let activeKey = '';
+      if (nodeProv.includes('chatgpt') || nodeProv.includes('gpt')) activeKey = 'chatgpt';
+      else if (nodeProv.includes('gemini') || nodeProv.includes('imagen')) activeKey = 'gemini';
+      else if (nodeProv.includes('claude')) activeKey = 'claude';
+      else if (nodeProv.includes('grok') || nodeProv.includes('flux')) activeKey = 'grok';
+      else if (nodeProv.includes('flow') || nodeProv.includes('veo') || nodeProv.includes('google')) activeKey = 'googleflow';
+      else if (nodeProv.includes('muse')) activeKey = 'museai';
+
       if (isAPIKeyMode) {
         if (Array.isArray(this.customAPIModels) && this.customAPIModels.length > 0) {
           const userGroup = document.createElement('optgroup');
@@ -4595,58 +4664,72 @@
           modelSelect.appendChild(userGroup);
         }
 
-        const stdGroup = document.createElement('optgroup');
-        stdGroup.label = '⚡ Model API Chuẩn 2026';
+        const apiGroup = document.createElement('optgroup');
+        apiGroup.label = '⚡ Model API chính thức';
         [
-          ['auto', 'Tự động chọn (Khuyên dùng)'],
-          ['gpt-4.5', 'OpenAI GPT-4.5 (2026)'],
-          ['gpt-4o', 'OpenAI GPT-4o'],
-          ['gpt-4o-mini', 'OpenAI GPT-4o Mini'],
-          ['gemini-2.5-pro', 'Google Gemini 2.5 Pro (2026)'],
-          ['gemini-2.5-flash', 'Google Gemini 2.5 Flash (2026)'],
-          ['claude-3-7-sonnet', 'Anthropic Claude 3.7 Sonnet (2026)'],
-          ['claude-3-5-sonnet', 'Anthropic Claude 3.5 Sonnet'],
-          ['grok-3', 'xAI Grok 3 (2026)'],
-          ['veo-3.1-fast', 'Google Veo 3.1 Fast (Video API)'],
-          ['gen3a_turbo', 'Runway Gen-3 Alpha Turbo (Video API)'],
-          ['ray-2', 'Luma Ray-2 (Video API)'],
-          ['kling-1.5', 'Kling 1.5 Pro (Video API)'],
-          ['sora', 'OpenAI Sora (Video API 2026)'],
-          ['dall-e-3', 'DALL-E 3 (Image API)'],
-          ['imagen-3', 'Imagen 3 (Image API)'],
-          ['flux-1-schnell', 'Flux 1 Schnell (Image API)']
+          ['auto', 'Tự động chọn theo API'],
+          ['gpt-4o', 'OpenAI API: gpt-4o'],
+          ['gpt-4o-mini', 'OpenAI API: gpt-4o-mini'],
+          ['o3-mini', 'OpenAI API: o3-mini'],
+          ['gemini-2.0-flash', 'Google AI Studio: gemini-2.0-flash'],
+          ['gemini-1.5-pro', 'Google AI Studio: gemini-1.5-pro'],
+          ['claude-3-7-sonnet', 'Anthropic API: claude-3-7-sonnet'],
+          ['claude-3-5-sonnet', 'Anthropic API: claude-3-5-sonnet'],
+          ['grok-3', 'xAI API: grok-3'],
+          ['dall-e-3', 'OpenAI Image API: dall-e-3'],
+          ['imagen-3', 'Google Imagen API: imagen-3']
         ].forEach(([val, lbl]) => {
           const opt = document.createElement('option');
           opt.value = val;
           opt.textContent = lbl;
-          stdGroup.appendChild(opt);
+          apiGroup.appendChild(opt);
         });
-        modelSelect.appendChild(stdGroup);
+        modelSelect.appendChild(apiGroup);
       } else {
-        const webGroup = document.createElement('optgroup');
-        webGroup.label = '🌐 Web AI (Tài khoản login trình duyệt 2026)';
-        [
-          ['auto', 'Tự động chọn theo Web AI'],
-          ['veo-3.1-fast', 'Google Flow · Veo 3.1 Fast (2026)'],
-          ['muse-gen2', 'Muse AI · Gen-2 (2026)'],
-          ['gemini-2.5-flash', 'Gemini Web · 2.5 Flash (2026)'],
-          ['gemini-2.5-pro', 'Gemini Web · 2.5 Pro (2026)'],
-          ['gpt-4.5', 'ChatGPT Web · GPT-4.5 (2026)'],
-          ['gpt-4o', 'ChatGPT Web · GPT-4o'],
-          ['grok-3', 'Grok Web · Grok 3 (2026)'],
-          ['grok-2', 'Grok Web · Grok 2'],
-          ['claude-3-7-sonnet', 'Claude Web · 3.7 Sonnet (2026)'],
-          ['claude-3-5-sonnet', 'Claude Web · 3.5 Sonnet'],
-          ['dall-e-3', 'DALL-E 3 (Ảnh ChatGPT)'],
-          ['imagen-3', 'Imagen 3 (Ảnh Gemini)'],
-          ['flux-1-schnell', 'Flux 1 (Ảnh Grok)']
-        ].forEach(([val, lbl]) => {
-          const opt = document.createElement('option');
-          opt.value = val;
-          opt.textContent = lbl;
-          webGroup.appendChild(opt);
-        });
-        modelSelect.appendChild(webGroup);
+        // Chế độ Web AI: Tài khoản đăng nhập trên website thực tế
+        const autoOpt = document.createElement('option');
+        autoOpt.value = 'auto';
+        autoOpt.textContent = activeKey
+          ? `Tự động chọn (Theo Web AI: ${realWebPlatforms[activeKey].name})`
+          : 'Tự động chọn theo Web AI đang đăng nhập';
+        modelSelect.appendChild(autoOpt);
+
+        if (activeKey && realWebPlatforms[activeKey]) {
+          const primaryGroup = document.createElement('optgroup');
+          primaryGroup.label = `${realWebPlatforms[activeKey].icon} Khung chat thực tế: ${realWebPlatforms[activeKey].name}`;
+          realWebPlatforms[activeKey].models.forEach(([val, lbl]) => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = lbl;
+            primaryGroup.appendChild(opt);
+          });
+          modelSelect.appendChild(primaryGroup);
+
+          const otherGroup = document.createElement('optgroup');
+          otherGroup.label = '🌐 Chuyển sang Web AI khác...';
+          Object.entries(realWebPlatforms).forEach(([key, info]) => {
+            if (key === activeKey) return;
+            info.models.forEach(([val, lbl]) => {
+              const opt = document.createElement('option');
+              opt.value = val;
+              opt.textContent = `${info.name.split(' ')[0]}: ${lbl}`;
+              otherGroup.appendChild(opt);
+            });
+          });
+          modelSelect.appendChild(otherGroup);
+        } else {
+          Object.entries(realWebPlatforms).forEach(([key, info]) => {
+            const group = document.createElement('optgroup');
+            group.label = `${info.icon} ${info.name}`;
+            info.models.forEach(([val, lbl]) => {
+              const opt = document.createElement('option');
+              opt.value = val;
+              opt.textContent = lbl;
+              group.appendChild(opt);
+            });
+            modelSelect.appendChild(group);
+          });
+        }
       }
 
       const currentModel = node.params?.model || def.default_params?.model || 'auto';

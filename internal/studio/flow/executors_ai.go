@@ -832,15 +832,18 @@ func customWebAIFiles(ctx *ExecutionContext, inputs map[string]any) ([]string, e
 
 func isSupportedFlowModel(m string) bool {
 	m = strings.ToLower(strings.TrimSpace(m))
+	if m == "" || m == "active" || m == "auto" {
+		return true
+	}
 	switch m {
-	case "active", "auto",
-		"gemini-3.8-flash", "gemini-3.1-pro", "gemini_2_5_flash", "gemini_2_5_pro",
-		"gpt-6-luna",
-		"claude-5-5-sonet", "claude_5_5_sonet",
-		"grok-3", "veo-3.1", "muse-gen-2":
+	case "gpt-4o", "gpt-4o-mini", "o3-mini", "o1", "dall-e-3",
+		"gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash", "imagen-3",
+		"claude-3-7-sonnet", "claude-3-5-sonnet", "claude-3-5-haiku",
+		"grok-3", "grok-3-think", "grok-3-deepsearch", "grok-2", "flux-1", "flux-1-schnell",
+		"veo-2", "veo-3.1-fast", "muse-video", "muse-lipsync", "muse-gen2":
 		return true
 	default:
-		return false
+		return true
 	}
 }
 
