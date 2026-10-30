@@ -3517,9 +3517,8 @@
           ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (Gemini Web · Nhanh nhất)'],
           ['gemini-3.1-pro', 'Gemini 3.1 Pro (Gemini Web · Suy luận nâng cao)'],
           ['gemini-4-argon', 'Gemini 4 Argon (Gemini Web · Nhiệm vụ phức tạp)'],
-          ['claude-5-5-sonet', 'Sonnet 5.5 (Claude Web · Chuẩn thông minh)'],
-          ['claude-5-5-haiku', 'Haiku 5.5 (Claude Web · Mới nhất trên web)'],
-          ['claude-5-5-opus', 'Opus 5.5 (Claude Web · Tư duy chuyên sâu)'],
+          ['claude-5-5-sonet', 'Sonnet 5.5 (Claude Web · Miễn phí & Đa nhiệm)'],
+          ['claude-5-5-haiku', 'Haiku 5.5 (Claude Web · Phản hồi nhanh nhất)'],
           ['grok-3', 'Grok 3 (xAI Grok Web · Thông minh nhất)'],
           ['grok-3-think', 'Grok 3 Think (xAI Grok Web · Suy luận sâu)'],
           ['grok-2', 'Grok 2 (xAI Grok Web)'],
@@ -4622,9 +4621,8 @@
           name: 'Anthropic Claude (claude.ai)',
           icon: '🧠',
           models: [
-            ['claude-5-5-sonet', 'Sonnet 5.5 (Mặc định · Đa nhiệm & Phân tích chuyên sâu)'],
-            ['claude-5-5-haiku', 'Haiku 5.5 (Mới nhất · Phản hồi siêu tốc, độ trễ thấp)'],
-            ['claude-5-5-opus', 'Opus 5.5 (Tư duy kiến trúc & Lập trình chuyên sâu)']
+            ['claude-5-5-sonet', 'Sonnet 5.5 (Most efficient for simpler tasks · Miễn phí)'],
+            ['claude-5-5-haiku', 'Haiku 5.5 (Fastest for quick answers · Miễn phí)']
           ]
         },
         grok: {
