@@ -103,6 +103,23 @@ func TestViralPageOnePromptFeatures(t *testing.T) {
 	}
 }
 
+func TestStudioJobOutputResolutionHidesLegacy4K(t *testing.T) {
+	cases := map[string]string{
+		"":        "1080P",
+		"1080p":   "1080P",
+		"2k":      "2K",
+		"4k":      "2K",
+		"2160p":   "2K",
+		"8k":      "2K",
+		"unknown": "1080P",
+	}
+	for input, want := range cases {
+		if got := studioJobOutputResolution(input); got != want {
+			t.Errorf("studioJobOutputResolution(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func TestDetectAutoVideoType(t *testing.T) {
 	// Affiliate with product URL
 	if got := detectAutoVideoType("Video hay", "Chu de", "https://shopee.vn/sp-1", "", 0, false); got != "affiliate" {

@@ -201,11 +201,6 @@ func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[str
 				}
 			}
 		}
-		if modelPath == "" || !fileExists(modelPath) {
-			if resolved := resolveAssetPath(modelPath, ctx.WorkDir, "default_char.jpg", "char_01.jpg"); resolved != "" {
-				modelPath = resolved
-			}
-		}
 	}
 	if modelPath == "" || !fileExists(modelPath) || !isImageFile(modelPath) {
 		return nil, fmt.Errorf("chọn ảnh nhân vật hoặc account có ảnh đại diện hợp lệ")
@@ -303,10 +298,10 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 		}
 		prodTitle = product.Title
 		productImageURLs = append(productImageURLs, product.ImageURLs...)
-		if len(product.ImageURLs) > 0 {
+		if (prodImg == "" || !fileExists(prodImg)) && len(product.ImageURLs) > 0 {
 			prodURL = product.ImageURLs[0]
+			prodImg = ""
 		}
-		prodImg = ""
 		affURL = product.ProductURL
 		productInfo = map[string]any{
 			"id": id, "title": product.Title, "price": product.Price, "currency": product.Currency,
@@ -349,22 +344,6 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 		}
 	}
 	if prodImg == "" || !fileExists(prodImg) || !isImageFile(prodImg) {
-		if ctx.ResolveProduct != nil {
-			product, err := ctx.ResolveProduct(ctx.Context, 0)
-			if err == nil && len(product.ImageURLs) > 0 && fileExists(product.ImageURLs[0]) {
-				prodImg = product.ImageURLs[0]
-				if prodTitle == "" {
-					prodTitle = product.Title
-				}
-			}
-		}
-		if prodImg == "" || !fileExists(prodImg) {
-			if resolved := resolveAssetPath(prodImg, ctx.WorkDir, "default_prod.jpg"); resolved != "" {
-				prodImg = resolved
-			}
-		}
-	}
-	if prodImg == "" || !fileExists(prodImg) || !isImageFile(prodImg) {
 		return nil, fmt.Errorf("chọn sản phẩm trong catalog hoặc cung cấp ảnh sản phẩm thật")
 	}
 	if strings.TrimSpace(prodTitle) == "" {
@@ -375,7 +354,8 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	productInfo["image"] = prodImg
 	productInfo["url"] = affURL
 	productImages := []string{prodImg}
-	if len(productImageURLs) > 1 {
+	configuredProductImages := flowStringList(node.Params["product_images"])
+	if len(configuredProductImages) == 0 && len(productImageURLs) > 1 {
 		for _, imageURL := range productImageURLs[1:] {
 			if len(productImages) >= 4 {
 				break
@@ -389,7 +369,7 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 			}
 		}
 	}
-	for _, imagePath := range flowStringList(node.Params["product_images"]) {
+	for _, imagePath := range configuredProductImages {
 		if len(productImages) >= 4 {
 			break
 		}

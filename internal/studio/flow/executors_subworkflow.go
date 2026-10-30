@@ -356,6 +356,17 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 			}
 		}
 	}
+	sharedVideoInputKey := nodeParamString(node.Params, "shared_video_input_key", "")
+	sharedVideo := inputString(inputs, "reference_video", "")
+	if sharedVideoInputKey != "" {
+		portType, found := childInputTypes[sharedVideoInputKey]
+		if !found || (portType != PortTypeVideo && portType != PortTypeAny) {
+			return nil, fmt.Errorf("workflow con cần input video %q kiểu video", sharedVideoInputKey)
+		}
+		if sharedVideo != "" && (!fileExists(sharedVideo) || !isVideoFile(sharedVideo)) {
+			return nil, fmt.Errorf("video tham chiếu dùng chung không hợp lệ")
+		}
+	}
 
 	results := make([]any, 0, len(items))
 	mapID := safeWorkflowPathPart(node.ID)
@@ -371,6 +382,12 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 				return nil, fmt.Errorf("input ảnh dùng chung %q bị map trùng với item", sharedImageInputKey)
 			}
 			childValues[sharedImageInputKey] = sharedImages
+		}
+		if sharedVideoInputKey != "" && sharedVideo != "" {
+			if _, mapped := itemInputMap[sharedVideoInputKey]; mapped || sharedVideoInputKey == itemInputKey {
+				return nil, fmt.Errorf("input video dùng chung %q bị map trùng với item", sharedVideoInputKey)
+			}
+			childValues[sharedVideoInputKey] = sharedVideo
 		}
 		if itemInputKey != "" {
 			itemValue := item

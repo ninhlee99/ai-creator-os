@@ -1,9 +1,13 @@
 package web
 
 import (
+	"bytes"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -12,6 +16,42 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
+
+func TestProductSampleVideoUploadIsSavedForWorkflow(t *testing.T) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("sample_video", "boutique-reference.mp4")
+	if err != nil {
+		t.Fatalf("CreateFormFile: %v", err)
+	}
+	if _, err := io.WriteString(part, "reference-video-bytes"); err != nil {
+		t.Fatalf("write sample video: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/products/create-video", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	if err := req.ParseMultipartForm(1 << 20); err != nil {
+		t.Fatalf("ParseMultipartForm: %v", err)
+	}
+
+	path, err := saveUpload(req, "sample_video", t.TempDir())
+	if err != nil {
+		t.Fatalf("save sample video: %v", err)
+	}
+	if path == "" || filepath.Ext(path) != ".mp4" {
+		t.Fatalf("saved sample video path = %q, want .mp4 file", path)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read saved sample video: %v", err)
+	}
+	if string(got) != "reference-video-bytes" {
+		t.Fatalf("saved sample video bytes = %q", got)
+	}
+}
 
 func TestHandleProductsImportLink(t *testing.T) {
 	mockAffiliateServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +117,7 @@ func TestHandleProductsImportLink(t *testing.T) {
 	}
 }
 
-func TestHandleProductsCreateVideo(t *testing.T) {
+func TestHandleProductsCreateVideoRequiresChannelCharacter(t *testing.T) {
 	s := newTestServer(t)
 	st, err := studio.New(filepath.Join(t.TempDir(), "studio.db"), nil, nil, nil, t.TempDir())
 	if err != nil {
@@ -107,28 +147,74 @@ func TestHandleProductsCreateVideo(t *testing.T) {
 		t.Fatalf("SaveImportedProduct failed: %v", err)
 	}
 
+	account, err := s.Mgr.Add("profile_without_model", "fashion", "")
+	if err != nil {
+		t.Fatalf("Mgr.Add: %v", err)
+	}
 	form := url.Values{
 		"product_id": {strconv.FormatInt(prodID, 10)},
+		"account":    {account.Username},
 	}
 	rec := postForm(t, s, "/products/create-video", form)
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("POST /products/create-video code = %d, want 303; body=%s", rec.Code, rec.Body.String())
 	}
 	loc := rec.Header().Get("Location")
-	if !strings.Contains(loc, "/studio/jobs") {
-		t.Fatalf("expected redirect to /studio/jobs, got %q", loc)
+	parsed, err := url.Parse(loc)
+	if err != nil || !strings.Contains(parsed.Query().Get("err"), "kênh chưa có ảnh nhân vật") {
+		t.Fatalf("redirect=%q, want missing profile-character error", loc)
+	}
+	if jobs := s.Studio.ListJobs(10); len(jobs) != 0 {
+		t.Fatalf("missing profile character must stop before queueing; jobs=%+v", jobs)
+	}
+}
+
+func TestResolveProductJobCharacterPhotosStaysInSelectedAccount(t *testing.T) {
+	s := newViralServer(t)
+	selected, err := s.Mgr.Add("selected_creator", "fashion", "")
+	if err != nil {
+		t.Fatalf("Mgr.Add selected: %v", err)
+	}
+	other, err := s.Mgr.Add("other_creator", "fashion", "")
+	if err != nil {
+		t.Fatalf("Mgr.Add other: %v", err)
+	}
+	emptyProfile, err := s.Mgr.Add("empty_profile", "fashion", "")
+	if err != nil {
+		t.Fatalf("Mgr.Add empty profile: %v", err)
+	}
+	selectedSrc := filepath.Join(t.TempDir(), "selected.jpg")
+	otherSrc := filepath.Join(t.TempDir(), "other.jpg")
+	if err := os.WriteFile(selectedSrc, []byte("selected-character"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(otherSrc, []byte("other-character"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	models, err := s.Studio.ModelLibrary()
+	if err != nil {
+		t.Fatalf("ModelLibrary: %v", err)
+	}
+	selectedPhoto, err := models.Add(selected.ID, selectedSrc)
+	if err != nil {
+		t.Fatalf("add selected photo: %v", err)
+	}
+	otherPhoto, err := models.Add(other.ID, otherSrc)
+	if err != nil {
+		t.Fatalf("add other photo: %v", err)
 	}
 
-	// Verify job was created in Studio
-	jobs := s.Studio.ListJobs(10)
-	foundJob := false
-	for _, j := range jobs {
-		if strings.Contains(j.Title, "Áo Thun Unisex Cotton") {
-			foundJob = true
-			break
-		}
+	photos, err := resolveProductJobCharacterPhotos(s, selected.ID, 0)
+	if err != nil {
+		t.Fatalf("resolve selected profile: %v", err)
 	}
-	if !foundJob {
-		t.Errorf("created video job not found in studio jobs list: %+v", jobs)
+	if len(photos) != 1 || photos[0] != selectedPhoto.Path {
+		t.Fatalf("profile photos=%v, want selected account photo %q", photos, selectedPhoto.Path)
+	}
+	if _, err := resolveProductJobCharacterPhotos(s, selected.ID, otherPhoto.ID); err == nil {
+		t.Fatal("photo from another account must be rejected")
+	}
+	if _, err := resolveProductJobCharacterPhotos(s, emptyProfile.ID, 0); err == nil {
+		t.Fatal("account without a profile character must be rejected")
 	}
 }

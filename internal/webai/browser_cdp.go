@@ -368,9 +368,11 @@ func waitDebuggerURL(ctx context.Context, port int, profileDir ...string) (strin
 		dir = profileDir[0]
 	}
 	client := &http.Client{Timeout: 2 * time.Second}
+	startupTimer := time.NewTimer(30 * time.Second)
+	defer startupTimer.Stop()
 	for {
 		if err := ctx.Err(); err != nil {
-			return "", errors.New("headless browser did not start")
+			return "", fmt.Errorf("headless browser did not start: %w", err)
 		}
 		if ws := readDevToolsActivePortWS(dir, port); ws != "" {
 			return ws, nil
@@ -390,7 +392,9 @@ func waitDebuggerURL(ctx context.Context, port int, profileDir ...string) (strin
 		}
 		select {
 		case <-ctx.Done():
-			return "", errors.New("headless browser did not start")
+			return "", fmt.Errorf("headless browser did not start: %w", ctx.Err())
+		case <-startupTimer.C:
+			return "", errors.New("headless browser did not publish its DevTools endpoint within 30 seconds")
 		case <-time.After(100 * time.Millisecond):
 		}
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -157,6 +156,40 @@ func (s *Server) handleProductsAddImages(w http.ResponseWriter, r *http.Request)
 	seeOther(w, r, fmt.Sprintf("/products?tab=shelf&ok=%s", url.QueryEscape(fmt.Sprintf("✓ Đã thêm thành công %d hình ảnh vào sản phẩm!", len(newImages)))))
 }
 
+func resolveProductJobCharacterPhotos(s *Server, accountID, modelID int64) ([]string, error) {
+	if s == nil || s.Studio == nil {
+		return nil, fmt.Errorf("Studio chưa sẵn sàng để đọc ảnh nhân vật")
+	}
+	if accountID <= 0 {
+		return nil, fmt.Errorf("chọn kênh TikTok trước khi tạo video")
+	}
+	if modelID > 0 {
+		photos := s.findModelPhotosByIDsForAccount(accountID, []int64{modelID})
+		if len(photos) != 1 {
+			return nil, fmt.Errorf("ảnh nhân vật đã chọn không thuộc profile kênh")
+		}
+		return photos, nil
+	}
+	models, err := s.Studio.ModelLibrary()
+	if err != nil {
+		return nil, fmt.Errorf("không đọc được thư viện nhân vật: %w", err)
+	}
+	photos, err := models.List(accountID)
+	if err != nil {
+		return nil, fmt.Errorf("không đọc được ảnh trong profile kênh: %w", err)
+	}
+	var available []string
+	for _, photo := range photos {
+		if photo.Path != "" && fileExists(photo.Path) {
+			available = append(available, photo.Path)
+		}
+	}
+	if len(available) == 0 {
+		return nil, fmt.Errorf("kênh chưa có ảnh nhân vật; tải ảnh vào profile kênh trước khi tạo video")
+	}
+	return available, nil
+}
+
 // handleProductsCreateVideo handles 1-click video creation job queueing for a shelf product.
 func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Request) {
 	if s.Products == nil {
@@ -177,6 +210,10 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Không tìm thấy sản phẩm trong kho."))
 		return
 	}
+	if !prod.ReadyForAffiliateProduction() {
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Sản phẩm chưa được duyệt hoặc thiếu dữ liệu sản xuất affiliate."))
+		return
+	}
 
 	if s.Studio == nil {
 		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Studio chưa sẵn sàng."))
@@ -190,6 +227,31 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 	account := strings.TrimSpace(r.FormValue("account"))
 	accountID, _ := strconv.ParseInt(r.FormValue("account_id"), 10, 64)
 	modelID, _ := strconv.ParseInt(r.FormValue("model_id"), 10, 64)
+	if s.Mgr == nil {
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Kho kênh chưa sẵn sàng."))
+		return
+	}
+	accounts, err := s.Mgr.List()
+	if err != nil {
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Không đọc được danh sách kênh."))
+		return
+	}
+	accountFound := false
+	for _, a := range accounts {
+		if a == nil {
+			continue
+		}
+		if (accountID > 0 && a.ID == accountID) || (account != "" && (a.Username == account || "@"+a.Username == account)) {
+			accountID = a.ID
+			account = a.Username
+			accountFound = true
+			break
+		}
+	}
+	if !accountFound {
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Chọn kênh TikTok hợp lệ trước khi tạo video."))
+		return
+	}
 
 	// Save multi-photo character uploads if any
 	var uploadedPhotos []string
@@ -218,44 +280,23 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	// Tự động sử dụng nhân vật đại diện đã setting trong kênh nếu người dùng chưa tải ảnh mới
-	if len(uploadedPhotos) == 0 && s.Studio != nil {
-		if ms, err := s.Studio.ModelLibrary(); err == nil && ms != nil {
-			targetAcctID := accountID
-			if targetAcctID <= 0 && account != "" && s.Mgr != nil {
-				if accts, err := s.Mgr.List(); err == nil {
-					for _, a := range accts {
-						if a != nil && (a.Username == account || "@"+a.Username == account) {
-							targetAcctID = a.ID
-							break
-						}
-					}
-				}
-			}
-			if modelID > 0 {
-				if photoPath, err := s.findModelPhotoByID(modelID); err == nil && photoPath != "" {
-					uploadedPhotos = append(uploadedPhotos, photoPath)
-				}
-			}
-			if len(uploadedPhotos) == 0 && targetAcctID > 0 {
-				if photos, err := ms.List(targetAcctID); err == nil && len(photos) > 0 {
-					for _, p := range photos {
-						if p.Path != "" && fileExists(p.Path) {
-							uploadedPhotos = append(uploadedPhotos, p.Path)
-						}
-					}
-				}
-			}
-			if len(uploadedPhotos) == 0 {
-				if allPhotos, err := ms.ListAll(); err == nil && len(allPhotos) > 0 {
-					for _, p := range allPhotos {
-						if p.Path != "" && fileExists(p.Path) {
-							uploadedPhotos = append(uploadedPhotos, p.Path)
-						}
-					}
-				}
-			}
+	// Chỉ lấy model được chọn hoặc ảnh trong đúng profile kênh; không fallback sang account khác.
+	if len(uploadedPhotos) == 0 {
+		uploadedPhotos, err = resolveProductJobCharacterPhotos(s, accountID, modelID)
+		if err != nil {
+			seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape(err.Error()))
+			return
 		}
+	}
+	if len(uploadedPhotos) == 0 || !fileExists(uploadedPhotos[0]) {
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Kênh chưa có ảnh nhân vật. Tải ảnh vào profile kênh trước khi tạo video."))
+		return
+	}
+
+	referenceVideoPath, err := saveUpload(r, "sample_video", s.Studio.UploadDir())
+	if err != nil {
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Video mẫu lỗi: "+err.Error()))
+		return
 	}
 
 	targetWF := workflowID
@@ -279,6 +320,9 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 		"account_id":       accountID,
 		"model_id":         modelID,
 		"character_photos": uploadedPhotos,
+	}
+	if referenceVideoPath != "" {
+		params["sample_video"] = referenceVideoPath
 	}
 
 	jobID, err := s.Studio.CreateExternalJob("affiliate", jobTitle, params,
@@ -310,127 +354,64 @@ func (s *Server) handleProductsCreateVideo(w http.ResponseWriter, r *http.Reques
 					dlCancel()
 				}
 			}
-			var imgPath string
-			if len(productImgPaths) > 0 {
-				imgPath = productImgPaths[0]
-			}
-
 			outFilename := fmt.Sprintf("affiliate_prod_%d_%d.mp4", prod.ID, time.Now().Unix())
 			finalPath := s.Studio.OutputPath(outFilename)
 
-			var flowDone bool
-			if workflowID != "" && s.Studio != nil {
-				if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
-					targetWF := workflowID
-					if targetWF == "preset_affiliate_daily" || targetWF == "auto" {
-						targetWF = "preset_affiliate_showcase"
-					}
-					if graph, err := fs.GetGraph(targetWF); err == nil && graph != nil {
-						progress(40, "Đang khởi tạo quy trình Workflow: "+graph.Name+"...")
+			graph, flowErr := loadAffiliateFlow(s.Studio, targetWF)
+			if flowErr != nil {
+				return "", "", flowErr
+			}
+			progress(40, "Đang khởi tạo quy trình Workflow: "+graph.Name+"...")
 
-						// Nạp dữ liệu sản phẩm & nhân vật vào các Node của đồ thị
-						for i := range graph.Nodes {
-							node := &graph.Nodes[i]
-							if node.Params == nil {
-								node.Params = map[string]any{}
-							}
-							switch node.Type {
-							case "product_input":
-								node.Params["product_id"] = fmt.Sprint(prod.ID)
-								node.Params["product_title"] = prod.Title
-								node.Params["product_image"] = imgPath
-								node.Params["product_images"] = productImgPaths
-								node.Params["affiliate_url"] = prod.ProductURL
-							case "character_input":
-								if len(uploadedPhotos) > 0 {
-									node.Params["model_path"] = uploadedPhotos[0]
-									node.Params["model_paths"] = uploadedPhotos
-								}
-							}
-						}
-
-						narrText := fmt.Sprintf("%s. Danh mục %s. Giá chỉ %.0f đồng. Bấm vào giỏ hàng bên dưới để đặt ngay hôm nay!", prod.Title, prod.Category, prod.Price)
-						var ttsAudioPath string
-						if s.TTS != nil {
-							ttsCtx, ttsCancel := context.WithTimeout(ctx, 30*time.Second)
-							if audioBytes, err := s.TTS.Synthesize(ttsCtx, narrText, "vi-VN-HoaiMyNeural"); err == nil && len(audioBytes) > 0 {
-								ttsDst := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("tts_aff_%d_%d.mp3", prod.ID, time.Now().UnixNano()))
-								if err := os.WriteFile(ttsDst, audioBytes, 0644); err == nil {
-									ttsAudioPath = ttsDst
-								}
-							}
-							ttsCancel()
-						}
-
-						flowInputs := map[string]any{
-							"product_name":      prod.Title,
-							"product_id":        prod.ID,
-							"price":             prod.Price,
-							"category":          prod.Category,
-							"product_url":       prod.ProductURL,
-							"image":             imgPath,
-							"images":            productImgPaths,
-							"product_images":    productImgPaths,
-							"resolution":        "1080p",
-							"output_resolution": "1080p",
-							"duration":          30.0,
-						}
-						if ttsAudioPath != "" {
-							flowInputs["voice_audio"] = ttsAudioPath
-						}
-						if len(uploadedPhotos) > 0 {
-							flowInputs["model_photo"] = uploadedPhotos[0]
-							flowInputs["character_photos"] = uploadedPhotos
-						}
-
-						services := s.flowExecutionServices()
-						services.MuseCreditsAcknowledged = true
-						services.GoogleFlowCreditsAcknowledged = true
-
-						run, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
-						if runErr == nil && run != nil && run.Status == "completed" {
-							if vid, ok := run.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {
-								if err := copyFile(vid, finalPath); err == nil {
-									flowDone = true
-								}
-							}
-						} else {
-							var errDetail string
-							if runErr != nil {
-								errDetail = runErr.Error()
-							} else if run != nil {
-								errDetail = run.Log
-							}
-							log.Printf("web: workflow execution failed: %s", errDetail)
-							progress(45, "Cảnh báo Workflow: "+errDetail)
-						}
+			narrText := fmt.Sprintf("%s. Danh mục %s. Giá chỉ %.0f đồng. Bấm vào giỏ hàng bên dưới để đặt ngay hôm nay!", prod.Title, prod.Category, prod.Price)
+			var ttsAudioPath string
+			if s.TTS != nil {
+				ttsCtx, ttsCancel := context.WithTimeout(ctx, 30*time.Second)
+				if audioBytes, err := s.TTS.Synthesize(ttsCtx, narrText, "vi-VN-HoaiMyNeural"); err == nil && len(audioBytes) > 0 {
+					ttsDst := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("tts_aff_%d_%d.mp3", prod.ID, time.Now().UnixNano()))
+					if err := os.WriteFile(ttsDst, audioBytes, 0644); err == nil {
+						ttsAudioPath = ttsDst
 					}
 				}
+				ttsCancel()
 			}
 
-			// Nếu workflow chưa hoàn tất thì dựng video đa ảnh chất lượng cao chuẩn TikTok 9:16 kèm giọng đọc thuyết minh TTS
-			if !flowDone && len(productImgPaths) > 0 {
-				var charPhoto string
-				if len(uploadedPhotos) > 0 {
-					charPhoto = uploadedPhotos[0]
+			flowInputs := prepareAffiliateFlow(graph, affiliateFlowConfig{
+				Topic: prod.Title, ProductURL: prod.ProductURL, Prompt: narrText,
+				Resolution: "1080p", Voice: "default", Duration: 30,
+				ReferenceVideo: referenceVideoPath,
+				ProductID:      prod.ID, ProductPhotos: productImgPaths, CharacterPhotos: uploadedPhotos,
+			})
+			if ttsAudioPath != "" {
+				flowInputs["voice_audio"] = ttsAudioPath
+			}
+
+			services := s.flowExecutionServices()
+			services.MuseCreditsAcknowledged = true
+			services.GoogleFlowCreditsAcknowledged = true
+
+			flowRun, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
+			if runErr != nil {
+				return "", "", fmt.Errorf("workflow affiliate thất bại: %w", runErr)
+			}
+			if flowRun == nil || flowRun.Status != "completed" {
+				status := "không có kết quả"
+				if flowRun != nil {
+					status = flowRun.Status
 				}
-				narrText := fmt.Sprintf("%s. Danh mục %s. Giá chỉ %.0f đồng. Bấm vào giỏ hàng bên dưới để đặt ngay hôm nay!", prod.Title, prod.Category, prod.Price)
-				cfg := compositeVideoConfig{
-					FinalPath:      finalPath,
-					Resolution:     "1080p",
-					Photos:         productImgPaths,
-					CharacterPhoto: charPhoto,
-					NarrationText:  narrText,
-					Voice:          "vi-VN-Standard-A",
-				}
-				if _, err := s.renderCompositeVideo(ctx, cfg); err != nil {
-					log.Printf("web: renderCompositeVideo fallback error: %v", err)
-				}
+				return "", "", fmt.Errorf("workflow affiliate chưa hoàn tất (status=%s)", status)
+			}
+			videoPath, ok := flowRun.Outputs["video"].(string)
+			if !ok || videoPath == "" || !fileExists(videoPath) {
+				return "", "", fmt.Errorf("workflow affiliate không xuất video hợp lệ")
+			}
+			if err := copyFile(videoPath, finalPath); err != nil {
+				return "", "", fmt.Errorf("không lưu được video affiliate: %w", err)
 			}
 
 			progress(100, "Hoàn tất tạo video affiliate!")
 			caption := fmt.Sprintf("%s #review #affiliate #muasam #fyp", prod.Title)
-			return outFilename, caption, nil
+			return finalPath, caption, nil
 		},
 	)
 

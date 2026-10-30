@@ -44,8 +44,8 @@
         "prompt": "Bóc tách sản phẩm độc lập khỏi nền và người mẫu, loại bỏ hoàn toàn phông nền (transparent PNG). Quan sát kỹ ảnh sản phẩm và bóc tách chi tiết: kiểu dáng, chất liệu, màu sắc, hoa văn, và tạo câu prompt tái tạo sản phẩm chuyên nghiệp.",
         "auto_crop": false,
         "refine_edges": true,
-        "isolate_garment": false,
-        "remove_skin": false
+        "isolate_garment": true,
+        "remove_skin": true
       }
     },
     {
@@ -155,8 +155,7 @@
       "params": {
         "workflow_id": "preset_muse_video_shot",
         "item_input_map": {
-          "duration": "duration_seconds",
-          "segment_video": "segment_video"
+          "duration": "duration_seconds"
         },
         "shared_image_input_key": "reference_images",
         "result_output_key": "video",
@@ -166,7 +165,8 @@
         "previous_video_frame_input_key": "reference_images",
         "previous_video_frame_insert_at": 1,
         "previous_video_frame_insert_after_reference_prefix": true,
-        "previous_video_frame_variables_key": "variables"
+        "previous_video_frame_variables_key": "variables",
+        "shared_video_input_key": "segment_video"
       }
     },
     {
@@ -272,11 +272,10 @@
         "label": "Độ phân giải",
         "value_type": "text",
         "required": false,
-        "value": "4k",
+        "value": "2k",
         "options": [
           "1080p",
-          "4k",
-          "8k"
+          "2k"
         ]
       }
     },
@@ -288,7 +287,7 @@
       "x": 3880,
       "y": 920,
       "params": {
-        "resolution": "4k",
+        "resolution": "2k",
         "crf": 18,
         "fit_mode": "cover"
       }
@@ -315,6 +314,33 @@
         "key": "video",
         "label": "Video thành phẩm",
         "value_type": "video"
+      }
+    },
+    {
+      "id": "reference_video",
+      "type": "workflow_input",
+      "title": "Video mẫu (tùy chọn)",
+      "category": "workflow",
+      "x": 80,
+      "y": 2040,
+      "params": {
+        "key": "reference_video",
+        "label": "Video mẫu",
+        "value_type": "video",
+        "required": false,
+        "value": ""
+      }
+    },
+    {
+      "id": "qc",
+      "type": "video_qc_evaluator",
+      "title": "Kiểm định video thành phẩm",
+      "category": "process",
+      "x": 3690,
+      "y": 920,
+      "params": {
+        "min_score": 70,
+        "strict_mode": false
       }
     }
   ],
@@ -449,7 +475,7 @@
       "id": "e19",
       "from_node": "grade",
       "from_port": "video_out",
-      "to_node": "upscale",
+      "to_node": "qc",
       "to_port": "video_in"
     },
     {
@@ -507,6 +533,27 @@
       "from_port": "workflow_context",
       "to_node": "render_map",
       "to_port": "context"
+    },
+    {
+      "id": "e_reference_video_map",
+      "from_node": "reference_video",
+      "from_port": "value",
+      "to_node": "render_map",
+      "to_port": "reference_video"
+    },
+    {
+      "id": "e_qc_product_ref",
+      "from_node": "product",
+      "from_port": "product_image",
+      "to_node": "qc",
+      "to_port": "reference_image"
+    },
+    {
+      "id": "e_qc_upscale",
+      "from_node": "qc",
+      "from_port": "video_out",
+      "to_node": "upscale",
+      "to_port": "video_in"
     }
   ]
 }

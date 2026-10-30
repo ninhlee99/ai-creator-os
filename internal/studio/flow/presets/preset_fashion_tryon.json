@@ -172,12 +172,12 @@
     {
       "id": "node_upscale",
       "type": "video_upscale",
-      "title": "12. Làm nét & Nâng chuẩn 4K UHD",
+      "title": "12. Làm nét & Nâng chuẩn 2K QHD",
       "category": "process",
       "x": 3500,
       "y": 500,
       "params": {
-        "resolution": "4k"
+        "resolution": "2k"
       }
     },
     {

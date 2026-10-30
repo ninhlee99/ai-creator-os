@@ -468,18 +468,20 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 	}
 
 	var uploadedPhotos []string
+	var productPhotos []string
+	var productID int64
 	var previewCleanup []string
+	retainedUploads := make(map[string]struct{})
 	var sampleVideoPath string
-	keepSourceVideoForJob := false
 	defer func() {
 		for _, path := range previewCleanup {
-			if keepSourceVideoForJob && path == sampleVideoPath {
+			if _, retained := retainedUploads[path]; retained {
 				continue
 			}
 			_ = os.Remove(path)
 		}
 	}()
-	for _, key := range []string{"character_photos", "character_photo", "model_photos", "model_photo", "product_photos", "photos", "image_files"} {
+	for _, key := range []string{"character_photos", "character_photo", "model_photos", "model_photo", "photos", "image_files"} {
 		photos, uploadErr := saveUploads(r, key, upDir, 10)
 		if uploadErr != nil {
 			writeViralCreateError(w, r, "Ảnh nhân vật lỗi: "+uploadErr.Error())
@@ -489,6 +491,13 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			uploadedPhotos = append(uploadedPhotos, photos...)
 			previewCleanup = append(previewCleanup, photos...)
 		}
+	}
+	if photos, uploadErr := saveUploads(r, "product_photos", upDir, 10); uploadErr != nil {
+		writeViralCreateError(w, r, "Ảnh sản phẩm lỗi: "+uploadErr.Error())
+		return
+	} else if len(photos) > 0 {
+		productPhotos = append(productPhotos, photos...)
+		previewCleanup = append(previewCleanup, photos...)
 	}
 	if len(uploadedPhotos) == 0 {
 		if p1, _ := saveUpload(r, "character_photo", upDir); p1 != "" {
@@ -591,7 +600,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 	if productURL == "" && extracted.ProductURL != "" {
 		productURL = extracted.ProductURL
 	}
-	if len(uploadedPhotos) == 0 && len(extracted.ImageURLs) > 0 && s.Studio != nil {
+	if len(productPhotos) == 0 && len(extracted.ImageURLs) > 0 && s.Studio != nil {
 		for i, imgURL := range extracted.ImageURLs {
 			if i >= 3 {
 				break
@@ -599,7 +608,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			dst := filepath.Join(upDir, fmt.Sprintf("prompt_img_%d_%d.jpg", time.Now().UnixNano(), i))
 			dlCtx, dlCancel := context.WithTimeout(r.Context(), 15*time.Second)
 			if err := studio.DownloadImage(dlCtx, imgURL, dst); err == nil {
-				uploadedPhotos = append(uploadedPhotos, dst)
+				productPhotos = append(productPhotos, dst)
 				previewCleanup = append(previewCleanup, dst)
 			}
 			dlCancel()
@@ -627,9 +636,9 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 				}
 			}
 			if s.Products != nil {
-				_, _ = s.Products.SaveImportedProduct(*extProd)
+				productID, _ = s.Products.SaveImportedProduct(*extProd)
 			}
-			if len(uploadedPhotos) == 0 && len(extProd.ImageURLs) > 0 {
+			if len(productPhotos) == 0 && len(extProd.ImageURLs) > 0 {
 				for idx, imgURL := range extProd.ImageURLs {
 					if idx >= 5 {
 						break
@@ -637,7 +646,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 					dst := filepath.Join(upDir, fmt.Sprintf("prod_dl_%d_%d.jpg", time.Now().UnixNano(), idx))
 					dlCtx, dlCancel := context.WithTimeout(r.Context(), 15*time.Second)
 					if dlErr := studio.DownloadImage(dlCtx, imgURL, dst); dlErr == nil && fileExists(dst) {
-						uploadedPhotos = append(uploadedPhotos, dst)
+						productPhotos = append(productPhotos, dst)
 						previewCleanup = append(previewCleanup, dst)
 					}
 					dlCancel()
@@ -673,20 +682,10 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 					}
 				}
 			}
-			if len(channelPhotos) == 0 {
-				if allPhotos, err := ms.ListAll(); err == nil && len(allPhotos) > 0 {
-					for _, ph := range allPhotos {
-						if ph.Path != "" && fileExists(ph.Path) {
-							channelPhotos = append(channelPhotos, ph.Path)
-						}
-					}
-				}
-			}
+
 		}
 	}
-	if len(uploadedPhotos) == 0 && len(channelPhotos) > 0 {
-		uploadedPhotos = append(uploadedPhotos, channelPhotos...)
-	}
+	channelPhotos = prioritizeSelectedCharacterPhotos(channelPhotos, uploadedPhotos)
 
 	workflowID := strings.TrimSpace(r.PostFormValue("workflow_id"))
 	// Tự động phân tích câu lệnh và chọn quy trình sản xuất (Workflow) phù hợp
@@ -698,6 +697,10 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			workflowID = detWF
 		}
 		log.Printf("web: auto-detected workflow output type %q workflow_id %q for topic %q", outputType, workflowID, topic)
+	}
+	if message := missingChannelCharacter(outputType, channelPhotos); message != "" {
+		writeViralCreateError(w, r, message)
+		return
 	}
 
 	resolution := strings.TrimSpace(r.PostFormValue("output_resolution"))
@@ -722,6 +725,9 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			writeViralCreateError(w, r, "Chọn kênh đích trước khi tạo video.")
 			return
 		}
+		if workflowID == "" || workflowID == "preset_affiliate_daily" {
+			workflowID = "preset_affiliate_showcase"
+		}
 		jobTitle := "Video Affiliate: " + topic
 		if isAutoMode {
 			jobTitle = "Video Affiliate (AI Tự Động): " + topic
@@ -742,7 +748,6 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		}
 		if sampleVideoPath != "" {
 			params["sample_video"] = sampleVideoPath
-			keepSourceVideoForJob = true
 		}
 
 		jobID, err := s.Studio.CreateExternalJob("affiliate", jobTitle, params,
@@ -760,110 +765,54 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 				outFilename := fmt.Sprintf("affiliate_%d_%d.mp4", accountID, time.Now().Unix())
 				finalPath := s.Studio.OutputPath(outFilename)
 
-				// Thử chạy workflow canvas nếu được cấu hình
-				var flowDone bool
-				if workflowID != "" && s.Studio != nil {
-					if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
-						targetWF := workflowID
-						graph, err := fs.GetGraph(targetWF)
-						if err != nil && targetWF == "preset_affiliate_daily" {
-							graph, _ = fs.GetGraph("preset_affiliate_showcase")
-						}
-						if graph != nil {
-							targetDur := 30.0
-							if sampleVideoPath != "" {
-								if sd := studio.ProbeDuration(ctx, sampleVideoPath); sd > 0 {
-									targetDur = sd
-								}
-							}
-							flowInputs := map[string]any{
-								"product_name":      topic,
-								"product_url":       productURL,
-								"prompt":            prompt,
-								"resolution":        resolution,
-								"output_resolution": resolution,
-								"voice":             voice,
-								"duration":          targetDur,
-							}
-							if sampleVideoPath != "" {
-								flowInputs["sample_video"] = sampleVideoPath
-							}
-							if len(uploadedPhotos) > 0 {
-								flowInputs["image"] = uploadedPhotos[0]
-								flowInputs["images"] = uploadedPhotos
-								flowInputs["product_images"] = uploadedPhotos
-							}
-						for i := range graph.Nodes {
-							node := &graph.Nodes[i]
-							if node.Params == nil {
-								node.Params = map[string]any{}
-							}
-							switch node.Type {
-							case "product_input":
-								if topic != "" {
-									node.Params["product_title"] = topic
-								}
-								if len(uploadedPhotos) > 0 {
-									node.Params["product_image"] = uploadedPhotos[0]
-									node.Params["product_images"] = uploadedPhotos
-								}
-								if productURL != "" {
-									node.Params["affiliate_url"] = productURL
-								}
-							case "character_input":
-								if len(channelPhotos) > 0 {
-									node.Params["model_path"] = channelPhotos[0]
-									node.Params["model_paths"] = channelPhotos
-								} else if len(uploadedPhotos) > 0 {
-									node.Params["model_path"] = uploadedPhotos[0]
-									node.Params["model_paths"] = uploadedPhotos
-								}
-							}
-						}
-						services := s.flowExecutionServices()
-						services.MuseCreditsAcknowledged = true
-						services.GoogleFlowCreditsAcknowledged = true
-						flowRun, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
-							if runErr == nil && flowRun != nil && flowRun.Status == "completed" {
-								if vid, ok := flowRun.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {
-									if copyErr := copyFile(vid, finalPath); copyErr == nil {
-										flowDone = true
-									}
-								}
-							}
-						}
+				graph, flowErr := loadAffiliateFlow(s.Studio, workflowID)
+				if flowErr != nil {
+					return "", "", flowErr
+				}
+				targetDur := 30.0
+				if sampleVideoPath != "" {
+					if sd := studio.ProbeDuration(ctx, sampleVideoPath); sd > 0 {
+						targetDur = sd
 					}
 				}
-
-				// Dựng video chất lượng cao chuẩn vertical 9:16 đa ảnh và thuyết minh
-				if !flowDone {
-					var charPhoto string
-					if len(channelPhotos) > 0 {
-						charPhoto = channelPhotos[0]
-					}
-					narrText := directives.CleanTopic
-					if narrText == "" {
-						narrText = topic
-					}
-					cfg := compositeVideoConfig{
-						FinalPath:       finalPath,
-						Resolution:      resolution,
-						Photos:          uploadedPhotos,
-						CharacterPhoto:  charPhoto,
-						SampleVideoPath: sampleVideoPath,
-						Voice:           voice,
-						NarrationText:   narrText,
-					}
-					if _, err := s.renderCompositeVideo(ctx, cfg); err != nil {
-						log.Printf("web: renderCompositeVideo error: %v", err)
-					}
+				flowInputs := prepareAffiliateFlow(graph, affiliateFlowConfig{
+					Topic: topic, ProductURL: productURL, Prompt: prompt,
+					Resolution: resolution, Voice: voice, Duration: targetDur,
+					ReferenceVideo: sampleVideoPath, ProductID: productID,
+					ProductPhotos: productPhotos, CharacterPhotos: channelPhotos,
+				})
+				services := s.flowExecutionServices()
+				services.MuseCreditsAcknowledged = true
+				services.GoogleFlowCreditsAcknowledged = true
+				flowRun, flowErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
+				if flowErr != nil {
+					return "", "", fmt.Errorf("workflow affiliate thất bại: %w", flowErr)
 				}
-
+				if flowRun == nil || flowRun.Status != "completed" {
+					status := "không có kết quả"
+					if flowRun != nil {
+						status = flowRun.Status
+					}
+					return "", "", fmt.Errorf("workflow affiliate chưa hoàn tất (status=%s)", status)
+				}
+				vid, ok := flowRun.Outputs["video"].(string)
+				if !ok || vid == "" || !fileExists(vid) {
+					return "", "", fmt.Errorf("workflow affiliate không xuất video hợp lệ")
+				}
+				if err := copyFile(vid, finalPath); err != nil {
+					return "", "", fmt.Errorf("không lưu được video affiliate: %w", err)
+				}
 				return finalPath, topic, nil
 			})
 		if err != nil {
 			writeViralCreateError(w, r, "Lỗi tạo video affiliate: "+err.Error())
 			return
+		}
+		for _, path := range productPhotos {
+			retainedUploads[path] = struct{}{}
+		}
+		if sampleVideoPath != "" {
+			retainedUploads[sampleVideoPath] = struct{}{}
 		}
 		if s.Ledger != nil {
 			_ = s.Ledger.Decide("human", "affiliate_create", nil, fmt.Sprintf("Tạo video affiliate job=%s: %s", jobID, topic), nil)
@@ -900,7 +849,6 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 			"workflow_id":       workflowID,
 			"run_id":            runID,
 		}
-		keepSourceVideoForJob = true
 		jobID, err := s.Studio.CreateExternalJob("viral", jobTitle, params,
 			func(ctx context.Context, progress func(int, string)) (string, string, error) {
 				if isAutoMode {
@@ -916,77 +864,53 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 				outFilename := fmt.Sprintf("viral_%d_%d.mp4", accountID, time.Now().Unix())
 				finalPath := s.Studio.OutputPath(outFilename)
 
-				// Thử chạy workflow viral dance nếu có
-				var flowDone bool
-				if s.Studio != nil {
-					if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
-						graph, _ := fs.GetGraph("preset_viral_dance")
-						if graph != nil {
-							flowInputs := map[string]any{
-								"video":             sampleVideoPath,
-								"sample_video":      sampleVideoPath,
-								"resolution":        resolution,
-								"output_resolution": resolution,
-							}
-							if len(uploadedPhotos) > 0 {
-								flowInputs["character"] = uploadedPhotos[0]
-								flowInputs["model_photo"] = uploadedPhotos[0]
-								flowInputs["character_photos"] = uploadedPhotos
-							}
-						for i := range graph.Nodes {
-							node := &graph.Nodes[i]
-							if node.Params == nil {
-								node.Params = map[string]any{}
-							}
-							switch node.Type {
-							case "character_input":
-								if len(uploadedPhotos) > 0 {
-									node.Params["model_path"] = uploadedPhotos[0]
-									node.Params["model_paths"] = uploadedPhotos
-								}
-							case "video_source":
-								if sampleVideoPath != "" {
-									node.Params["video_path"] = sampleVideoPath
-								}
-							}
-						}
-						services := s.flowExecutionServices()
-						services.MuseCreditsAcknowledged = true
-						services.GoogleFlowCreditsAcknowledged = true
-						flowRun, runErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
-							if runErr == nil && flowRun != nil && flowRun.Status == "completed" {
-								if vid, ok := flowRun.Outputs["video"].(string); ok && vid != "" && fileExists(vid) {
-									if copyErr := copyFile(vid, finalPath); copyErr == nil {
-										flowDone = true
-									}
-								}
-							}
-						}
-					}
+				fs, err := s.Studio.GetFlowStore()
+				if err != nil {
+					return "", "", fmt.Errorf("không mở được workflow viral: %w", err)
 				}
-
-				if !flowDone {
-					var charPhoto string
-					if len(uploadedPhotos) > 0 {
-						charPhoto = uploadedPhotos[0]
-					}
-					cfg := compositeVideoConfig{
-						FinalPath:       finalPath,
-						Resolution:      resolution,
-						CharacterPhoto:  charPhoto,
-						SampleVideoPath: sampleVideoPath,
-						Voice:           voice,
-					}
-					if _, err := s.renderCompositeVideo(ctx, cfg); err != nil {
-						log.Printf("web: viral renderCompositeVideo error: %v", err)
-					}
+				if fs == nil {
+					return "", "", fmt.Errorf("kho workflow viral chưa sẵn sàng")
 				}
-
+				graph, err := fs.GetGraph("preset_viral_dance")
+				if err != nil {
+					return "", "", fmt.Errorf("không tìm thấy preset_viral_dance: %w", err)
+				}
+				if graph == nil {
+					return "", "", fmt.Errorf("preset_viral_dance không có dữ liệu")
+				}
+				flowInputs := prepareViralFlow(graph, viralFlowConfig{
+					SourceVideo: sampleVideoPath, Resolution: resolution,
+					CharacterPhotos: channelPhotos, RequireRadar: false,
+				})
+				services := s.flowExecutionServices()
+				services.MuseCreditsAcknowledged = true
+				services.GoogleFlowCreditsAcknowledged = true
+				flowRun, flowErr := s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, graph, flowInputs, services)
+				if flowErr != nil {
+					return "", "", fmt.Errorf("workflow viral thất bại: %w", flowErr)
+				}
+				if flowRun == nil || flowRun.Status != "completed" {
+					status := "không có kết quả"
+					if flowRun != nil {
+						status = flowRun.Status
+					}
+					return "", "", fmt.Errorf("workflow viral chưa hoàn tất (status=%s)", status)
+				}
+				vid, ok := flowRun.Outputs["video"].(string)
+				if !ok || vid == "" || !fileExists(vid) {
+					return "", "", fmt.Errorf("workflow viral không xuất video hợp lệ")
+				}
+				if err := copyFile(vid, finalPath); err != nil {
+					return "", "", fmt.Errorf("không lưu được video viral: %w", err)
+				}
 				return finalPath, topic, nil
 			})
 		if err != nil {
 			writeViralCreateError(w, r, "Lỗi tạo video viral: "+err.Error())
 			return
+		}
+		if sampleVideoPath != "" {
+			retainedUploads[sampleVideoPath] = struct{}{}
 		}
 		if s.Ledger != nil {
 			_ = s.Ledger.Decide("human", "viral_source_replace", nil, fmt.Sprintf("Tạo video viral job=%s: %s", jobID, topic), nil)
@@ -1047,14 +971,11 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		writeViralCreateError(w, r, "Chọn kênh đích trước khi tạo video.")
 		return
 	}
-	if len(uploadedPhotos) == 0 || !fileExists(uploadedPhotos[0]) {
+	if len(channelPhotos) == 0 || !fileExists(channelPhotos[0]) {
 		writeViralCreateError(w, r, "Video viral production cần ảnh nhân vật của kênh.")
 		return
 	}
-	var modelPhoto string
-	if len(uploadedPhotos) > 0 {
-		modelPhoto = uploadedPhotos[0]
-	}
+	modelPhoto := channelPhotos[0]
 
 	p := studio.ViralParams{
 		Topic:             topic,
@@ -1064,7 +985,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 		Account:           account,
 		AccountID:         accountID,
 		ModelPhoto:        modelPhoto,
-		ModelPhotos:       uploadedPhotos,
+		ModelPhotos:       channelPhotos,
 		SampleVideo:       sampleVideoPath,
 		SourceVideoURL:    tiktokLink,
 		SourceVideoID:     sourceVideo.VideoID,
@@ -1088,7 +1009,7 @@ func (s *Server) handleVideoCreateSubmit(w http.ResponseWriter, r *http.Request)
 
 	jobID, err := s.Studio.EnqueueViral(r.Context(), p)
 	if jobID != "" {
-		keepSourceVideoForJob = true
+		retainedUploads[sampleVideoPath] = struct{}{}
 	}
 	if err != nil {
 		log.Printf("web: viral create error: %v", err)

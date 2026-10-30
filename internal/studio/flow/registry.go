@@ -316,9 +316,9 @@ func registerAllBuiltinNodes() {
 	// 10. Google Flow Video Node
 	RegisterNode(NodeDefinition{
 		Type:        "google_flow_video",
-		Title:       "Google Flow · Veo 3.1 Fast",
+		Title:       "Web AI Video · Flow / Gemini / Grok / Muse",
 		Category:    CategoryAI,
-		Description: "Tạo clip 8 giây bằng Google Flow Ingredients-to-Video; nhận tối đa 3 ảnh tham chiếu",
+		Description: "Tạo video qua Google Flow, Gemini, Grok hoặc Muse; nhận tối đa 3 ảnh tham chiếu",
 		Icon:        "zap",
 		Inputs: []FlowPort{
 			{ID: "prompt", Name: "Câu lệnh prompt", Type: PortTypeText, Required: true},
@@ -332,7 +332,9 @@ func registerAllBuiltinNodes() {
 			{ID: "video_out", Name: "Video tạo bởi Flow", Type: PortTypeVideo, Description: "Clip từ Google Flow"},
 		},
 		DefaultParams: map[string]any{
-			"aspect": "9:16",
+			"aspect":            "9:16",
+			"provider":          "googleflow",
+			"fallback_provider": "",
 			// Blank means use connected prompt input. A custom value overrides it.
 			"prompt": "",
 		},
@@ -356,7 +358,8 @@ func registerAllBuiltinNodes() {
 			{ID: "video_out", Name: "Video từ Muse AI", Type: PortTypeVideo, Description: "Video hoàn chỉnh sinh bởi Muse AI"},
 		},
 		DefaultParams: map[string]any{
-			"aspect": "9:16",
+			"aspect":            "9:16",
+			"fallback_provider": "",
 			// Blank means use connected prompt input. A custom value overrides it.
 			"prompt": "",
 		},
@@ -432,10 +435,10 @@ func registerAllBuiltinNodes() {
 			{ID: "product_profile", Name: "Dữ liệu thuộc tính", Type: PortTypeConfig, Description: "Dữ liệu JSON bóc tách"},
 		},
 		DefaultParams: map[string]any{
-			"provider": "chatgpt",
-			"prompt":   "Bóc tách sản phẩm độc lập khỏi nền và người mẫu, loại bỏ hoàn toàn phông nền (transparent PNG). Quan sát kỹ ảnh sản phẩm và bóc tách chi tiết: kiểu dáng, chất liệu, màu sắc, hoa văn, và tạo câu prompt tái tạo sản phẩm chuyên nghiệp.",
-			"isolate_garment": false,
-			"remove_skin":     false,
+			"provider":        "chatgpt",
+			"prompt":          "Bóc tách sản phẩm độc lập khỏi nền và người mẫu, loại bỏ hoàn toàn phông nền (transparent PNG). Quan sát kỹ ảnh sản phẩm và bóc tách chi tiết: kiểu dáng, chất liệu, màu sắc, hoa văn, và tạo câu prompt tái tạo sản phẩm chuyên nghiệp.",
+			"isolate_garment": true,
+			"remove_skin":     true,
 			"refine_edges":    true,
 			"auto_crop":       false,
 		},
@@ -1273,6 +1276,7 @@ func registerAllBuiltinNodes() {
 			{ID: "items", Name: "Danh sách cần xử lý", Type: PortTypeAny, Required: true},
 			{ID: "context", Name: "Context dùng chung", Type: PortTypeConfig, Required: false},
 			{ID: "reference_images", Name: "Ảnh tham chiếu dùng chung", Type: PortTypeImageList, Required: false},
+			{ID: "reference_video", Name: "Video tham chiếu dùng chung", Type: PortTypeVideo, Required: false},
 			{ID: "reference_prefix_count", Name: "Số ảnh danh tính đứng trước frame liên tục", Type: PortTypeNumber, Required: false},
 		},
 		Outputs: []FlowPort{{ID: "results", Name: "Kết quả theo thứ tự", Type: PortTypeAny}},
@@ -1281,6 +1285,7 @@ func registerAllBuiltinNodes() {
 			"item_input_key":                                     "",
 			"item_input_map":                                     map[string]any{},
 			"shared_image_input_key":                             "",
+			"shared_video_input_key":                             "",
 			"merge_context_into_item":                            false,
 			"share_muse_thread":                                  true,
 			"previous_video_frame_input_key":                     "",

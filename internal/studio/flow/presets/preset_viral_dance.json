@@ -180,7 +180,7 @@
       "x": 3880,
       "y": 500,
       "params": {
-        "resolution": "4k",
+        "resolution": "2k",
         "crf": 18,
         "fit_mode": "cover"
       }
@@ -223,11 +223,10 @@
         "label": "Độ phân giải",
         "value_type": "text",
         "required": false,
-        "value": "4k",
+        "value": "2k",
         "options": [
           "1080p",
-          "4k",
-          "8k"
+          "2k"
         ]
       }
     },
@@ -242,6 +241,18 @@
         "key": "video",
         "label": "Video thành phẩm",
         "value_type": "video"
+      }
+    },
+    {
+      "id": "qc",
+      "type": "video_qc_evaluator",
+      "title": "Kiểm định video thành phẩm",
+      "category": "process",
+      "x": 3690,
+      "y": 500,
+      "params": {
+        "min_score": 70,
+        "strict_mode": false
       }
     }
   ],
@@ -404,7 +415,7 @@
       "id": "e20",
       "from_node": "grade",
       "from_port": "video_out",
-      "to_node": "upscale",
+      "to_node": "qc",
       "to_port": "video_in"
     },
     {
@@ -427,6 +438,13 @@
       "from_port": "final_video",
       "to_node": "workflow_output",
       "to_port": "value"
+    },
+    {
+      "id": "e_qc_upscale",
+      "from_node": "qc",
+      "from_port": "video_out",
+      "to_node": "upscale",
+      "to_port": "video_in"
     }
   ]
 }

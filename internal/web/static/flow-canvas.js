@@ -3530,6 +3530,13 @@
           ['googleflow', 'Google Flow (Veo)'],
           ['museai', 'Muse AI']
         ],
+        fallback_provider: [
+          ['', 'Tắt model dự phòng'],
+          ['googleflow', 'Google Flow (Veo)'],
+          ['gemini', 'Google Gemini Video'],
+          ['grok', 'Grok Imagine Video'],
+          ['museai', 'Muse AI']
+        ],
         model: [
           ['auto', 'Tự động chọn (Theo Web AI hoặc API)'],
           ['gpt-6-luna', 'GPT-6 Luna (ChatGPT Web · Mặc định Miễn phí)'],
@@ -5126,6 +5133,7 @@
       const labels = {
         provider_mode: 'Chế độ hoạt động (Mode)',
         provider: 'Nhà cung cấp AI (Provider)',
+        fallback_provider: 'Model dự phòng khi lỗi',
         model: 'Mô hình AI (Model)',
         custom_prompt: 'Prompt ghi đè riêng (Custom Override)',
         prompt_override: 'Prompt ghi đè riêng (Custom Override)',

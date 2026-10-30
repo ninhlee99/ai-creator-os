@@ -307,7 +307,7 @@ func sendMusePromptAndWait(ctx context.Context, client *browserCDPClient, prompt
 }
 
 func museAssistantCount(ctx context.Context, client *browserCDPClient) (float64, error) {
-	baselineValue, err := client.evaluate(ctx, `document.querySelectorAll('[data-message-item][data-message-role="assistant"]').length`)
+	baselineValue, err := client.evaluate(ctx, `document.querySelectorAll(`+mustJSON(museAssistantMessageSelector())+`).length`)
 	if err != nil {
 		return 0, err
 	}
@@ -340,8 +340,14 @@ func sendMusePromptFromBaseline(ctx context.Context, client *browserCDPClient, p
 		return museAssistantReply{}, errors.New("could not send prompt to Muse composer")
 	}
 	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "key": "Enter", "code": "Enter", "windowsVirtualKeyCode": 13, "nativeVirtualKeyCode": 13}, client.sessionID)
-	if err := waitMuseUserMessage(ctx, client, prompt, 15*time.Second); err != nil {
-		return museAssistantReply{}, err
+	if err := waitMuseUserMessage(ctx, client, prompt, baseline, 15*time.Second); err != nil {
+		clicked, clickErr := clickMuseSubmitIfPending(ctx, client, prompt)
+		if clickErr != nil || !clicked {
+			return museAssistantReply{}, err
+		}
+		if retryErr := waitMuseUserMessage(ctx, client, prompt, baseline, 15*time.Second); retryErr != nil {
+			return museAssistantReply{}, retryErr
+		}
 	}
 	progress("MUSE_HEADLESS: chờ Muse phản hồi")
 	deadline := time.Now().Add(11 * time.Minute)
@@ -354,9 +360,10 @@ func sendMusePromptFromBaseline(ctx context.Context, client *browserCDPClient, p
 		value, err := client.evaluate(ctx, `(() => {
 			const side = document.querySelector('[data-side-chat], [aria-label*="side chat" i], [class*="side-chat" i], [class*="sidechat" i], aside');
 			const root = side || document;
-			let a = [...root.querySelectorAll('[data-message-item][data-message-role="assistant"]')];
+			const assistantSelector = `+mustJSON(museAssistantMessageSelector())+`;
+			let a = [...root.querySelectorAll(assistantSelector)];
 			if (!a.length) {
-				a = [...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];
+				a = [...document.querySelectorAll(assistantSelector)];
 			}
 			const n = a[a.length - 1];
 			const busy = !!(root.querySelector('[data-testid="hatch-composer-stop-button"]') || document.querySelector('[data-testid="hatch-composer-stop-button"]'));
@@ -370,6 +377,12 @@ func sendMusePromptFromBaseline(ctx context.Context, client *browserCDPClient, p
 				thread: location.href
 			};
 		})()`)
+		if err != nil {
+			message := strings.ToLower(err.Error())
+			if strings.Contains(message, "connection") || strings.Contains(message, "closed") || strings.Contains(message, "timed out") {
+				return museAssistantReply{}, errors.New("Muse browser stopped responding while waiting for reply")
+			}
+		}
 		if err == nil {
 			var snapshot struct {
 				Count      int      `json:"count"`
@@ -416,9 +429,10 @@ func waitMuseMediaAttachment(ctx context.Context, client *browserCDPClient, repl
 		value, err := client.evaluate(ctx, `(() => {
 			const side = document.querySelector('[data-side-chat], [aria-label*="side chat" i], [class*="side-chat" i], [class*="sidechat" i], aside');
 			const root = side || document;
-			let a = [...root.querySelectorAll('[data-message-item][data-message-role="assistant"]')];
+			const assistantSelector = `+mustJSON(museAssistantMessageSelector())+`;
+			let a = [...root.querySelectorAll(assistantSelector)];
 			if (!a.length) {
-				a = [...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];
+				a = [...document.querySelectorAll(assistantSelector)];
 			}
 			const n = a[a.length - 1];
 			const busy = !!(root.querySelector('[data-testid="hatch-composer-stop-button"]') || document.querySelector('[data-testid="hatch-composer-stop-button"]'));
@@ -432,6 +446,12 @@ func waitMuseMediaAttachment(ctx context.Context, client *browserCDPClient, repl
 				thread: location.href
 			};
 		})()`)
+		if err != nil {
+			message := strings.ToLower(err.Error())
+			if strings.Contains(message, "connection") || strings.Contains(message, "closed") || strings.Contains(message, "timed out") {
+				return reply, fmt.Errorf("Muse browser stopped responding while waiting for its %s attachment", mediaKind)
+			}
+		}
 		if err == nil {
 			var snapshot museAssistantReply
 			var state struct {
@@ -484,9 +504,18 @@ func museReplyHasMediaAttachment(reply museAssistantReply, mediaKind string) boo
 	return false
 }
 
-func waitMuseUserMessage(ctx context.Context, client *browserCDPClient, prompt string, timeout time.Duration) error {
+func waitMuseUserMessage(ctx context.Context, client *browserCDPClient, prompt string, baseline float64, timeout time.Duration) error {
 	encoded, _ := json.Marshal(prompt)
-	expression := `(() => {const p=` + string(encoded) + `;return [...document.querySelectorAll('[data-message-item][data-message-role="user"]')].some(e=>(e.innerText||e.textContent||'').includes(p))})()`
+	expression := `(() => {
+		const p=` + string(encoded) + `;
+		const users=[...document.querySelectorAll(` + mustJSON(museUserMessageSelector()) + `)];
+		if(users.some(e=>(e.innerText||e.textContent||'').includes(p)))return true;
+		if(document.querySelectorAll(` + mustJSON(museAssistantMessageSelector()) + `).length>` + fmt.Sprintf("%v", baseline) + `)return true;
+		const composer=` + museComposerTargetJS() + `;
+		const text=composer?(composer.value??composer.innerText??composer.textContent??'').trim():'';
+		const busy=!!document.querySelector('[data-testid*="stop" i],button[aria-label*="stop" i]');
+		return text===''&&busy;
+	})()`
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		if err := ctx.Err(); err != nil {
@@ -502,7 +531,42 @@ func waitMuseUserMessage(ctx context.Context, client *browserCDPClient, prompt s
 		case <-time.After(300 * time.Millisecond):
 		}
 	}
-	return errors.New("Muse did not submit the requested prompt")
+	state, _ := client.evaluate(ctx, `(() => {
+		const composer=`+museComposerTargetJS()+`;
+		const text=composer?(composer.value??composer.innerText??composer.textContent??'').trim():'';
+		return {url:location.hostname,userMessages:document.querySelectorAll(`+mustJSON(museUserMessageSelector())+`).length,assistantMessages:document.querySelectorAll(`+mustJSON(museAssistantMessageSelector())+`).length,composerFound:!!composer,composerEmpty:text==='',busy:!!document.querySelector('[data-testid*="stop" i],button[aria-label*="stop" i]')};
+	})()`)
+	stateJSON, _ := json.Marshal(state)
+	return fmt.Errorf("Muse did not submit the requested prompt (state=%s)", stateJSON)
+}
+
+func clickMuseSubmitIfPending(ctx context.Context, client *browserCDPClient, prompt string) (bool, error) {
+	encoded, _ := json.Marshal(prompt)
+	expression := `(() => {
+		const p=` + string(encoded) + `;
+		const e=` + museComposerTargetJS() + `;
+		if(!e||(e.value??e.innerText??e.textContent??'').trim()!==p.trim())return false;
+		if(document.querySelector('[data-testid*="stop" i],button[aria-label*="stop" i]'))return false;
+		const root=e.closest('[data-hatch-composer-root]')||e.parentElement?.parentElement||document;
+		const buttons=[...root.querySelectorAll('button')];
+		const send=buttons.find(b=>!b.disabled&&/send|submit|gửi/i.test([b.getAttribute('aria-label'),b.getAttribute('title'),b.getAttribute('data-testid')].join(' ')));
+		if(!send)return false;
+		send.click();return true;
+	})()`
+	value, err := client.evaluate(ctx, expression)
+	if err != nil {
+		return false, err
+	}
+	clicked, _ := value.(bool)
+	return clicked, nil
+}
+
+func museAssistantMessageSelector() string {
+	return `[data-message-item][data-message-role="assistant"],[data-message-author-role="assistant"],[data-role="assistant"],[data-testid*="assistant" i]`
+}
+
+func museUserMessageSelector() string {
+	return `[data-message-item][data-message-role="user"],[data-message-author-role="user"],[data-role="user"],[data-testid*="user-message" i]`
 }
 
 func museComposerTargetJS() string {

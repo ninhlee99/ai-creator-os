@@ -518,9 +518,10 @@ func flowGraphRequiresProviderCredits(graph *flow.FlowGraph, store *flow.Store, 
 func flowNodeRequiresProviderCredits(node flow.FlowNode, provider string) bool {
 	switch node.Type {
 	case "muse_ai_video", "muse_ai_neural_render":
-		return provider == "museai"
+		return provider == "museai" || normalizeFlowProvider(flowHandlerParamString(node.Params, "fallback_provider", "")) == provider
 	case "google_flow_video":
-		return provider == "googleflow"
+		return normalizeFlowProvider(flowHandlerParamString(node.Params, "provider", "googleflow")) == provider ||
+			normalizeFlowProvider(flowHandlerParamString(node.Params, "fallback_provider", "")) == provider
 	case "custom_web_ai":
 		if flowHandlerParamString(node.Params, "output_type", "video") != "video" {
 			return false
@@ -545,13 +546,15 @@ func flowHandlerParamString(params map[string]any, key, fallback string) string 
 }
 
 func normalizeFlowProvider(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "googleflow", "google flow", "veo", "veo 2", "veo 3":
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.NewReplacer(" ", "", "_", "", "-", "").Replace(normalized)
+	switch normalized {
+	case "googleflow", "flow", "veo", "veo2", "veo3":
 		return "googleflow"
-	case "muse", "museai", "muse ai":
+	case "muse", "museai":
 		return "museai"
 	default:
-		return strings.ToLower(strings.TrimSpace(value))
+		return normalized
 	}
 }
 

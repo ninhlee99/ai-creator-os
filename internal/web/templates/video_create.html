@@ -41,7 +41,8 @@
       
       <!-- ATTACHED MEDIA PREVIEWS (TRONG KHUNG CHAT) -->
       <div id="attached-media-bar" style="display:none;flex-wrap:wrap;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
-        <div id="photo-preview-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        <div style="display:flex;flex-direction:column;gap:4px"><small style="color:var(--muted)">Nhân vật</small><div id="photo-preview-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div></div>
+        <div style="display:flex;flex-direction:column;gap:4px"><small style="color:var(--muted)">Sản phẩm</small><div id="product-preview-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div></div>
         <div id="video-preview-badge" style="display:none;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);padding:4px 10px;border-radius:8px;font-size:12px;color:var(--text)">
           <span>🎬</span>
           <span id="video-preview-text" style="font-weight:600">Video mẫu</span>
@@ -61,11 +62,18 @@
         <!-- LEFT TOOLS: ATTACHMENTS (UPLOAD TRỰC TIẾP TỪ MÁY TÍNH) -->
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
           
-          <!-- UPLOAD ẢNH NHÂN VẬT / SẢN PHẨM -->
-          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--text);transition:background 0.15s" title="Upload ảnh sản phẩm hoặc nhân vật từ máy tính">
+          <!-- UPLOAD ẢNH NHÂN VẬT -->
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--text);transition:background 0.15s" title="Upload ảnh nhân vật hoặc khóa nhận diện cho kênh">
             <span>📷</span>
-            <span id="label-photo-btn">Thêm ảnh</span>
+            <span id="label-photo-btn">Thêm nhân vật</span>
             <input type="file" name="character_photos" id="input-photos" accept="image/*" multiple style="display:none" onchange="handlePhotoSelect(this.files)">
+          </label>
+
+          <!-- UPLOAD ẢNH SẢN PHẨM -->
+          <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--text);transition:background 0.15s" title="Upload ảnh listing hoặc các góc sản phẩm">
+            <span>🛍️</span>
+            <span id="label-product-photo-btn">Thêm sản phẩm</span>
+            <input type="file" name="product_photos" id="input-product-photos" accept="image/*" multiple style="display:none" onchange="handleProductPhotoSelect(this.files)">
           </label>
 
           <!-- UPLOAD VIDEO MẪU TRỰC TIẾP (BẤM LÀ CHỌN FILE UPLOAD) -->
@@ -326,8 +334,24 @@ function handlePhotoSelect(files) {
   var label = document.getElementById('label-photo-btn');
   if (bar) bar.style.display = 'flex';
   if (previewGrid) previewGrid.innerHTML = '';
-  if (label) label.textContent = files.length + ' ảnh';
+  if (label) label.textContent = files.length + ' ảnh nhân vật';
 
+  renderPhotoPreviews(files, previewGrid);
+}
+
+function handleProductPhotoSelect(files) {
+  if (!files || !files.length) return;
+  var bar = document.getElementById('attached-media-bar');
+  var previewGrid = document.getElementById('product-preview-grid');
+  var label = document.getElementById('label-product-photo-btn');
+  if (bar) bar.style.display = 'flex';
+  if (previewGrid) previewGrid.innerHTML = '';
+  if (label) label.textContent = files.length + ' ảnh sản phẩm';
+
+  renderPhotoPreviews(files, previewGrid);
+}
+
+function renderPhotoPreviews(files, previewGrid) {
   for (var i = 0; i < files.length; i++) {
     (function(file) {
       var reader = new FileReader();
@@ -391,12 +415,18 @@ function startNewChat() {
   clearVideoAttachment();
   var photoInput = document.getElementById('input-photos');
   if (photoInput) photoInput.value = '';
+  var productPhotoInput = document.getElementById('input-product-photos');
+  if (productPhotoInput) productPhotoInput.value = '';
   var previewGrid = document.getElementById('photo-preview-grid');
   if (previewGrid) previewGrid.innerHTML = '';
+  var productPreviewGrid = document.getElementById('product-preview-grid');
+  if (productPreviewGrid) productPreviewGrid.innerHTML = '';
   var bar = document.getElementById('attached-media-bar');
   if (bar) bar.style.display = 'none';
   var label = document.getElementById('label-photo-btn');
-  if (label) label.textContent = 'Thêm ảnh';
+  if (label) label.textContent = 'Thêm nhân vật';
+  var productLabel = document.getElementById('label-product-photo-btn');
+  if (productLabel) productLabel.textContent = 'Thêm sản phẩm';
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
 

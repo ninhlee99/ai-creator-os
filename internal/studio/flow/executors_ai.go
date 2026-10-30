@@ -1,13 +1,13 @@
 package flow
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -224,43 +224,13 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 		platform = prov
 	}
 
-	if platform == "museai" && ctx.MuseRenderWithSession != nil {
-		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Chạy qua Muse AI theo model/provider đã chọn (%d ảnh tham chiếu)...", len(ingredients)))
-		isNew := ctx.startMuseThread()
-		threadURL := ""
-		if ctx.MuseThread != nil {
-			threadURL = ctx.MuseThread.URL
-		}
-		nextURL, renderErr := ctx.MuseRenderWithSession(ctx.Context, isNew, threadURL, "Fashion Shot", enhancedPrompt, ingredients, outPath)
-		if renderErr == nil && fileExists(outPath) && isVideoFile(outPath) {
-			if ctx.MuseThread != nil && nextURL != "" {
-				ctx.MuseThread.URL = nextURL
-			}
-			ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Video Muse AI đã sẵn sàng -> %s", filepath.Base(outPath)))
-			return map[string]any{"video_out": outPath}, nil
-		}
-		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Muse AI chưa hoàn tất (%v). Thử tiếp qua engine mặc định...", renderErr))
+	fallback := nodeParamString(node.Params, "fallback_provider", "")
+	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Tạo video qua %s (ingredients: %d ảnh tham chiếu, aspect: %s)...", platform, len(ingredients), aspect))
+	if err := renderVideoWithFallback(ctx, platform, fallback, "Fashion Shot", enhancedPrompt, ingredients, aspect, outPath); err != nil {
+		return nil, err
 	}
 
-	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Đang gửi yêu cầu tạo video tới %s (ingredients: %d ảnh tham chiếu, aspect: %s)...", platform, len(ingredients), aspect))
-
-	if ctx.EngineCall == nil {
-		return nil, fmt.Errorf("engine sinh video chưa được nối với workflow engine")
-	}
-	projectID, accountID := googleFlowThreadValues(ctx)
-	nextProjectID, nextAccountID, err := ctx.EngineCall(ctx.Context, platform, enhancedPrompt, ingredients, aspect, projectID, accountID, outPath)
-	setGoogleFlowThreadValues(ctx, nextProjectID, nextAccountID)
-	if err != nil {
-		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Google Flow chưa phản hồi (%v). Kích hoạt bộ tạo video chuyển động điện ảnh dự phòng...", err))
-		if renderErr := renderCinematicMotionShot(ctx, ingredients, prompt, outPath); renderErr != nil {
-			return nil, fmt.Errorf("Google Flow không tạo được video: %w", err)
-		}
-	}
-	if !fileExists(outPath) || !isVideoFile(outPath) {
-		return nil, fmt.Errorf("Google Flow không tạo được tệp video hợp lệ")
-	}
-
-	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Video Google Flow đã sẵn sàng -> %s", filepath.Base(outPath)))
+	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Video đã sẵn sàng -> %s", filepath.Base(outPath)))
 
 	return map[string]any{
 		"video_out": outPath,
@@ -344,16 +314,11 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	}
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_museai.mp4", safeWorkflowPathPart(node.ID)))
 	threadTitle := fmt.Sprintf("Flow [%s: %s]", node.ID, node.Title)
-	if err := renderMuseWorkflowNode(ctx, threadTitle, prompt, ingredients, outPath); err != nil {
-		ctx.Log(fmt.Sprintf("MuseAIVideoNode: Web AI render chưa phản hồi (%v). Kích hoạt bộ tạo video chuyển động điện ảnh dự phòng...", err))
-		if renderErr := renderCinematicMotionShot(ctx, ingredients, prompt, outPath); renderErr != nil {
-			return nil, err
-		}
+	fallback := nodeParamString(node.Params, "fallback_provider", "")
+	if err := renderVideoWithFallback(ctx, "museai", fallback, threadTitle, prompt, ingredients, aspect, outPath); err != nil {
+		return nil, err
 	}
-	if !fileExists(outPath) || !isVideoFile(outPath) {
-		return nil, fmt.Errorf("Muse AI không tạo được video đầu ra hợp lệ")
-	}
-	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Video Muse AI đã sẵn sàng -> %s", filepath.Base(outPath)))
+	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Video đã sẵn sàng -> %s", filepath.Base(outPath)))
 	return map[string]any{"video_out": outPath}, nil
 }
 
@@ -381,123 +346,6 @@ func renderMuseWorkflowNode(ctx *ExecutionContext, threadTitle, prompt string, f
 	}
 	if ctx.MuseThread != nil && strings.TrimSpace(nextThreadURL) != "" {
 		ctx.MuseThread.URL = nextThreadURL
-	}
-	return nil
-}
-
-func renderCinematicMotionShot(ctx *ExecutionContext, files []string, prompt, outPath string) error {
-	var validImages []string
-	for _, f := range files {
-		if fileExists(f) && isImageFile(f) {
-			validImages = append(validImages, f)
-		}
-	}
-	if len(validImages) == 0 {
-		return fmt.Errorf("không có ảnh tham chiếu hợp lệ để tạo chuyển động shot")
-	}
-
-	shotDuration := 6
-	totalFrames := shotDuration * 30
-
-	// Xác định số thứ tự shot hiện tại từ thư mục iteration (ví dụ: item_001, item_002...)
-	shotIndex := 0
-	if strings.Contains(ctx.WorkDir, "item_") {
-		parts := strings.Split(filepath.ToSlash(ctx.WorkDir), "/")
-		for _, p := range parts {
-			if strings.HasPrefix(p, "item_") {
-				if num, err := strconv.Atoi(strings.TrimPrefix(p, "item_")); err == nil && num > 0 {
-					shotIndex = num - 1
-				}
-			}
-		}
-	}
-
-	// Phân loại ảnh nhân vật và ảnh sản phẩm
-	var charImages []string
-	var prodImages []string
-	for _, f := range validImages {
-		lower := strings.ToLower(filepath.Base(f))
-		if strings.Contains(lower, "extract") || strings.Contains(lower, "cutout") ||
-			strings.Contains(lower, "prod") || strings.Contains(lower, "dl_") ||
-			strings.Contains(lower, "garment") || strings.Contains(lower, "listing") {
-			prodImages = append(prodImages, f)
-		} else {
-			charImages = append(charImages, f)
-		}
-	}
-
-	// Chọn ảnh chính cho shot: kết hợp luân phiên giữa người mẫu và sản phẩm
-	var srcImg string
-	if len(charImages) > 0 && len(prodImages) > 0 {
-		switch shotIndex % 3 {
-		case 0:
-			// Shot 0: Người mẫu toàn thân giới thiệu trang phục
-			srcImg = charImages[0]
-		case 1:
-			// Shot 1: Cận cảnh sản phẩm / outfit
-			srcImg = prodImages[0]
-		case 2:
-			// Shot 2: Người mẫu bán thân tạo dáng
-			if len(charImages) > 1 {
-				srcImg = charImages[1]
-			} else {
-				srcImg = charImages[0]
-			}
-		}
-	} else if len(charImages) > 0 {
-		srcImg = charImages[shotIndex%len(charImages)]
-	} else if len(prodImages) > 0 {
-		srcImg = prodImages[shotIndex%len(prodImages)]
-	} else {
-		srcImg = validImages[shotIndex%len(validImages)]
-	}
-
-	// Đa dạng hóa chuyển động camera qua từng shot để video sinh động
-	var motionFilter string
-	switch shotIndex % 4 {
-	case 0:
-		// Zoom in chậm, mượt
-		motionFilter = fmt.Sprintf("zoompan=z='min(zoom+0.0008,1.14)':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30", totalFrames)
-	case 1:
-		// Lướt nhẹ từ trên xuống dưới (quét dáng trang phục)
-		motionFilter = fmt.Sprintf("zoompan=z='1.10':d=%d:x='iw/2-(iw/zoom/2)':y='min(ih-ih/zoom,max(0,ih*0.08+on*0.35))':s=1080x1920:fps=30", totalFrames)
-	case 2:
-		// Lướt nhẹ từ dưới lên trên (nhấn mạnh chi tiết form)
-		motionFilter = fmt.Sprintf("zoompan=z='1.10':d=%d:x='iw/2-(iw/zoom/2)':y='max(0,ih*0.25-on*0.35)':s=1080x1920:fps=30", totalFrames)
-	default:
-		// Zoom in tập trung trung tâm
-		motionFilter = fmt.Sprintf("zoompan=z='min(zoom+0.001,1.15)':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1080x1920:fps=30", totalFrames)
-	}
-
-	// Đổ nền ambient mờ màu tự nhiên (boxblur) thay vì viền đen, khử hoàn toàn hiện tượng đen màn hình
-	filterComplex := fmt.Sprintf(
-		"[0:v]split=2[fg_raw][bg_raw];"+
-			"[bg_raw]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:5[bg_blur];"+
-			"[fg_raw]scale=1080:1920:force_original_aspect_ratio=decrease[fg_scaled];"+
-			"[bg_blur][fg_scaled]overlay=(W-w)/2:(H-h)/2,setsar=1,%s[vout]",
-		motionFilter,
-	)
-	args := []string{
-		"-loop", "1", "-i", srcImg,
-		"-filter_complex", filterComplex,
-		"-map", "[vout]",
-		"-t", strconv.Itoa(shotDuration),
-		"-c:v", "libx264", "-pix_fmt", "yuv420p",
-		"-y", outPath,
-	}
-
-	if ctx.FFmpegRunner != nil {
-		if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
-			return fmt.Errorf("tạo chuyển động shot thất bại: %w", err)
-		}
-	} else {
-		cmd := exec.CommandContext(ctx.Context, "ffmpeg", args...)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("tạo chuyển động shot thất bại: %w", err)
-		}
-	}
-	if !fileExists(outPath) {
-		return fmt.Errorf("không sinh được file shot video")
 	}
 	return nil
 }
@@ -997,14 +845,7 @@ func customImageInputs(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 }
 
 func flowVideoProvider(value string) (string, error) {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "googleflow", "google flow", "veo", "veo 2", "veo 3":
-		return "googleflow", nil
-	case "muse", "museai", "muse ai":
-		return "museai", nil
-	default:
-		return "", fmt.Errorf("video provider %q chưa được nối; hỗ trợ Google Flow hoặc Muse AI", value)
-	}
+	return normalizeFlowVideoProvider(value)
 }
 
 func callFlowVideoProvider(ctx *ExecutionContext, provider, prompt string, images []string, aspect, outPath string) error {
@@ -1014,25 +855,95 @@ func callFlowVideoProvider(ctx *ExecutionContext, provider, prompt string, image
 	if len(images) == 0 {
 		return fmt.Errorf("tạo video cần ít nhất một ảnh tham chiếu thật")
 	}
-	var err error
-	if strings.EqualFold(provider, "museai") && (ctx.MuseRenderWithSession != nil || ctx.MuseRender != nil) {
-		err = renderMuseWorkflowNode(ctx, "Workflow Muse AI", prompt, images, outPath)
+	return renderVideoProvider(ctx, provider, "Workflow Muse AI", prompt, images, aspect, outPath)
+}
+
+func normalizeFlowVideoProvider(value string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.NewReplacer(" ", "", "_", "", "-", "").Replace(normalized)
+	switch normalized {
+	case "googleflow", "flow", "veo", "veo2", "veo3":
+		return "googleflow", nil
+	case "muse", "museai":
+		return "museai", nil
+	case "gemini":
+		return "gemini", nil
+	case "grok":
+		return "grok", nil
+	default:
+		return "", fmt.Errorf("video provider %q chưa được nối; hỗ trợ Google Flow, Gemini, Grok hoặc Muse AI", value)
+	}
+}
+
+func renderVideoWithFallback(ctx *ExecutionContext, primary, fallback, threadTitle, prompt string, files []string, aspect, outPath string) error {
+	primary, err := normalizeFlowVideoProvider(primary)
+	if err != nil {
+		return err
+	}
+	if err := renderVideoProvider(ctx, primary, threadTitle, prompt, files, aspect, outPath); err == nil {
+		return nil
+	} else {
+		primaryErr := err
+		if errors.Is(primaryErr, context.Canceled) || errors.Is(primaryErr, context.DeadlineExceeded) {
+			return fmt.Errorf("%s không tạo được video: %w", primary, primaryErr)
+		}
+		fallback = strings.TrimSpace(fallback)
+		if fallback == "" {
+			return fmt.Errorf("%s không tạo được video: %w", primary, primaryErr)
+		}
+		fallback, err = normalizeFlowVideoProvider(fallback)
+		if err != nil {
+			return fmt.Errorf("%s không tạo được video: %v; model dự phòng không hợp lệ: %w", primary, primaryErr, err)
+		}
+		if fallback == primary {
+			return fmt.Errorf("%s không tạo được video: %v; model dự phòng phải khác provider chính", primary, primaryErr)
+		}
+		if primary == "museai" && strings.Contains(strings.ToLower(primaryErr.Error()), "expired") {
+			if ctx.Log != nil {
+				ctx.Log("Muse session expired; chuyển sang model dự phòng " + fallback)
+			}
+		} else {
+			if ctx.Log != nil {
+				ctx.Log(fmt.Sprintf("Provider %s lỗi; chuyển sang model dự phòng %s: %v", primary, fallback, primaryErr))
+			}
+		}
+		_ = os.Remove(outPath)
+		if fallbackErr := renderVideoProvider(ctx, fallback, threadTitle, prompt, files, aspect, outPath); fallbackErr != nil {
+			return fmt.Errorf("%s lỗi: %v; model dự phòng %s cũng lỗi: %w", primary, primaryErr, fallback, fallbackErr)
+		}
+		if ctx.Log != nil {
+			ctx.Log(fmt.Sprintf("Model dự phòng %s đã tạo video thành công", fallback))
+		}
+		return nil
+	}
+}
+
+func renderVideoProvider(ctx *ExecutionContext, provider, threadTitle, prompt string, files []string, aspect, outPath string) error {
+	if strings.TrimSpace(prompt) == "" {
+		return fmt.Errorf("thiếu prompt tạo video")
+	}
+	provider, err := normalizeFlowVideoProvider(provider)
+	if err != nil {
+		return err
+	}
+	if provider == "museai" && (ctx.MuseRenderWithSession != nil || ctx.MuseRender != nil) {
+		err = renderMuseWorkflowNode(ctx, threadTitle, prompt, files, outPath)
 	} else {
 		if ctx.EngineCall == nil {
 			return fmt.Errorf("video provider %s chưa được nối", provider)
 		}
 		projectID, accountID := "", ""
-		if strings.EqualFold(provider, "googleflow") {
+		if provider == "googleflow" {
 			projectID, accountID = googleFlowThreadValues(ctx)
 		}
-		nextProjectID, nextAccountID, callErr := ctx.EngineCall(ctx.Context, provider, prompt, images, aspect, projectID, accountID, outPath)
-		if strings.EqualFold(provider, "googleflow") {
+		nextProjectID, nextAccountID, callErr := ctx.EngineCall(ctx.Context, provider, prompt, files, aspect, projectID, accountID, outPath)
+		if provider == "googleflow" {
 			setGoogleFlowThreadValues(ctx, nextProjectID, nextAccountID)
 		}
 		err = callErr
 	}
 	if err != nil {
-		return fmt.Errorf("%s không tạo được video: %w", provider, err)
+		return err
 	}
 	if !fileExists(outPath) || !isVideoFile(outPath) {
 		return fmt.Errorf("%s không tạo được tệp video hợp lệ", provider)

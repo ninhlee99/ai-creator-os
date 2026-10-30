@@ -186,6 +186,9 @@ func (s *Server) WireStudioWebAI() {
 				continue
 			}
 			if !account.IsActive || (account.Status != "ok" && account.Status != "connected") || strings.TrimSpace(account.Cookie) == "" && len(account.CookieJar) == 0 {
+				if strings.EqualFold(strings.TrimSpace(account.Status), webai.StatusExpired) {
+					return nil, fmt.Errorf("Muse session expired; đăng nhập lại để dùng Muse hoặc cấu hình model dự phòng trong node")
+				}
 				return nil, fmt.Errorf("Muse account %s is inactive or has no usable session", email)
 			}
 			return &studio.WebAISession{
@@ -235,6 +238,12 @@ func (s *Server) WireStudioWebAI() {
 			session.CookieJar = append([]webai.BrowserCookie(nil), reply.CookieJar...)
 		}
 		if err != nil {
+			if webai.IsWebSessionAuthError(err) {
+				if strings.TrimSpace(session.Email) != "" {
+					_ = s.WebAI.MarkSessionExpired(webai.PlatformMuseAI, session.Email)
+				}
+				return "", fmt.Errorf("Muse session expired: %w", err)
+			}
 			return "", err
 		}
 		if len(reply.MediaData) > 0 {
@@ -274,8 +283,32 @@ func (s *Server) WireStudioWebAI() {
 		return webai.AnalyzeImagesInWebUI(ctx, session.Platform, session.CookieHeader, session.CookieJar, prompt, imagePaths, session.CookieUpdater)
 	})
 	s.Studio.SetWebAIVideoRenderer(func(ctx context.Context, session *studio.WebAISession, request studio.WebAIVideoRequest, outputPath string, progress func(string)) (string, error) {
+		if session == nil {
+			return "", fmt.Errorf("Web AI session is missing")
+		}
 		if session.Platform != webai.PlatformGoogleFlow {
-			return "", fmt.Errorf("reference video generation only supports Google Flow, got %q", session.Platform)
+			capabilities, ok := webai.WebAIOperationCapabilities(session.Platform)
+			if !ok || !capabilities.VideoOutput {
+				return "", fmt.Errorf("%s web UI does not provide video generation", session.Platform)
+			}
+			result, err := webai.UseWebAIInWebUI(ctx, session.Platform, session.CookieHeader, session.CookieJar, webai.WebAIOperationRequest{
+				Prompt:          request.Prompt,
+				Files:           append([]string(nil), request.ImagePaths...),
+				OutputType:      "video",
+				OutputPath:      outputPath,
+				ConversationURL: request.ProjectID,
+			}, func(cookie string, cookies []webai.BrowserCookie) error {
+				session.CookieHeader = cookie
+				session.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
+				if session.CookieUpdater == nil {
+					return nil
+				}
+				return session.CookieUpdater(cookie, cookies)
+			})
+			if err != nil {
+				return "", err
+			}
+			return result.ConversationURL, nil
 		}
 		current := session
 		defer func() { *session = *current }()

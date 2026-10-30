@@ -450,7 +450,10 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 		if completedRun.Status == "completed" {
 			videoPath := findFlowRunOutputVideo(completedRun)
 			if videoPath != "" && fileExists(videoPath) {
-				evalReport, evalErr := s.EvaluateVideoQuality(execCtx.Context, videoPath, workDir, analyzeImages)
+				// Re-run technical QC after the graph without starting another
+				// browser-backed vision request; browser startup failures must not
+				// keep a finished workflow in "running" state.
+				evalReport, evalErr := s.EvaluateVideoQuality(execCtx.Context, videoPath, workDir, nil)
 				if evalErr == nil && evalReport != nil {
 					if completedRun.Outputs == nil {
 						completedRun.Outputs = make(map[string]any)

@@ -314,6 +314,52 @@ func TestWorkflowMapSharesMuseThreadByDefault(t *testing.T) {
 	}
 }
 
+func TestWorkflowMapPassesSharedReferenceVideoToOptionalChildInput(t *testing.T) {
+	ctx, tmpDir := setupTestContext(t)
+	defer os.RemoveAll(tmpDir)
+
+	sourceVideo := filepath.Join(ctx.WorkDir, "sample_916.mp4")
+	if err := os.WriteFile(sourceVideo, []byte("reference video fixture"), 0o600); err != nil {
+		t.Fatalf("write source video fixture: %v", err)
+	}
+	child := &FlowGraph{
+		ID: "reference_child",
+		Nodes: []FlowNode{
+			{ID: "segment", Type: "workflow_input", Title: "Reference video", Params: map[string]any{"key": "segment_video", "value_type": "video", "required": false}},
+			{ID: "duration", Type: "workflow_input", Title: "Duration", Params: map[string]any{"key": "duration", "value_type": "number", "required": true}},
+			{ID: "video_out", Type: "workflow_output", Title: "Video output", Params: map[string]any{"key": "video", "value_type": "video"}},
+			{ID: "duration_out", Type: "workflow_output", Title: "Duration output", Params: map[string]any{"key": "duration_out", "value_type": "number"}},
+		},
+		Edges: []FlowEdge{
+			{FromNode: "segment", FromPort: "value", ToNode: "video_out", ToPort: "value"},
+			{FromNode: "duration", FromPort: "value", ToNode: "duration_out", ToPort: "value"},
+		},
+	}
+	ctx.ResolveWorkflow = func(id string) (*FlowGraph, error) {
+		if id != child.ID {
+			return nil, fmt.Errorf("unknown child workflow %q", id)
+		}
+		return child, nil
+	}
+	node := &FlowNode{ID: "map", Type: "workflow_map", Params: map[string]any{
+		"workflow_id":            "reference_child",
+		"item_input_map":         map[string]any{"duration": "duration_seconds"},
+		"shared_video_input_key": "segment_video",
+		"result_output_key":      "video",
+	}}
+	outputs, err := executeWorkflowMap(ctx, node, map[string]any{
+		"items":           []any{map[string]any{"duration_seconds": 6}},
+		"reference_video": sourceVideo,
+	})
+	if err != nil {
+		t.Fatalf("executeWorkflowMap: %v", err)
+	}
+	results, ok := outputs["results"].([]any)
+	if !ok || len(results) != 1 || results[0] != sourceVideo {
+		t.Fatalf("mapped results=%#v, want source reference video %q", outputs["results"], sourceVideo)
+	}
+}
+
 func setupTestContext(t *testing.T) (*ExecutionContext, string) {
 	tmpDir, err := os.MkdirTemp("", "flow-test-*")
 	if err != nil {
@@ -413,7 +459,10 @@ func TestTC06_ExecuteAssetNodes(t *testing.T) {
 	}
 
 	// Product Node
-	prodNode := &FlowNode{ID: "p1", Type: "product_input", Params: map[string]any{"product_title": "Son Môi Kem Miu"}}
+	prodNode := &FlowNode{ID: "p1", Type: "product_input", Params: map[string]any{
+		"product_title": "Son Môi Kem Miu",
+		"product_image": filepath.Join(ctx.WorkDir, "default_prod.jpg"),
+	}}
 	prodOut, err := executeProductInput(ctx, prodNode, nil)
 	if err != nil {
 		t.Fatalf("executeProductInput lỗi: %v", err)
@@ -619,6 +668,92 @@ func TestGoogleFlowNodesReuseProjectAndAccountWithinWorkflow(t *testing.T) {
 	}
 }
 
+func TestGoogleFlowVideoUsesConfiguredFallback(t *testing.T) {
+	ctx := &ExecutionContext{Context: context.Background(), WorkDir: t.TempDir()}
+	imagePath := filepath.Join(ctx.WorkDir, "ingredient.png")
+	if err := writeDummyImage(imagePath, 120, 160, "INGREDIENT"); err != nil {
+		t.Fatal(err)
+	}
+	var providers []string
+	ctx.EngineCall = func(_ context.Context, provider, _ string, _ []string, _, _, _, outPath string) (string, string, error) {
+		providers = append(providers, provider)
+		if provider == "googleflow" {
+			return "", "", errors.New("Flow account unavailable")
+		}
+		if provider != "gemini" {
+			return "", "", fmt.Errorf("unexpected provider %q", provider)
+		}
+		return "", "", writeDummyVideo(ctx, outPath, 2)
+	}
+	var logs []string
+	ctx.Log = func(message string) { logs = append(logs, message) }
+	node := &FlowNode{ID: "flow-fallback", Type: "google_flow_video", Params: map[string]any{
+		"provider": "googleflow", "fallback_provider": "gemini",
+	}}
+	out, err := executeGoogleFlowVideo(ctx, node, map[string]any{
+		"prompt": "fashion video", "reference_images": []string{imagePath},
+	})
+	if err != nil {
+		t.Fatalf("Google Flow fallback failed: %v", err)
+	}
+	if got := strings.Join(providers, ","); got != "googleflow,gemini" {
+		t.Fatalf("provider call order = %q, want googleflow,gemini", got)
+	}
+	if !fileExists(out["video_out"].(string)) || !strings.Contains(strings.Join(logs, "\n"), "model dự phòng gemini") {
+		t.Fatalf("fallback output/log missing: out=%v logs=%v", out, logs)
+	}
+}
+
+func TestMuseExpiredSessionUsesConfiguredFallback(t *testing.T) {
+	ctx := &ExecutionContext{Context: context.Background(), WorkDir: t.TempDir(), MuseThread: &MuseThreadState{}}
+	imagePath := filepath.Join(ctx.WorkDir, "ingredient.png")
+	if err := writeDummyImage(imagePath, 120, 160, "INGREDIENT"); err != nil {
+		t.Fatal(err)
+	}
+	var logs []string
+	ctx.Log = func(message string) { logs = append(logs, message) }
+	ctx.MuseRenderWithSession = func(context.Context, bool, string, string, string, []string, string) (string, error) {
+		return "", errors.New("Muse session expired")
+	}
+	calledFallback := false
+	ctx.EngineCall = func(_ context.Context, provider, _ string, _ []string, _, _, _, outPath string) (string, string, error) {
+		if provider != "gemini" {
+			return "", "", fmt.Errorf("unexpected provider %q", provider)
+		}
+		calledFallback = true
+		return "", "", writeDummyVideo(ctx, outPath, 2)
+	}
+	node := &FlowNode{ID: "muse-fallback", Type: "muse_ai_video", Params: map[string]any{"fallback_provider": "gemini"}}
+	out, err := executeMuseAIVideo(ctx, node, map[string]any{
+		"prompt": "fashion video", "reference_image": imagePath,
+	})
+	if err != nil {
+		t.Fatalf("Muse fallback failed: %v", err)
+	}
+	if !calledFallback || !fileExists(out["video_out"].(string)) {
+		t.Fatalf("Muse fallback output missing: called=%v out=%v", calledFallback, out)
+	}
+	if !strings.Contains(strings.Join(logs, "\n"), "Muse session expired") {
+		t.Fatalf("expired Muse session was not reported in workflow log: %v", logs)
+	}
+}
+
+func TestVideoFallbackDoesNotRunAfterCancellation(t *testing.T) {
+	ctx := &ExecutionContext{Context: context.Background(), WorkDir: t.TempDir()}
+	var providers []string
+	ctx.EngineCall = func(_ context.Context, provider, _ string, _ []string, _, _, _, _ string) (string, string, error) {
+		providers = append(providers, provider)
+		return "", "", context.Canceled
+	}
+	err := renderVideoWithFallback(ctx, "googleflow", "gemini", "test", "prompt", nil, "9:16", filepath.Join(ctx.WorkDir, "cancelled.mp4"))
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled render error = %v, want context.Canceled", err)
+	}
+	if got := strings.Join(providers, ","); got != "googleflow" {
+		t.Fatalf("providers called after cancellation = %q, want only googleflow", got)
+	}
+}
+
 func TestCustomWebAINodesReuseConversationWithinWorkflow(t *testing.T) {
 	ctx := &ExecutionContext{Context: context.Background(), WorkDir: t.TempDir()}
 	calls := 0
@@ -784,6 +919,9 @@ func TestTC10_FullPresetAffiliateShowcaseExecution(t *testing.T) {
 	preset := PresetAffiliateShowcase()
 	for i := range preset.Nodes {
 		switch preset.Nodes[i].ID {
+		case "product":
+			preset.Nodes[i].Params["product_image"] = filepath.Join(ctx.WorkDir, "default_prod.jpg")
+			preset.Nodes[i].Params["product_title"] = "Sản phẩm demo"
 		case "music":
 			preset.Nodes[i].Params["audio_path"] = musicPath
 		case "resolution":
@@ -815,6 +953,12 @@ func TestTC13_FullPresetFashionTryOnExecution(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	preset := PresetFashionTryOnAngles()
+	for i := range preset.Nodes {
+		if preset.Nodes[i].Type == "product_input" {
+			preset.Nodes[i].Params["product_image"] = filepath.Join(ctx.WorkDir, "default_prod.jpg")
+			preset.Nodes[i].Params["product_title"] = "Sản phẩm demo"
+		}
+	}
 	run, err := ExecuteGraph(ctx, &preset)
 	if err != nil {
 		t.Fatalf("TC-13: Thực thi PresetFashionTryOnAngles thất bại: %v (Log: %s)", err, run.Log)
@@ -1158,8 +1302,8 @@ func TestTC14_MultiDependencyExecution(t *testing.T) {
 		ID:   "multi_dep_graph",
 		Name: "Multi Dependency Test",
 		Nodes: []FlowNode{
-			{ID: "n_char", Type: "character_input", Title: "Nhân vật"},
-			{ID: "n_prod", Type: "product_input", Title: "Sản phẩm"},
+			{ID: "n_char", Type: "character_input", Title: "Nhân vật", Params: map[string]any{"model_path": filepath.Join(workDir, "default_char.jpg")}},
+			{ID: "n_prod", Type: "product_input", Title: "Sản phẩm", Params: map[string]any{"product_image": filepath.Join(workDir, "default_prod.jpg")}},
 			{ID: "n_comp", Type: "image_composite", Title: "Ghép phối cảnh"},
 			{ID: "n_out", Type: "image_output", Title: "Ảnh xuất"},
 		},

@@ -156,11 +156,7 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 			if json.Unmarshal([]byte(j.Params), &p) == nil {
 				view.AccountID = p.AccountID
 				view.TargetDuration = float64(p.Seconds)
-				if p.OutputResolution != "" {
-					view.OutputResolution = strings.ToUpper(p.OutputResolution)
-				} else {
-					view.OutputResolution = "4K"
-				}
+				view.OutputResolution = studioJobOutputResolution(p.OutputResolution)
 				view.Engine = "Muse AI Workflow"
 				view.ProductID = p.ProductID
 				view.ProductName = strings.TrimSpace(p.ProductName)
@@ -193,11 +189,7 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 					}
 				}
 				view.TargetDuration = p.TargetDuration
-				if p.OutputResolution != "" {
-					view.OutputResolution = strings.ToUpper(p.OutputResolution)
-				} else {
-					view.OutputResolution = "4K"
-				}
+				view.OutputResolution = studioJobOutputResolution(p.OutputResolution)
 				view.Engine = "Muse AI Workflow"
 				view.SourceVideoURL = p.SourceVideoURL
 				view.SourceVideoAuthor = p.SourceVideoAuthor
@@ -232,6 +224,20 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 		out = append(out, view)
 	}
 	return out
+}
+
+func studioJobOutputResolution(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "2k", "1440p", "2560x1440", "1440x2560":
+		return "2K"
+	case "4k", "2160p", "8k", "4320p":
+		// Legacy video-upscale nodes clamp requests above 2K to 2K.
+		return "2K"
+	case "1080p", "1920x1080", "1080x1920", "":
+		return "1080P"
+	default:
+		return "1080P"
+	}
 }
 
 func studioTikTokAccountID(job studio.Job) int64 {

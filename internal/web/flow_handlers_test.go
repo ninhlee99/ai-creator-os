@@ -42,6 +42,37 @@ func setupTestServerWithFlow(t *testing.T) (*Server, func()) {
 	return srv, cleanup
 }
 
+func TestGoogleFlowVideoCreditGateFollowsSelectedProvider(t *testing.T) {
+	for _, tc := range []struct {
+		provider         string
+		fallbackProvider string
+		muse             bool
+		flow             bool
+	}{
+		{provider: "googleflow", flow: true},
+		{provider: "museai", muse: true},
+		{provider: "gemini"},
+		{provider: "grok"},
+		{provider: "gemini", fallbackProvider: "googleflow", flow: true},
+		{provider: "museai", fallbackProvider: "google_flow", muse: true, flow: true},
+		{provider: "googleflow", fallbackProvider: "museai", muse: true, flow: true},
+	} {
+		node := flow.FlowNode{Type: "google_flow_video", Params: map[string]any{
+			"provider": tc.provider, "fallback_provider": tc.fallbackProvider,
+		}}
+		if got := flowNodeRequiresProviderCredits(node, "museai"); got != tc.muse {
+			t.Errorf("provider %q Muse credit gate = %v, want %v", tc.provider, got, tc.muse)
+		}
+		if got := flowNodeRequiresProviderCredits(node, "googleflow"); got != tc.flow {
+			t.Errorf("provider %q Flow credit gate = %v, want %v", tc.provider, got, tc.flow)
+		}
+	}
+	museNode := flow.FlowNode{Type: "muse_ai_video", Params: map[string]any{"fallback_provider": "googleflow"}}
+	if !flowNodeRequiresProviderCredits(museNode, "museai") || !flowNodeRequiresProviderCredits(museNode, "googleflow") {
+		t.Fatal("Muse video node must require credits acknowledgment for Muse and configured Google Flow fallback")
+	}
+}
+
 func TestDecodeFlowJSONRequestRejectsOversizedBody(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/flow/execute", bytes.NewBufferString(`{"value":"payload-too-large"}`))
 	w := httptest.NewRecorder()
