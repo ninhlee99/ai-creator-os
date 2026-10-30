@@ -3511,30 +3511,26 @@
         ],
         model: [
           ['auto', 'Tự động chọn (Theo Web AI hoặc API)'],
-          ['gpt-6-luna', 'GPT-6 Luna (OpenAI · Siêu tốc, độ trễ thấp)'],
-          ['gpt-6-astra', 'GPT-6 Astra (OpenAI · Flagship lý luận sâu)'],
-          ['gpt-4.5-preview', 'GPT-4.5 Preview (OpenAI · Sáng tạo cao)'],
-          ['gpt-4o', 'GPT-4o (OpenAI · Đa nhiệm & Xử lý ảnh)'],
-          ['gpt-4o-mini', 'GPT-4o mini (OpenAI · Nhanh & Nhẹ)'],
-          ['o3-mini', 'o3-mini (OpenAI · Suy luận logic)'],
-          ['o1', 'o1 (OpenAI · Tư duy chuyên sâu)'],
-          ['gemini-3.8-flash', 'Gemini 3.8 Flash (Google · Trợ giúp toàn diện)'],
-          ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (Google · Nhanh nhất)'],
-          ['gemini-3.1-pro', 'Gemini 3.1 Pro (Google · Suy luận nâng cao)'],
-          ['gemini-4-argon', 'Gemini 4 Argon (Google · Nhiệm vụ phức tạp)'],
-          ['claude-5-5-sonet', 'Claude 5.5 Sonnet (Anthropic · Mới nhất 2026)'],
-          ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Anthropic · Hybrid Thinking)'],
-          ['claude-3-5-sonnet', 'Claude 3.5 Sonnet (Anthropic)'],
-          ['claude-3-5-haiku', 'Claude 3.5 Haiku (Anthropic)'],
-          ['grok-3', 'Grok 3 (xAI · Mô hình thông minh nhất)'],
-          ['grok-3-think', 'Grok 3 Think (xAI · Suy luận sâu)'],
-          ['grok-2', 'Grok 2 (xAI)'],
+          ['gpt-6-luna', 'GPT-6 Luna (ChatGPT Web · Siêu tốc)'],
+          ['gpt-6-astra', 'GPT-6 Astra (ChatGPT Web · Lý luận sâu & Multi-agent)'],
+          ['gemini-3.8-flash', 'Gemini 3.8 Flash (Gemini Web · Trợ giúp toàn diện)'],
+          ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (Gemini Web · Nhanh nhất)'],
+          ['gemini-3.1-pro', 'Gemini 3.1 Pro (Gemini Web · Suy luận nâng cao)'],
+          ['gemini-4-argon', 'Gemini 4 Argon (Gemini Web · Nhiệm vụ phức tạp)'],
+          ['claude-5-5-sonet', 'Claude 5.5 Sonnet (Claude Web · Chuẩn thông minh)'],
+          ['claude-5-5-opus', 'Claude 5.5 Opus (Claude Web · Tư duy chuyên sâu)'],
+          ['claude-3-5-haiku', 'Claude 3.5 Haiku (Claude Web · Tốc độ cao)'],
+          ['grok-3', 'Grok 3 (xAI Grok Web · Thông minh nhất)'],
+          ['grok-3-think', 'Grok 3 Think (xAI Grok Web · Suy luận sâu)'],
+          ['grok-2', 'Grok 2 (xAI Grok Web)'],
           ['veo-2', 'Google Veo 2 (Google Flow Video)'],
           ['veo-3.1-fast', 'Google Veo 3.1 Fast (Google Flow Video)'],
           ['muse-video', 'Muse AI Video Shot (Muse AI)'],
-          ['dall-e-3', 'DALL·E 3 (Tạo & bóc tách ảnh)'],
-          ['imagen-3', 'Imagen 3 (Tạo ảnh photorealistic)'],
-          ['flux-1', 'Flux 1 (Tạo ảnh nghệ thuật & chi tiết)']
+          ['gpt-4o', 'GPT-4o (OpenAI API · Đa nhiệm)'],
+          ['o3-mini', 'o3-mini (OpenAI API · Suy luận)'],
+          ['dall-e-3', 'DALL·E 3 (OpenAI Image API)'],
+          ['imagen-3', 'Imagen 3 (Google Image API)'],
+          ['flux-1', 'Flux 1 (xAI Image API)']
         ],
         style_preset: [
           ['cinematic', 'Điện ảnh (Cinematic 4K lighting)'],
@@ -4540,6 +4536,8 @@
         'claude-5-5-sonet': 'Claude 5.5',
         'claude-5.5-sonet': 'Claude 5.5',
         'claude_5_5_sonet': 'Claude 5.5',
+        'claude-5-5-opus': 'Claude 5.5 Opus',
+        'claude-5.5-opus': 'Claude 5.5 Opus',
         'claude-3-7-sonnet': 'Claude 3.7',
         'claude-3-5-sonnet': 'Claude 3.5 Sonnet',
         'claude-3-5-haiku': 'Claude 3.5 Haiku',
@@ -4603,13 +4601,7 @@
           icon: '🤖',
           models: [
             ['gpt-6-luna', 'GPT-6 Luna (Mới nhất 2026 · Siêu tốc, độ trễ thấp)'],
-            ['gpt-6-astra', 'GPT-6 Astra (Flagship lý luận sâu & Multi-agent)'],
-            ['gpt-4.5-preview', 'GPT-4.5 Preview (Tự nhiên, sáng tạo cao)'],
-            ['gpt-4o', 'GPT-4o (Đa phương tiện, xử lý hình ảnh thông minh nhất)'],
-            ['gpt-4o-mini', 'GPT-4o mini (Phản hồi nhanh, tối ưu tác vụ thường ngày)'],
-            ['o3-mini', 'o3-mini (Mô hình tư duy suy luận logic mới nhất)'],
-            ['o1', 'o1 (Mô hình suy luận chuyên sâu & đa phương thức)'],
-            ['dall-e-3', 'DALL·E 3 (Tạo và bóc tách ảnh trực tiếp trong khung chat)']
+            ['gpt-6-astra', 'GPT-6 Astra (Flagship lý luận sâu & Multi-agent)']
           ]
         },
         gemini: {
@@ -4627,9 +4619,8 @@
           name: 'Anthropic Claude (claude.ai)',
           icon: '🧠',
           models: [
-            ['claude-5-5-sonet', 'Claude 5.5 Sonnet (Mới nhất 2026 · Tư duy cao cấp)'],
-            ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Chế độ Hybrid Reasoning & Extended Thinking)'],
-            ['claude-3-5-sonnet', 'Claude 3.5 Sonnet (Chuẩn mực thông minh và viết code)'],
+            ['claude-5-5-sonet', 'Claude 5.5 Sonnet (Mới nhất 2026 · Chuẩn thông minh)'],
+            ['claude-5-5-opus', 'Claude 5.5 Opus (Tư duy chuyên sâu & viết code)'],
             ['claude-3-5-haiku', 'Claude 3.5 Haiku (Tốc độ phản hồi cực nhanh)']
           ]
         },
