@@ -3511,8 +3511,8 @@
         ],
         model: [
           ['auto', 'Tự động chọn (Theo Web AI hoặc API)'],
-          ['gpt-6-luna', 'GPT-6 Luna (ChatGPT Web · Siêu tốc)'],
-          ['gpt-6-astra', 'GPT-6 Astra (ChatGPT Web · Lý luận sâu & Multi-agent)'],
+          ['gpt-6-luna', 'GPT-6 Luna (ChatGPT Web · Mặc định Miễn phí)'],
+          ['gpt-6-astra', 'GPT-6 Astra (ChatGPT Web · Chế độ Think · Yêu cầu Plus/Pro)'],
           ['gemini-3.8-flash', 'Gemini 3.8 Flash (Gemini Web · Trợ giúp toàn diện)'],
           ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (Gemini Web · Nhanh nhất)'],
           ['gemini-3.1-pro', 'Gemini 3.1 Pro (Gemini Web · Suy luận nâng cao)'],
@@ -4602,8 +4602,8 @@
           name: 'ChatGPT (chatgpt.com)',
           icon: '🤖',
           models: [
-            ['gpt-6-luna', 'GPT-6 Luna (Mới nhất 2026 · Siêu tốc, độ trễ thấp)'],
-            ['gpt-6-astra', 'GPT-6 Astra (Flagship lý luận sâu & Multi-agent)']
+            ['gpt-6-luna', 'GPT-6 Luna (Mặc định Miễn phí · Phản hồi siêu tốc)'],
+            ['gpt-6-astra', 'GPT-6 Astra (Chế độ Think / Lý luận sâu · Yêu cầu Plus/Pro)']
           ]
         },
         gemini: {
