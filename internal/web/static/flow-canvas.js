@@ -3511,6 +3511,9 @@
         ],
         model: [
           ['auto', 'Tự động chọn (Theo Web AI hoặc API)'],
+          ['gpt-6-luna', 'GPT-6 Luna (OpenAI · Siêu tốc, độ trễ thấp)'],
+          ['gpt-6-astra', 'GPT-6 Astra (OpenAI · Flagship lý luận sâu)'],
+          ['gpt-4.5-preview', 'GPT-4.5 Preview (OpenAI · Sáng tạo cao)'],
           ['gpt-4o', 'GPT-4o (OpenAI · Đa nhiệm & Xử lý ảnh)'],
           ['gpt-4o-mini', 'GPT-4o mini (OpenAI · Nhanh & Nhẹ)'],
           ['o3-mini', 'o3-mini (OpenAI · Suy luận logic)'],
@@ -3519,10 +3522,12 @@
           ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (Google · Nhanh nhất)'],
           ['gemini-3.1-pro', 'Gemini 3.1 Pro (Google · Suy luận nâng cao)'],
           ['gemini-4-argon', 'Gemini 4 Argon (Google · Nhiệm vụ phức tạp)'],
+          ['claude-5-5-sonet', 'Claude 5.5 Sonnet (Anthropic · Mới nhất 2026)'],
           ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Anthropic · Hybrid Thinking)'],
           ['claude-3-5-sonnet', 'Claude 3.5 Sonnet (Anthropic)'],
           ['claude-3-5-haiku', 'Claude 3.5 Haiku (Anthropic)'],
           ['grok-3', 'Grok 3 (xAI · Mô hình thông minh nhất)'],
+          ['grok-3-think', 'Grok 3 Think (xAI · Suy luận sâu)'],
           ['grok-2', 'Grok 2 (xAI)'],
           ['veo-2', 'Google Veo 2 (Google Flow Video)'],
           ['veo-3.1-fast', 'Google Veo 3.1 Fast (Google Flow Video)'],
@@ -4232,7 +4237,7 @@
         const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url', 'workflow_id', 'workflow_name', 'item_input_key', 'index_input_key', 'result_output_key'];
 
         if (!isWorkflowBoundary && !isWorkflowCall) Object.keys(params).forEach(key => {
-          if (skipKeys.includes(key) || (node.type === 'virtual_tryon' && key === 'fit_style') || (node.type === 'webai_product_extractor' && key === 'provider')) return;
+          if (skipKeys.includes(key) || (node.type === 'virtual_tryon' && key === 'fit_style') || (node.type === 'webai_product_extractor' && (key === 'provider' || key === 'isolate_garment' || key === 'remove_skin'))) return;
 
           const val = params[key];
           const group = document.createElement('div');
@@ -4517,22 +4522,30 @@
     formatModelShortName(model) {
       if (!model) return '';
       const map = {
-        'gemini-3.8-flash': 'Gemini 3.8',
-        'gemini-3.5-flash-lite': 'Gemini 3.5 Lite',
-        'gemini-3.1-pro': 'Gemini 3.1 Pro',
-        'gemini-4-argon': 'Gemini 4 Argon',
+        'gemini-3.8-flash': '3.8 Flash',
+        'gemini-3.5-flash-lite': '3.5 Flash-Lite',
+        'gemini-3.1-pro': '3.1 Pro',
+        'gemini-4-argon': '4 Argon',
         'gemini-2.0-flash': 'Gemini 2.0 Flash',
         'gemini-1.5-pro': 'Gemini 1.5 Pro',
         'gemini-1.5-flash': 'Gemini 1.5 Flash',
-        'gpt-4.5': 'GPT-4.5',
         'gpt-6-luna': 'GPT-6 Luna',
+        'gpt-6-astra': 'GPT-6 Astra',
+        'gpt-4.5-preview': 'GPT-4.5 Preview',
+        'gpt-4.5': 'GPT-4.5',
         'gpt-4o': 'GPT-4o',
         'gpt-4o-mini': 'GPT-4o Mini',
-        'claude-3-7-sonnet': 'Claude 3.7',
+        'o3-mini': 'o3-mini',
+        'o1': 'o1',
         'claude-5-5-sonet': 'Claude 5.5',
+        'claude-5.5-sonet': 'Claude 5.5',
         'claude_5_5_sonet': 'Claude 5.5',
+        'claude-3-7-sonnet': 'Claude 3.7',
         'claude-3-5-sonnet': 'Claude 3.5 Sonnet',
+        'claude-3-5-haiku': 'Claude 3.5 Haiku',
         'grok-3': 'Grok 3',
+        'grok-3-think': 'Grok 3 Think',
+        'grok-3-deepsearch': 'Grok 3 DeepSearch',
         'grok-2': 'Grok 2',
         'veo-3.1': 'Veo 3.1',
         'veo-3.1-fast': 'Veo 3.1 Fast',
@@ -4567,9 +4580,11 @@
       const m = String(model).toLowerCase();
       if (m.includes('veo') || m.includes('flow')) return 'google_flow';
       if (m.includes('muse')) return 'muse_ai';
-      if (m.includes('gemini') || m.includes('imagen')) return 'gemini';
-      if (m.includes('gpt') || m.includes('dall-e') || m.includes('chatgpt') || m.includes('o1') || m.includes('o3')) return 'chatgpt';
-      if (m.includes('claude')) return 'claude';
+      if (m.includes('gemini') || m.includes('imagen') || m.includes('argon') || m.includes('3.8') || m.includes('3.5') || m.includes('3.1')) {
+        if (!m.includes('claude') && !m.includes('gpt')) return 'gemini';
+      }
+      if (m.includes('gpt') || m.includes('dall-e') || m.includes('chatgpt') || m.includes('o1') || m.includes('o3') || m.includes('luna') || m.includes('astra')) return 'chatgpt';
+      if (m.includes('claude') || m.includes('sonet') || m.includes('sonnet') || m.includes('haiku')) return 'claude';
       if (m.includes('grok') || m.includes('flux')) return 'grok';
       if (m.includes('gen3') || m.includes('runway')) return 'runway';
       if (m.includes('ray') || m.includes('luma')) return 'luma';
@@ -4587,6 +4602,9 @@
           name: 'ChatGPT (chatgpt.com)',
           icon: '🤖',
           models: [
+            ['gpt-6-luna', 'GPT-6 Luna (Mới nhất 2026 · Siêu tốc, độ trễ thấp)'],
+            ['gpt-6-astra', 'GPT-6 Astra (Flagship lý luận sâu & Multi-agent)'],
+            ['gpt-4.5-preview', 'GPT-4.5 Preview (Tự nhiên, sáng tạo cao)'],
             ['gpt-4o', 'GPT-4o (Đa phương tiện, xử lý hình ảnh thông minh nhất)'],
             ['gpt-4o-mini', 'GPT-4o mini (Phản hồi nhanh, tối ưu tác vụ thường ngày)'],
             ['o3-mini', 'o3-mini (Mô hình tư duy suy luận logic mới nhất)'],
@@ -4609,7 +4627,8 @@
           name: 'Anthropic Claude (claude.ai)',
           icon: '🧠',
           models: [
-            ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Mới nhất, chế độ Hybrid Thinking)'],
+            ['claude-5-5-sonet', 'Claude 5.5 Sonnet (Mới nhất 2026 · Tư duy cao cấp)'],
+            ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Chế độ Hybrid Reasoning & Extended Thinking)'],
             ['claude-3-5-sonnet', 'Claude 3.5 Sonnet (Chuẩn mực thông minh và viết code)'],
             ['claude-3-5-haiku', 'Claude 3.5 Haiku (Tốc độ phản hồi cực nhanh)']
           ]
