@@ -100,7 +100,8 @@
       "x": 760,
       "y": 280,
       "params": {
-        "aspect": "9:16"
+        "aspect": "9:16",
+        "fallback_provider": "gemini"
       }
     },
     {
