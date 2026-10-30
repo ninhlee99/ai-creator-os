@@ -248,6 +248,31 @@ func (s *Store) UpdateAccount(acc Account) error {
 	return err
 }
 
+// UpdateAccountTier updates the detected or user-confirmed tier of an account.
+func (s *Store) UpdateAccountTier(id, tier string, confirmed bool) error {
+	id = strings.TrimSpace(id)
+	tier = strings.ToLower(strings.TrimSpace(tier))
+	if id == "" {
+		return fmt.Errorf("webai: account ID is required")
+	}
+	if tier == "" {
+		tier = "free"
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
+	result, err := s.db.Exec(`UPDATE webai_accounts SET tier = ?, tier_confirmed = ?, updated_at = ? WHERE id = ?`, tier, boolInt(confirmed), now, id)
+	if err != nil {
+		return fmt.Errorf("webai: update account tier: %w", err)
+	}
+	if count, err := result.RowsAffected(); err != nil {
+		return fmt.Errorf("webai: verify account tier update: %w", err)
+	} else if count == 0 {
+		return fmt.Errorf("webai: account %q not found", id)
+	}
+	return nil
+}
+
 // UpdateAccountProbeStatus persists only probe-owned fields. Credential
 // rotation can happen concurrently, so account probes must not write a stale
 // Account snapshot back over a newer cookie.

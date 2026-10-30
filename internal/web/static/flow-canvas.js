@@ -62,6 +62,8 @@
 
       this.customAPIModels = [];
       this.refreshCustomAPIModels();
+      this.liveWebAIPlatforms = null;
+      this.loadWebAIModels(false);
 
       this.scale = 1.0;
       this.panX = 40;
@@ -3002,6 +3004,25 @@
       document.querySelectorAll('[data-inspector-tab]').forEach(tab => {
         tab.addEventListener('click', () => this.setInspectorTab(tab.dataset.inspectorTab));
       });
+      const syncBtn = document.getElementById('btn-sync-flow-models');
+      if (syncBtn) {
+        syncBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          syncBtn.disabled = true;
+          syncBtn.innerHTML = '⏳';
+          try {
+            const data = await this.loadWebAIModels(true);
+            if (data && data.ok) {
+              if (window.showAppNotice) {
+                window.showAppNotice(data.message || 'Đã đồng bộ model Web AI thành công!', { title: 'Cập nhật Model Web AI', tone: 'success' });
+              }
+            }
+          } finally {
+            syncBtn.disabled = false;
+            syncBtn.innerHTML = '🔄';
+          }
+        });
+      }
     }
 
     setInspectorTab(tabName) {
@@ -3512,19 +3533,24 @@
         model: [
           ['auto', 'Tự động chọn (Theo Web AI hoặc API)'],
           ['gpt-6-luna', 'GPT-6 Luna (ChatGPT Web · Mặc định Miễn phí)'],
+          ['gpt-6-luna-think', 'GPT-6 Luna Think (ChatGPT Web · Chế độ lý luận)'],
           ['gpt-6-astra', 'GPT-6 Astra (ChatGPT Web · Chế độ Think · Yêu cầu Plus/Pro)'],
           ['gemini-3.8-flash', 'Gemini 3.8 Flash (Gemini Web · Trợ giúp toàn diện)'],
           ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite (Gemini Web · Nhanh nhất)'],
-          ['gemini-3.1-pro', 'Gemini 3.1 Pro (Gemini Web · Suy luận nâng cao)'],
-          ['gemini-4-argon', 'Gemini 4 Argon (Gemini Web · Nhiệm vụ phức tạp)'],
-          ['claude-5-5-sonet', 'Sonnet 5.5 (Claude Web · Miễn phí & Đa nhiệm)'],
+          ['gemini-3.1-pro', 'Gemini 3.1 Pro (Gemini Web · Suy luận nâng cao · Advanced)'],
+          ['gemini-4-argon', 'Gemini 4 Argon (Gemini Web · Nhiệm vụ phức tạp · Advanced)'],
+          ['claude-5-1-fable', 'Fable 5.1 (Claude Web · Cho tác vụ khó nhất · Pro/Max)'],
+          ['claude-5-5-opus', 'Opus 5.5 (Claude Web · Công việc phức tạp · Pro)'],
+          ['claude-5-5-sonet', 'Sonnet 5.5 (Claude Web · Đa nhiệm hiệu quả nhất)'],
           ['claude-5-5-haiku', 'Haiku 5.5 (Claude Web · Phản hồi nhanh nhất)'],
-          ['grok-4-7', 'Grok 4.7 (xAI Grok Web · Mới nhất 2026)'],
-          ['grok-4-fast', 'Grok 4 Fast (xAI Grok Web · Phản hồi nhanh)'],
-          ['grok-4-think', 'Grok 4 Think (xAI Grok Web · Suy luận sâu)'],
-          ['veo-2', 'Google Veo 2 (Google Flow Video)'],
-          ['veo-3.1-fast', 'Google Veo 3.1 Fast (Google Flow Video)'],
+          ['grok-4-7', 'Grok 4.7 (xAI Grok Web · Flagship 500k · SuperGrok)'],
+          ['grok-4-think', 'Grok 4 Think (xAI Grok Web · Suy luận sâu · SuperGrok)'],
+          ['grok-4-deepsearch', 'Grok 4 DeepSearch (xAI Grok Web · Tổng hợp sâu · SuperGrok)'],
+          ['grok-4-fast', 'Grok 4 Fast (xAI Grok Web · Phản hồi siêu tốc)'],
+          ['veo-2', 'Google Veo 2 (Google Flow Video 1080p)'],
+          ['veo-3.1-fast', 'Google Veo 3.1 Fast (Google Flow Video 9:16)'],
           ['muse-video', 'Muse AI Video Shot (Muse AI)'],
+          ['muse-lipsync', 'Muse AI Lipsync (Muse AI)'],
           ['gpt-4o', 'GPT-4o (OpenAI API · Đa nhiệm)'],
           ['o3-mini', 'o3-mini (OpenAI API · Suy luận)'],
           ['dall-e-3', 'DALL·E 3 (OpenAI Image API)'],
@@ -4525,6 +4551,7 @@
         'gemini-1.5-pro': 'Gemini 1.5 Pro',
         'gemini-1.5-flash': 'Gemini 1.5 Flash',
         'gpt-6-luna': 'GPT-6 Luna',
+        'gpt-6-luna-think': 'GPT-6 Luna (Think)',
         'gpt-6-astra': 'GPT-6 Astra',
         'gpt-4.5-preview': 'GPT-4.5 Preview',
         'gpt-4.5': 'GPT-4.5',
@@ -4532,6 +4559,8 @@
         'gpt-4o-mini': 'GPT-4o Mini',
         'o3-mini': 'o3-mini',
         'o1': 'o1',
+        'claude-5-1-fable': 'Fable 5.1',
+        'claude-5.1-fable': 'Fable 5.1',
         'claude-5-5-sonet': 'Sonnet 5.5',
         'claude-5.5-sonet': 'Sonnet 5.5',
         'claude_5_5_sonet': 'Sonnet 5.5',
@@ -4603,12 +4632,13 @@
       if (!modelSelect) return;
       modelSelect.innerHTML = '';
 
-      const realWebPlatforms = {
+      let realWebPlatforms = {
         chatgpt: {
           name: 'ChatGPT (chatgpt.com)',
           icon: '🤖',
           models: [
             ['gpt-6-luna', 'GPT-6 Luna (Mặc định Miễn phí · Phản hồi siêu tốc)'],
+            ['gpt-6-luna-think', 'GPT-6 Luna Think (Chế độ lý luận có giới hạn)'],
             ['gpt-6-astra', 'GPT-6 Astra (Chế độ Think / Lý luận sâu · Yêu cầu Plus/Pro)']
           ]
         },
@@ -4618,8 +4648,8 @@
           models: [
             ['gemini-3.8-flash', '3.8 Flash (Trợ giúp toàn diện)'],
             ['gemini-3.5-flash-lite', '3.5 Flash-Lite (Câu trả lời nhanh nhất)'],
-            ['gemini-3.1-pro', '3.1 Pro (Suy luận nâng cao)'],
-            ['gemini-4-argon', '4 Argon (Nhiệm vụ phức tạp)'],
+            ['gemini-3.1-pro', '3.1 Pro (Suy luận nâng cao · Advanced)'],
+            ['gemini-4-argon', '4 Argon (Nhiệm vụ phức tạp · Advanced)'],
             ['imagen-3', 'Imagen 3 (Tạo ảnh photorealistic từ prompt)']
           ]
         },
@@ -4627,8 +4657,10 @@
           name: 'Anthropic Claude (claude.ai)',
           icon: '🧠',
           models: [
-            ['claude-5-5-sonet', 'Sonnet 5.5 (Most efficient for simpler tasks · Miễn phí)'],
-            ['claude-5-5-haiku', 'Haiku 5.5 (Fastest for quick answers · Miễn phí)']
+            ['claude-5-1-fable', 'Fable 5.1 (For your toughest challenges · Pro/Max)'],
+            ['claude-5-5-opus', 'Opus 5.5 (Complex work and everyday tasks · Pro)'],
+            ['claude-5-5-sonet', 'Sonnet 5.5 (Most efficient for simpler tasks)'],
+            ['claude-5-5-haiku', 'Haiku 5.5 (Fastest for quick answers)']
           ]
         },
         grok: {
@@ -4636,9 +4668,10 @@
           icon: '⚡',
           models: [
             ['grok-4-7', 'Grok 4.7 (Mới nhất 2026 · Flagship 500k context & Lý luận sâu)'],
-            ['grok-4-fast', 'Grok 4 Fast (Chế độ Fast · Tốc độ phản hồi tức thì)'],
             ['grok-4-think', 'Grok 4 Think (Tự sửa lỗi & Suy luận từng bước)'],
-            ['grok-4-deepsearch', 'Grok 4 DeepSearch (Tìm kiếm và tổng hợp sâu)']
+            ['grok-4-deepsearch', 'Grok 4 DeepSearch (Tìm kiếm và tổng hợp sâu)'],
+            ['grok-4-fast', 'Grok 4 Fast (Chế độ Fast · Tốc độ phản hồi tức thì)'],
+            ['flux-1', 'Flux 1 (Tạo ảnh nghệ thuật & chi tiết cao)']
           ]
         },
         googleflow: {
@@ -4658,6 +4691,20 @@
           ]
         }
       };
+
+      if (this.liveWebAIPlatforms && Object.keys(this.liveWebAIPlatforms).length > 0) {
+        realWebPlatforms = {};
+        Object.entries(this.liveWebAIPlatforms).forEach(([k, p]) => {
+          realWebPlatforms[k] = {
+            name: p.platform_name || k,
+            icon: p.icon || '🌐',
+            tier: p.active_tier,
+            tier_label: p.tier_label,
+            account_email: p.account_email,
+            models: (p.models || []).map(m => [m.id, `${m.name} (${m.description})`])
+          };
+        });
+      }
 
       const nodeProv = String(node.params?.provider || node.params?.provider_name || def.default_params?.provider || def.default_params?.provider_name || '').toLowerCase().replace(/[\s_-]+/g, '');
       let activeKey = '';
@@ -5905,6 +5952,32 @@
       } catch (e) {
         console.warn('Failed to load custom API models', e);
       }
+    }
+
+    async loadWebAIModels(sync = false) {
+      try {
+        const url = sync ? '/web-ai/models/sync' : '/web-ai/models/active';
+        const options = sync ? { method: 'POST' } : { method: 'GET' };
+        const resp = await fetch(url, options);
+        const data = await resp.json();
+        if (data && data.ok && data.platforms) {
+          this.liveWebAIPlatforms = data.platforms;
+          if (this.selectedNodeId) {
+            const node = this.graph.nodes.find(n => n.id === this.selectedNodeId);
+            const def = node ? this.definitions[node.type] : null;
+            const modelSelect = document.getElementById('inspector-model-select');
+            const modeSelect = document.getElementById('inspector-provider-mode-select');
+            if (node && def && modelSelect) {
+              const isAPI = modeSelect && modeSelect.value === 'api_key';
+              this.populateModelSelector(node, def, modelSelect, isAPI);
+            }
+          }
+          return data;
+        }
+      } catch (err) {
+        console.warn('Không thể tải model Web AI:', err);
+      }
+      return null;
     }
 
     isPresetWorkflow(id) {

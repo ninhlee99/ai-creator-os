@@ -192,6 +192,62 @@ function testAllWebAIAccounts() {
   });
 }
 
+function syncAllWebAIModels(btn) {
+  var origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '🔄 Đang đồng bộ model...';
+  }
+
+  fetch('/web-ai/models/sync', { method: 'POST' })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        window.showAppNotice(data.message || 'Đã đồng bộ model Web AI thành công!', { title: 'Cập nhật Model Web AI', tone: 'success' })
+          .then(function() {
+            var currentURL = new URL(window.location.href);
+            currentURL.hash = 'tab-webai';
+            window.location.reload();
+          });
+      } else {
+        window.showAppNotice('Lỗi đồng bộ model: ' + (data.error || 'Thao tác không thành công'));
+      }
+    })
+    .catch(function(err) {
+      window.showAppNotice('Lỗi kết nối đồng bộ: ' + err.message);
+    })
+    .finally(function() {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origText || '🔄 Cập nhật Model Web AI';
+      }
+    });
+}
+
+function setAccountTier(id, tier, selectElem) {
+  var fd = new FormData();
+  fd.append('id', id);
+  fd.append('tier', tier);
+
+  fetch('/web-ai/accounts/set-tier', { method: 'POST', body: fd })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        window.showAppNotice(data.message || 'Đã đổi hạng tài khoản!', { title: 'Thành công', tone: 'success' })
+          .then(function() {
+            var currentURL = new URL(window.location.href);
+            currentURL.hash = 'tab-webai';
+            window.location.reload();
+          });
+      } else {
+        window.showAppNotice('Lỗi: ' + (data.error || 'Không đổi được hạng'));
+      }
+    })
+    .catch(function(err) {
+      window.showAppNotice('Lỗi kết nối: ' + err.message);
+    });
+}
+
 // Auto open tab from URL hash if present; default to official API keys
 window.addEventListener('DOMContentLoaded', function() {
   var hash = window.location.hash;

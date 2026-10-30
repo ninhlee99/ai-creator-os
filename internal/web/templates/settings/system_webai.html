@@ -4,6 +4,9 @@
     <h3>Tài khoản AI</h3>
     <div class="webai-section-actions">
       <span class="webai-ready-total" id="badge-webai-connected">{{.WebAIConnected}} tài khoản đang bật</span>
+      <button type="button" class="btn btn-primary btn-sm" id="btn-sync-all-webai-models" onclick="syncAllWebAIModels(this)" title="Quét tự động hạng tài khoản (Free, Pro, Plus, Advanced...) & cập nhật model Web AI mới nhất">
+        🔄 Cập nhật Model Web AI
+      </button>
       <button type="button" class="btn btn-secondary btn-sm" id="btn-test-all-webai" onclick="testAllWebAIAccounts()">
         Kiểm tra tất cả phiên
       </button>
@@ -54,7 +57,7 @@
           <div class="webai-account-row">
             <div class="webai-account-info">
               <strong>{{if .Email}}{{.Email}}{{else}}{{.AccountName}}{{end}}</strong>
-              <div class="webai-account-meta-line">
+              <div class="webai-account-meta-line" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px">
               {{if eq .Status "cooldown"}}
               <span class="badge badge-warn">{{.CooldownLabel}}</span>
               {{else if or (eq .Status "invalid") (eq .Status "expired")}}
@@ -70,6 +73,18 @@
               {{else}}
               <span class="badge badge-warn">Chưa xác minh</span>
               {{end}}
+              <span class="badge {{if or (eq .Tier "pro") (eq .Tier "plus") (eq .Tier "advanced") (eq .Tier "premium") (eq .Tier "max") (eq .Tier "ultra")}}badge-ok{{else}}badge-secondary{{end}}" title="Hạng tài khoản đã phát hiện hoặc chọn">
+                {{if .Tier}}{{.Tier}}{{else}}free{{end}}
+              </span>
+              <select class="form-select form-select-sm" style="font-size:11px;padding:1px 4px;height:20px;border-radius:4px;border:1px solid var(--border);background:var(--bg2);color:var(--text)" onchange="setAccountTier('{{.ID}}', this.value, this)" title="Thay đổi hạng tài khoản">
+                <option value="free" {{if or (eq .Tier "free") (eq .Tier "unknown") (eq .Tier "")}}selected{{end}}>Free</option>
+                <option value="pro" {{if eq .Tier "pro"}}selected{{end}}>Pro</option>
+                <option value="plus" {{if eq .Tier "plus"}}selected{{end}}>Plus</option>
+                <option value="advanced" {{if eq .Tier "advanced"}}selected{{end}}>Advanced</option>
+                <option value="max" {{if eq .Tier "max"}}selected{{end}}>Max</option>
+                <option value="ultra" {{if eq .Tier "ultra"}}selected{{end}}>Ultra</option>
+                <option value="premium" {{if eq .Tier "premium"}}selected{{end}}>SuperGrok</option>
+              </select>
               <span class="hint">{{.Requests}} req</span>
               </div>
             </div>
